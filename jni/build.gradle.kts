@@ -1,3 +1,7 @@
+import org.jetbrains.kotlin.konan.target.Family
+import java.net.URI
+import java.net.URL
+
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.osdetector)
@@ -14,6 +18,7 @@ group = libGroup
 version = libVersion
 
 kotlin {
+    jvmToolchain(21)
     androidNativeX86 {
         binaries {
             sharedLib()
@@ -95,43 +100,16 @@ kotlin {
         target.compilations.getByName("main") {
             cinterops {
                 create("jni") {
-                    val javaDefaultHome = System.getProperty("java.home")
-                    val javaEnvHome = getSystemJavaHome()
-                    val javaSdkMan = getSdkManJava()
-                    val javaDefaultRuntime = getDefaultRuntimeJava()
-                    val javaFallbackRuntime = getFallbackRuntimeJava()
+                    val osFolder = when {
+                        target.konanTarget.family.isAppleFamily -> "darwin"
+                        target.konanTarget.family == Family.LINUX -> "linux"
+                        target.konanTarget.family == Family.MINGW -> "win32"
+                        else -> null
+                    }
 
-                    includeDirs.allHeaders(
-                        // Gradle or IDE specified Java Home
-                        File(javaDefaultHome, "include"),
-                        File(javaDefaultHome, "include/darwin"),
-                        File(javaDefaultHome, "include/linux"),
-                        File(javaDefaultHome, "include/win32"),
-
-                        // System set Java Home
-                        File(javaEnvHome, "include"),
-                        File(javaEnvHome, "include/darwin"),
-                        File(javaEnvHome, "include/linux"),
-                        File(javaEnvHome, "include/win32"),
-
-                        // SDK Man Java
-                        File(javaSdkMan, "include"),
-                        File(javaSdkMan, "include/darwin"),
-                        File(javaSdkMan, "include/linux"),
-                        File(javaSdkMan, "include/win32"),
-
-                        // Default Runtime Java
-                        File(javaDefaultRuntime, "include"),
-                        File(javaDefaultRuntime, "include/darwin"),
-                        File(javaDefaultRuntime, "include/linux"),
-                        File(javaDefaultRuntime, "include/win32"),
-
-                        // Fallback Runtime Java
-                        File(javaFallbackRuntime, "include"),
-                        File(javaFallbackRuntime, "include/darwin"),
-                        File(javaFallbackRuntime, "include/linux"),
-                        File(javaFallbackRuntime, "include/win32"),
-                    )
+                    val jniHeadersBase = project.file("jni-headers")
+                    includeDirs.allHeaders(jniHeadersBase)
+                    osFolder?.let { includeDirs.allHeaders(jniHeadersBase.resolve(it)) }
                 }
             }
         }

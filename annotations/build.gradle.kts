@@ -12,6 +12,7 @@ group = libGroup
 version = libVersion
 
 kotlin {
+    jvmToolchain(21)
     androidLibrary {
         compileSdk = Configuration.compileSdk
         minSdk = Configuration.minSdk
