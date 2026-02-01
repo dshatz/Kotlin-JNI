@@ -22,6 +22,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
+          add-cache-paths: |
+            ~/.konan/dependencies
+            ~/.konan/kotlin-native-prebuilt
 
       - name: Build
         run: ./gradlew :annotations:build :jni:build :ksp:build
