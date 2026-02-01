@@ -5,7 +5,7 @@ on:
     types: [published]
 
 jobs:
-  publish-annotations:
+  publish-all:
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -27,73 +27,7 @@ jobs:
         uses: jannemattila/get-version-from-tag@v4
 
       - name: Publish release
-        run: ./gradlew :annotations:publishAllPublicationsToMavenCentralRepository
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_NEXUS_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_NEXUS_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
-          ORG_GRADLE_PROJECT_version: ${{ steps.get_version.outputs.version }}
-
-  publish-jni:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
-
-      - name: Build
-        id: build
-        continue-on-error: true
-        run: ./gradlew :jni:build
-
-      - id: get_version
-        name: Get version
-        uses: jannemattila/get-version-from-tag@v4
-
-      - name: Publish release
-        if: steps.build.outcome == 'success' || steps.buildRepeat.outcome == 'success'
-        run: ./gradlew :jni:publishAllPublicationsToMavenCentralRepository
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_NEXUS_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_NEXUS_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
-          ORG_GRADLE_PROJECT_version: ${{ steps.get_version.outputs.version }}
-
-  publish-ksp:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
-
-      - id: get_version
-        name: Get version
-        uses: jannemattila/get-version-from-tag@v4
-
-      - name: Publish release
-        run: ./gradlew :ksp:publishAllPublicationsToMavenCentralRepository
+        run: ./gradlew :publishAllPublicationsToMavenCentralRepository
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_NEXUS_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_NEXUS_PASSWORD }}
