@@ -27,12 +27,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
+          cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
           gradle-home-cache-includes: |
             .konan/dependencies
             .konan/kotlin-native-prebuilt
@@ -53,11 +53,14 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-test-report
+          name: e2e-test-report-${{ runner.os }}
           path: e2e/build/reports/tests/*/
           retention-days: 5
-      - name: Test Summary
-        uses: test-summary/action@v2
-        with:
-          paths: "**/build/test-results/**/*.xml"
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
+        with:
+          files: "**/build/test-results/**/*.xml"
+          check_name: "Test Results (${{ runner.os }})"
+          report_individual_runs: true
+          deduplicate_classes_by_file_name: false
