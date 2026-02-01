@@ -4,6 +4,7 @@ include(":annotations")
 include(":jni")
 include(":ksp")
 include(":demo")
+include(":e2e")
 
 pluginManagement {
     repositories {

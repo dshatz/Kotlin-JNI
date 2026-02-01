@@ -180,24 +180,6 @@ mavenPublishing {
     }
 }
 
-fun getSystemJavaHome(): String? {
-    return System.getenv("JAVA_HOME")?.ifBlank { null }
-}
-
-fun getSdkManJava(): String? {
-    return System.getProperty("user.home")?.ifBlank { null }?.let {
-        "$it/.sdkman/candidates/java/current"
-    }
-}
-
-fun getDefaultRuntimeJava(): String? {
-    return "/usr/lib/jvm/default-runtime"
-}
-
-fun getFallbackRuntimeJava(): String? {
-    return "/usr/lib/jvm/java"
-}
-
 fun getHost(): Host {
     return when (osdetector.os) {
         "linux" -> Host.Linux
