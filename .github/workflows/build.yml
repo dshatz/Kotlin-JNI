@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  build-annotations:
+  build:
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -24,46 +24,4 @@ jobs:
           cache-read-only: false
 
       - name: Build
-        run: ./gradlew :annotations:build
-
-  build-jni:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
-
-      - name: Build
-        id: build
-        continue-on-error: true
-        run: ./gradlew :jni:build
-
-  build-ksp:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
-
-      - name: Build
-        run: ./gradlew :ksp:build
+        run: ./gradlew :annotations:build :jni:build :ksp:build

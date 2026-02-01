@@ -153,6 +153,9 @@ kotlin {
             macosMain.orNull?.dependsOn(this)
         }
     }
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 }
 
 mavenPublishing {
