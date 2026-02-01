@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.asTypeName
+import java.nio.ByteBuffer
 
 internal object TypeMatcher {
 
@@ -30,6 +31,8 @@ internal object TypeMatcher {
     val KShort = Short::class.asTypeName()
     val KShortArray = ShortArray::class.asTypeName()
     val KString = String::class.asTypeName()
+    val KDirectByteBuffer = ClassName("dev.datlag.nkommons", "ByteBuffer")
+    val KCommonByteBuffer = ClassName("dev.datlag.nkommons", "CommonByteBuffer")
 
     private const val TYPE_BINDING_PACKAGE = "dev.datlag.nkommons.binding"
     val JBoolean = ClassName(TYPE_BINDING_PACKAGE, "jboolean")
@@ -50,6 +53,7 @@ internal object TypeMatcher {
     val JShortArray = ClassName(TYPE_BINDING_PACKAGE, "jshortArray")
     val JString = ClassName(TYPE_BINDING_PACKAGE, "jstring")
     val JObject = ClassName(TYPE_BINDING_PACKAGE, "jobject")
+    val JValue = ClassName("dev.datlag.nkommons", "jvalue")
 
     object Method {
 
@@ -65,6 +69,8 @@ internal object TypeMatcher {
         val ToJShortArray = MemberName("dev.datlag.nkommons.utils", "toJShortArray")
         val ToJString = MemberName("dev.datlag.nkommons.utils", "toJString")
 
+        val ToJCommonByteBuffer = MemberName("dev.datlag.nkommons.utils", "toJCommonByteBuffer")
+
         val ToKBoolean = MemberName("dev.datlag.nkommons.utils", "toKBoolean")
         val ToKBooleanArray = MemberName("dev.datlag.nkommons.utils", "toKBooleanArray")
         val ToKByteArray = MemberName("dev.datlag.nkommons.utils", "toKByteArray")
@@ -76,6 +82,8 @@ internal object TypeMatcher {
         val ToKLongArray = MemberName("dev.datlag.nkommons.utils", "toKLongArray")
         val ToKShortArray = MemberName("dev.datlag.nkommons.utils", "toKShortArray")
         val ToKString = MemberName("dev.datlag.nkommons.utils", "toKString")
+        val ToKDirectByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKDirectByteBuffer")
+        val ToKCommonByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKCommonByteBuffer")
     }
 
     fun jniTypeFor(param: TypeName, forReturn: Boolean): TypeName? {
@@ -133,8 +141,13 @@ internal object TypeMatcher {
             } else {
                 JString.copy(nullable = param.isNullable)
             }
+            KDirectByteBuffer -> if (forReturn) {
+                JObject.copy(nullable = true)
+            } else {
+                JObject.copy(nullable = param.isNullable)
+            }
 
-            else -> null
+            else -> JObject.copy(nullable = param.isNullable)
         }
     }
 

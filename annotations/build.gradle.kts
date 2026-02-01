@@ -64,7 +64,14 @@ kotlin {
 
 
 
-    applyDefaultHierarchyTemplate()
+    applyDefaultHierarchyTemplate {
+        common {
+            group("jni") {
+                withAndroidTarget()
+                withJvm()
+            }
+        }
+    }
 }
 
 mavenPublishing {

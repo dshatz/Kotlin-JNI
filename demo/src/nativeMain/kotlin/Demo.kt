@@ -1,7 +1,10 @@
-import dev.datlag.nkommons.JNIClassName
-import dev.datlag.nkommons.JNIConnect
-import dev.datlag.nkommons.JNIFunctionName
-import dev.datlag.nkommons.JNIPackageName
+import dev.datlag.nkommons.*
+import dev.datlag.nkommons.utils.memcpy
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.UnsafeNumber
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import kotlin.random.Random
 
 @JNIConnect
 fun boolExample(value: Boolean): Boolean {
@@ -110,4 +113,34 @@ fun concat(a: String, b: String): String {
 @JNIClassName("MainKt")
 fun mixed(a: String, b: Int, c: Boolean, d: IntArray, e: Char): String {
     return "$a, $b, $c, ${d.joinToString(separator = "|", prefix = "[", postfix = "]")}, $e"
+}
+
+@OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
+@JNIConnect
+@JNIPackageName("dev.datlag.nkommons")
+@JNIClassName("MainKt")
+fun byteBuffer(buffer: ByteBuffer, size: Long): ByteArray {
+    val bytes = Random.nextBytes(size.toInt())
+    bytes.usePinned {
+        memcpy(buffer.address, it.addressOf(0), size.toULong())
+    }
+    return bytes
+}
+
+@JNIConnect
+@JNIPackageName("dev.datlag.nkommons")
+@JNIClassName("MainKt")
+fun callJvmFromNative(obj: JvmService): String {
+    val sum = obj.sum(100, 200).toString()
+    val greeting = obj.concat("Hello", "Jni")
+    obj.printHello()
+    println("Native read bytes from jvm: ${obj.readBytes().toHexString()}")
+    return obj.concat(sum, greeting)
+}
+
+@JNIConnect
+@JNIPackageName("dev.datlag.nkommons")
+@JNIClassName("MainKt")
+fun writeToJvmBuffer(bridge: JvmService, buffer: CommonByteBuffer): Int {
+    return bridge.readBytesTo(buffer)
 }

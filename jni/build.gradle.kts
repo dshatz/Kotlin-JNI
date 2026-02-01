@@ -3,11 +3,14 @@ import org.jetbrains.kotlin.konan.target.Family
 import java.net.URI
 import java.net.URL
 
+import com.android.build.api.dsl.androidLibrary
+
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.osdetector)
     alias(libs.plugins.kotest)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
     `maven-publish`
     signing
@@ -95,6 +98,11 @@ kotlin {
                 }
             }
         )
+    }
+    jvm()
+    androidLibrary {
+        namespace = "dev.datlag.nkommons.jni"
+        compileSdk = 36
     }
 
     desktopTargets.forEach { target ->

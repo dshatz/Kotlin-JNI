@@ -7,6 +7,7 @@ import dev.datlag.nkommons.binding.jdouble
 import dev.datlag.nkommons.binding.jfloat
 import dev.datlag.nkommons.binding.jint
 import dev.datlag.nkommons.binding.jlong
+import dev.datlag.nkommons.binding.jobject
 import dev.datlag.nkommons.binding.jshort
 import kotlinx.cinterop.CStructVar
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -26,3 +27,6 @@ expect class jvalue : CStructVar {
     @Deprecated("Deprecated in actual type")
     companion object : CStructVar.Type
 }
+
+@OptIn(ExperimentalForeignApi::class)
+expect var jvalue.l: jobject?

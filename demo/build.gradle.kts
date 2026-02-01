@@ -50,15 +50,21 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
-        nativeMain.dependencies {
-            implementation(project(":jni"))
+        commonMain.dependencies {
             implementation(project(":annotations"))
+            implementation(project(":jni"))
         }
     }
 }
 
 dependencies {
-    ksp(project(":ksp"))
+    add("kspLinuxX64", project(":ksp"))
+    add("kspLinuxArm64", project(":ksp"))
+    add("kspMingwX64", project(":ksp"))
+    add("kspAndroidNativeArm64", project(":ksp"))
+    add("kspAndroidNativeArm32", project(":ksp"))
+    add("kspAndroidNativeX64", project(":ksp"))
+    add("kspAndroidNativeX86", project(":ksp"))
 }
 
 fun getHost(): Host {

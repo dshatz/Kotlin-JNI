@@ -9,6 +9,7 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -17,6 +18,8 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import dev.datlag.nkommons.TypeMatcher.typeOf
+import dev.datlag.nkommons.callable.NativeCallable
+import dev.datlag.nkommons.callable.getNativeImplClass
 
 class NativeKommons : SymbolProcessorProvider {
     var called: Boolean = false
@@ -36,6 +39,9 @@ class NativeKommons : SymbolProcessorProvider {
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
             getAnnotatedFunctions(resolver).forEach(::generateJNIMethod)
+            getAnnotatedBridges(resolver).map(NativeCallable::generateNativeBridge).forEach {
+                it.first.writeTo(codeGenerator, it.second)
+            }
 
             return emptyList()
         }
@@ -44,6 +50,11 @@ class NativeKommons : SymbolProcessorProvider {
             val jniConnectAnnotated = resolver.getSymbolsWithAnnotation(JNIConnect::class.java.name).toList()
 
             return (jniConnectAnnotated).filterIsInstance<KSFunctionDeclaration>().distinct()
+        }
+
+        private fun getAnnotatedBridges(resolver: Resolver): List<KSClassDeclaration> {
+            val nativeCallableAnnotated = resolver.getSymbolsWithAnnotation(CallableFromNative::class.java.name).toList()
+            return nativeCallableAnnotated.filterIsInstance<KSClassDeclaration>().distinct()
         }
 
         @OptIn(KspExperimental::class)
@@ -113,6 +124,15 @@ class NativeKommons : SymbolProcessorProvider {
                     }
                     expectedTypeName typeOf TypeMatcher.JString && typeName typeOf TypeMatcher.KString -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKString
+                    }
+                    expectedTypeName typeOf TypeMatcher.JObject && typeName typeOf TypeMatcher.KDirectByteBuffer -> {
+                        "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKDirectByteBuffer
+                    }
+                    expectedTypeName typeOf TypeMatcher.JObject && typeName typeOf TypeMatcher.KCommonByteBuffer -> {
+                        "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKCommonByteBuffer
+                    }
+                    expectedTypeName typeOf TypeMatcher.JObject -> {
+                        "${typeName.getNativeImplClass()}(env, $name)" to null
                     }
                     else -> name to null
                 }
