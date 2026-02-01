@@ -73,7 +73,15 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
-    ksp(project(":ksp"))
+    if (getHost() == Host.Linux) {
+        add("kspLinuxX64", project(":ksp"))
+    }
+    if (getHost() == Host.MAC) {
+        add("kspMacosArm64", project(":ksp"))
+    }
+    if (getHost() == Host.Windows) {
+        add("kspMingwX64", project(":ksp"))
+    }
 }
 
 fun getHost(): Host {
