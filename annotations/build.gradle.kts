@@ -48,19 +48,21 @@ kotlin {
     watchosSimulatorArm64()
     watchosDeviceArm64()
 
-    js {
-        browser()
-        nodejs()
+    if (project.hasProperty("enableWeb")) {
+        js {
+            browser()
+            nodejs()
+        }
+        wasmJs {
+            browser()
+            nodejs()
+        }
+        wasmWasi {
+            nodejs()
+        }
     }
 
-    wasmJs {
-        browser()
-        nodejs()
-    }
 
-    wasmWasi {
-        nodejs()
-    }
 
     applyDefaultHierarchyTemplate()
 }
