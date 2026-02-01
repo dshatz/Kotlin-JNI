@@ -7,7 +7,17 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tasks: ":annotations:build :ksp:build :jni:linuxX64Test"
+          - os: windows-latest
+            tasks: ":jni:mingwX64Test"
+          - os: macos-latest
+            tasks: ":jni:macosArm64Test"
+
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,5 +36,5 @@ jobs:
             ~/.konan/dependencies
             ~/.konan/kotlin-native-prebuilt
 
-      - name: Build
-        run: ./gradlew :annotations:build :jni:build :ksp:build
+      - name: Build and Test
+        run: ./gradlew ${{ matrix.tasks }}
