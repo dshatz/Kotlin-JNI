@@ -20,3 +20,16 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
+plugins {
+    id("com.gradle.develocity") version "4.3.2"
+}
+
+develocity {
+    buildScan {
+        termsOfUseAgree.set("yes")
+        termsOfUseUrl = "https://gradle.com/terms-of-service"
+
+//        publishing.onlyIf { System.getenv("GITHUB_ACTIONS") == "true" }
+    }
+}

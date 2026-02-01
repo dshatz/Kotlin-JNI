@@ -34,8 +34,7 @@ jobs:
           cache-read-only: false
           cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
           gradle-home-cache-includes: |
-            .konan/dependencies
-            .konan/kotlin-native-prebuilt
+            /home/runner/.konan
 
       - name: Build and Test
         run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
@@ -58,10 +57,10 @@ jobs:
         with:
           path: artifacts
 
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Detailed Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
         with:
-          files: "artifacts/**/*.xml"
-          check_name: "Aggregated Test Results"
-          comment_mode: off
-          report_individual_runs: true
+          name: "Tests: ${{ runner.os }}"
+          path: "**/artifacts/**/*.xml"
+          reporter: java-junit
