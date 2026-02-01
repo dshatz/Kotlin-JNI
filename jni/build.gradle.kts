@@ -206,6 +206,12 @@ enum class Host(val label: String) {
     MAC("mac");
 }
 
+tasks.withType<Test>().configureEach {
+    reports {
+        junitXml.required.set(true)
+    }
+}
+
 tasks.withType<KotlinNativeTest>().configureEach {
     logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }

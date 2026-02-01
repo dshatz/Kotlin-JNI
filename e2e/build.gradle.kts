@@ -67,6 +67,9 @@ kotlin {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    reports {
+        junitXml.required.set(true)
+    }
 }
 
 dependencies {
