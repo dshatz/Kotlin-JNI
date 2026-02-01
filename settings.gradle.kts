@@ -1,4 +1,4 @@
-rootProject.name = "Native-Kommons"
+rootProject.name = "Kotlin-JNI"
 
 include(":annotations")
 include(":jni")

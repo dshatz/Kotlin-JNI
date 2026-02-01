@@ -34,7 +34,7 @@ class VersionCatalog(project: Project) {
 }
 
 val Project.libVersion: String
-    get() = VersionCatalog(this).libVersion
+    get() = project.property("version").toString()
 
 val Project.libVersionCode: Int
     get() = VersionCatalog(this).libVersionCode

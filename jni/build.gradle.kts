@@ -166,10 +166,10 @@ mavenPublishing {
     )
 
     pom {
-        name.set("Native-Kommons JNI")
-        description.set("JNI library providing common types and utils.")
-        url.set("https://github.com/DatL4g/Native-Kommons")
-        inceptionYear.set("2025")
+        name.set("Kotlin-JNI")
+        description.set("Painless JNI with Kotlin/Native using a KSP processor.")
+        url.set("https://github.com/dshatz/Kotlin-JNI")
+        inceptionYear.set("2026")
 
         licenses {
             license {
@@ -179,12 +179,17 @@ mavenPublishing {
         }
 
         scm {
-            url.set("https://github.com/DatL4g/Native-Kommons")
-            connection.set("scm:git:git://github.com/DATL4G/Native-Kommons.git")
-            developerConnection.set("scm:git:git://github.com/DATL4G/Native-Kommons.git")
+            url.set("https://github.com/dshatz/Kotlin-JNI")
+            connection.set("scm:git:git://github.com/dshatz/Kotlin-JNI")
+            developerConnection.set("scm:git:git://github.com/dshatz/Kotlin-JNI.git")
         }
 
         developers {
+            developer {
+                id.set("dshatz")
+                name.set("Daniels Šatcs")
+                url.set("https://github.com/dshatz")
+            }
             developer {
                 id.set("DatL4g")
                 name.set("Jeff Retz")
