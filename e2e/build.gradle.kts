@@ -97,3 +97,8 @@ enum class Host(val label: String) {
     Windows("win"),
     MAC("mac");
 }
+
+tasks.withType<Test>().configureEach {
+    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
+    outputs.upToDateWhen { false }
+}

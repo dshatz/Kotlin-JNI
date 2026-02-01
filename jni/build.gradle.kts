@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.konan.target.Family
 import java.net.URI
 import java.net.URL
@@ -203,4 +204,9 @@ enum class Host(val label: String) {
     Linux("linux"),
     Windows("win"),
     MAC("mac");
+}
+
+tasks.withType<KotlinNativeTest>().configureEach {
+    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
+    outputs.upToDateWhen { false }
 }
