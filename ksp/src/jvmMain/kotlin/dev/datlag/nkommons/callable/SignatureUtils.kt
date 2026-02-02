@@ -50,8 +50,8 @@ fun KSType.toJValueField(): Pair<String, CodeBlock> {
             "l" to CodeBlock.of(".%M(env)?.%M()", TypeMatcher.Method.ToJByteArray, Def.reinterpret)
         }
 
-        TypeMatcher.KCommonByteBuffer -> {
-            "l" to CodeBlock.of(".%M(env)?.%M()", TypeMatcher.Method.ToJCommonByteBuffer, Def.reinterpret)
+        TypeMatcher.KByteBuffer -> {
+            "l" to CodeBlock.of(".%M(env)?.%M()", TypeMatcher.Method.ToJByteBuffer, Def.reinterpret)
         }
         else -> {
             when (this.toClassName()) {

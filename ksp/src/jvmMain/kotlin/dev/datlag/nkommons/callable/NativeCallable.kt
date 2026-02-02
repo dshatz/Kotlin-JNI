@@ -24,7 +24,14 @@ import dev.datlag.nkommons.TypeMatcher.Environment
 import dev.datlag.nkommons.TypeMatcher.KString
 
 object NativeCallable {
-    fun generateNativeBridge(cls: KSClassDeclaration): Pair<FileSpec, Dependencies> {
+
+    data class CallableBridge(
+        val fileSpec: FileSpec,
+        val deps: Dependencies,
+        val cls: ClassName
+    )
+
+    fun generateNativeBridge(cls: KSClassDeclaration): CallableBridge {
         val implCls = cls.toClassName().getNativeImplClass()
         val funs = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
             val returnType = f.returnType?.resolve()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
@@ -69,11 +76,12 @@ object NativeCallable {
             cls.containingFile,
             cls.parentDeclaration?.containingFile
         ).toTypedArray())
-        return FileSpec.builder(implCls)
+        val fileSpec = FileSpec.builder(implCls)
             .addType(bridgeClass)
             .addImport("kotlinx.cinterop", "get")
             .addAnnotation(optin())
-            .build() to deps
+            .build()
+        return CallableBridge(fileSpec, deps, cls.toClassName())
     }
 }
 

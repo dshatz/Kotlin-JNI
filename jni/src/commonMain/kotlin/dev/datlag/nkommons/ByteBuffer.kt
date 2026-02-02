@@ -1,3 +1,4 @@
 package dev.datlag.nkommons
 
-expect class CommonByteBuffer
+expect class ByteBuffer {
+}

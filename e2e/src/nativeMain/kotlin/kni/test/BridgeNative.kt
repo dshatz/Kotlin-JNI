@@ -1,4 +1,4 @@
-package test
+package kni.test
 
 import dev.datlag.nkommons.JNIClassName
 import dev.datlag.nkommons.JNIConnect

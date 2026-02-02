@@ -5,7 +5,6 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.asTypeName
-import java.nio.ByteBuffer
 
 internal object TypeMatcher {
 
@@ -31,8 +30,7 @@ internal object TypeMatcher {
     val KShort = Short::class.asTypeName()
     val KShortArray = ShortArray::class.asTypeName()
     val KString = String::class.asTypeName()
-    val KDirectByteBuffer = ClassName("dev.datlag.nkommons", "ByteBuffer")
-    val KCommonByteBuffer = ClassName("dev.datlag.nkommons", "CommonByteBuffer")
+    val KByteBuffer = ClassName("dev.datlag.nkommons", "ByteBuffer")
 
     private const val TYPE_BINDING_PACKAGE = "dev.datlag.nkommons.binding"
     val JBoolean = ClassName(TYPE_BINDING_PACKAGE, "jboolean")
@@ -69,7 +67,7 @@ internal object TypeMatcher {
         val ToJShortArray = MemberName("dev.datlag.nkommons.utils", "toJShortArray")
         val ToJString = MemberName("dev.datlag.nkommons.utils", "toJString")
 
-        val ToJCommonByteBuffer = MemberName("dev.datlag.nkommons.utils", "toJCommonByteBuffer")
+        val ToJByteBuffer = MemberName("dev.datlag.nkommons.utils", "toJByteBuffer")
 
         val ToKBoolean = MemberName("dev.datlag.nkommons.utils", "toKBoolean")
         val ToKBooleanArray = MemberName("dev.datlag.nkommons.utils", "toKBooleanArray")
@@ -83,7 +81,7 @@ internal object TypeMatcher {
         val ToKShortArray = MemberName("dev.datlag.nkommons.utils", "toKShortArray")
         val ToKString = MemberName("dev.datlag.nkommons.utils", "toKString")
         val ToKDirectByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKDirectByteBuffer")
-        val ToKCommonByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKCommonByteBuffer")
+        val ToKByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKByteBuffer")
     }
 
     fun jniTypeFor(param: TypeName, forReturn: Boolean): TypeName? {
@@ -141,13 +139,13 @@ internal object TypeMatcher {
             } else {
                 JString.copy(nullable = param.isNullable)
             }
-            KDirectByteBuffer -> if (forReturn) {
+            KByteBuffer -> if (forReturn) {
                 JObject.copy(nullable = true)
             } else {
                 JObject.copy(nullable = param.isNullable)
             }
 
-            else -> JObject.copy(nullable = param.isNullable)
+            else -> null
         }
     }
 

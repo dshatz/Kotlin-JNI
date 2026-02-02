@@ -1,7 +1,6 @@
 package dev.datlag.nkommons.utils
 
 import dev.datlag.nkommons.ByteBuffer
-import dev.datlag.nkommons.CommonByteBuffer
 import dev.datlag.nkommons.JNIEnvVar
 import dev.datlag.nkommons.binding.*
 import dev.datlag.nkommons.jvalue
@@ -10,12 +9,31 @@ import dev.datlag.nkommons.pointedCommon
 import kotlinx.cinterop.*
 
 
+/**
+ * Convert jobject representing a java.nio.ByteBuffer to a native [ByteBuffer] wrapper.
+ */
 @OptIn(ExperimentalForeignApi::class)
 fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
     val rawAddress = env.pointed.pointedCommon!!.GetDirectBufferAddress!!.invoke(env, this)
     val size = env.pointed.pointedCommon!!.GetDirectBufferCapacity!!.invoke(env, this)
     val address = rawAddress!!.reinterpret<ByteVar>()
     return ByteBuffer(address, size)
+}
+
+
+/**
+ * Convert a native wrapper [ByteBuffer] to a jobject representing the same [ByteBuffer].
+ */
+@OptIn(ExperimentalForeignApi::class)
+fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
+    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, address, size)
+    val cls = env.FindClass(ByteBuffer::class.qualifiedName!!.replace('.', '/'))!!
+    val constructor = env.GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;)V")!!
+    return memScoped {
+        val args = allocArray<jvalue>(1)
+        args[0].l = jvmBuffer
+        env.pointed.pointedCommon!!.NewObjectA!!(env, cls, constructor, args)
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -181,27 +199,4 @@ fun CPointer<JNIEnvVar>.CallVoidMethodA(
         method,
         args
     )
-}
-
-@OptIn(ExperimentalForeignApi::class)
-fun CommonByteBuffer.toJCommonByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
-    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, buffer.address, buffer.size)
-    val cls = env.FindClass(CommonByteBuffer::class.qualifiedName!!.replace('.', '/'))!!
-    val constructor = env.GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;)V")!!
-    return memScoped {
-        val args = allocArray<jvalue>(1)
-        args[0].l = jvmBuffer
-        env.pointed.pointedCommon!!.NewObjectA!!(env, cls, constructor, args)
-    }
-}
-
-@OptIn(ExperimentalForeignApi::class)
-fun jobject.toKCommonByteBuffer(env: CPointer<JNIEnvVar>): CommonByteBuffer {
-    val cls = env.FindClass(CommonByteBuffer::class.qualifiedName!!.replace('.', '/'))!!
-
-    val bufferField = env.GetFieldID(cls, "buffer", "Ljava/nio/ByteBuffer;")
-
-    val jvmBuffer = env.pointed.pointedCommon!!.GetObjectField!!.invoke(env, this, bufferField)!!
-    val b = jvmBuffer.toKDirectByteBuffer(env)
-    return CommonByteBuffer(b)
 }

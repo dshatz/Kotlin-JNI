@@ -6,11 +6,8 @@ import kotlinx.cinterop.ExperimentalForeignApi
 
 /**
  * Wrapper around a direct byte buffer address.
+ *
+ * Use this in @JniConnect annotated functions to represent a java.nio.ByteBuffer.
  */
 @OptIn(ExperimentalForeignApi::class)
-value class ByteBuffer(val data: Pair<CPointer<ByteVar>, Long>) {
-    val address get() = data.first
-    val size get() = data.second
-
-    constructor(address: CPointer<ByteVar>, size: Long): this(address to size)
-}
+actual class ByteBuffer(val address: CPointer<ByteVar>, val size: Long)
