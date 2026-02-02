@@ -28,6 +28,9 @@ However, since the original repository no longer has a permissive license, this 
 
 ## 🛠️ Setup
 
+[![Tests](https://github.com/dshatz/Kotlin-JNI/actions/workflows/build.yml/badge.svg)](https://github.com/dshatz/Kotlin-JNI/actions/workflows/build.yml)
+![Maven Central Version](https://img.shields.io/maven-central/v/com.dshatz.kni/jni)
+
 To use Kotlin-JNI in your project, add the dependencies to your `build.gradle.kts` file.
 
 ### Java Native Interface
@@ -53,7 +56,7 @@ kotlin {
         val nativeMain by getting {
             dependencies {
                 // Add the core JNI utilities
-                implementation("dev.datlag.nkommons:jni:<version>")
+                implementation("com.dshatz.kni:jni:<version>")
             }
         }
     }
@@ -78,14 +81,14 @@ kotlin {
         val nativeMain by getting {
             dependencies {
                 // Add the annotations dependency for KSP
-                implementation("dev.datlag.nkommons:annotations:<version>")
+                implementation("com.dshatz.kni:annotations:<version>")
             }
         }
     }
 }
 
 dependencies {
-    ksp("dev.datlag.nkommons:ksp:<version>")
+    ksp("dev.dshatz.kni:ksp:<version>")
 }
 ```
 
@@ -129,19 +132,15 @@ import dev.datlag.nkommons.JNIPackageName
 import dev.datlag.nkommons.JNIClassName
 import dev.datlag.nkommons.JNIFunctionName
 
-@JNIConnect
-@JNIPackageName("your.package.name")
-@JNIClassName("YourClass")
-@JNIFunctionName("customFunction")
+@JNIConnect(
+    packageName = "your.package.name",
+    className = "YourClass",
+    functionName = "customFunction" // optional, defaults to function name (example).
+)
 fun example(a: String, b: Boolean, c: CharArray, d: Double): String {
     return "$a, $b, $c, $d"
 }
 ```
-
-> [!WARNING]
-> The provided `@JNIPackageName`, `@JNIClassName` and `@JNIFunctionName` annotations will be removed.  
-> Their parameters will be merged into `@JNIConnect`.  
-> Waiting for KSP fix: https://github.com/google/ksp/issues/2356
 
 #### 2. Let KSP generate the JNI Stub
 
