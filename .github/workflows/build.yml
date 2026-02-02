@@ -42,7 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jvm-test-report-${{ runner.os }}
+          name: test-report-${{ runner.os }}
           path: ./**/build/test-results/**/*.xml
           retention-days: 5
   publish-results:
@@ -58,10 +58,26 @@ jobs:
         with:
           path: artifacts
 
-      - name: Detailed Test Report
+      - name: Detailed Test Report Linux
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: ${{ runner.os }}"
-          path: "**/artifacts/**/*.xml"
+          name: "Tests: Linux"
+          path: "artifacts/test-report-Linux/**/*.xml"
+          reporter: java-junit
+
+      - name: Detailed Test Report Windows
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Tests: Windows"
+          path: "artifacts/test-report-Windows/**/*.xml"
+          reporter: java-junit
+
+      - name: Detailed Test Report MacOS
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Tests: MacOS"
+          path: "artifacts/test-report-macOS/**/*.xml"
           reporter: java-junit

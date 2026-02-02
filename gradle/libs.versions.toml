@@ -6,7 +6,7 @@ osdetector = "1.7.3"
 kotest = "6.0.3"
 kotlinpoet = "2.2.0"
 ksp = "2.3.4"
-publish = "0.34.0"
+publish = "0.36.0"
 
 [libraries]
 kotest = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
