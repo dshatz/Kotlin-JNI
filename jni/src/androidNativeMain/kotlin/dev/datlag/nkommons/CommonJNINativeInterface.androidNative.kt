@@ -42,6 +42,7 @@ import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVarOf
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.reinterpret
 
 @OptIn(ExperimentalForeignApi::class)
 actual class CommonJNINativeInterface(
@@ -73,9 +74,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetStaticByteField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jbyte) -> Unit>>?
-        get() = platform.SetStaticByteField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jbyte) -> Unit>>?
+        get() = platform.SetStaticByteField?.reinterpret()
         set(value) {
-            platform.SetStaticByteField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jbyte) -> Unit>>?
+            platform.SetStaticByteField = value?.reinterpret()
         }
 
     actual var CallNonvirtualDoubleMethod: COpaquePointer?
@@ -85,15 +86,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallStaticFloatMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
-        get() = platform.CallStaticFloatMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
+        get() = platform.CallStaticFloatMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticFloatMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jfloat>>?
+            platform.CallStaticFloatMethodA = value?.reinterpret()
         }
 
     actual var CallStaticLongMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jlong>>?
-        get() = platform.CallStaticLongMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jlong>>?
+        get() = platform.CallStaticLongMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticLongMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jlong>>?
+            platform.CallStaticLongMethodA = value?.reinterpret()
         }
 
     actual var CallBooleanMethod: COpaquePointer?
@@ -127,9 +128,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallLongMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jlong>>?
-        get() = platform.CallLongMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jlong>>?
+        get() = platform.CallLongMethodA?.reinterpret()
         set(value) {
-            platform.CallLongMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jlong>>?
+            platform.CallLongMethodA = value?.reinterpret()
         }
 
     actual var FatalError: CPointer<CFunction<(CPointer<JNIEnvVar>?, CPointer<ByteVarOf<Byte>>?) -> Unit>>?
@@ -157,9 +158,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualObjectMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
-        get() = platform.CallNonvirtualObjectMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+        get() = platform.CallNonvirtualObjectMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualObjectMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+            platform.CallNonvirtualObjectMethodA = value?.reinterpret()
         }
 
     actual var AllocObject: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?) -> jobject?>>?
@@ -175,21 +176,21 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetObjectField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jobject?>>?
-        get() = platform.GetObjectField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jobject?>>?
+        get() = platform.GetObjectField?.reinterpret()
         set(value) {
-            platform.GetObjectField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jobject?>>?
+            platform.GetObjectField = value?.reinterpret()
         }
 
     actual var GetStaticBooleanField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jboolean>>?
-        get() = platform.GetStaticBooleanField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jboolean>>?
+        get() = platform.GetStaticBooleanField?.reinterpret()
         set(value) {
-            platform.GetStaticBooleanField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jboolean>>?
+            platform.GetStaticBooleanField = value?.reinterpret()
         }
 
     actual var SetIntField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jint) -> Unit>>?
-        get() = platform.SetIntField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jint) -> Unit>>?
+        get() = platform.SetIntField?.reinterpret()
         set(value) {
-            platform.SetIntField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jint) -> Unit>>?
+            platform.SetIntField = value?.reinterpret()
         }
 
     actual var ReleaseIntArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jintArray?, CPointer<jintVar>?, jint) -> Unit>>?
@@ -205,15 +206,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetStaticDoubleField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jdouble>>?
-        get() = platform.GetStaticDoubleField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jdouble>>?
+        get() = platform.GetStaticDoubleField?.reinterpret()
         set(value) {
-            platform.GetStaticDoubleField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jdouble>>?
+            platform.GetStaticDoubleField = value?.reinterpret()
         }
 
     actual var GetStaticIntField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jint>>?
-        get() = platform.GetStaticIntField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jint>>?
+        get() = platform.GetStaticIntField?.reinterpret()
         set(value) {
-            platform.GetStaticIntField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jint>>?
+            platform.GetStaticIntField = value?.reinterpret()
         }
 
     actual var GetJavaVM: CPointer<CFunction<(CPointer<JNIEnvVar>?, CPointer<CPointerVarOf<CPointer<JavaVMVar>>>?) -> jint>>?
@@ -223,9 +224,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetFieldID: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jfieldID?>>?
-        get() = platform.GetFieldID as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jfieldID?>>?
+        get() = platform.GetFieldID?.reinterpret()
         set(value) {
-            platform.GetFieldID = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> platform.android.jfieldID?>>?
+            platform.GetFieldID = value?.reinterpret()
         }
 
     actual var GetLongArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jlongArray?, jsize, jsize, CPointer<jlongVar>?) -> Unit>>?
@@ -235,9 +236,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetStaticLongField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jlong) -> Unit>>?
-        get() = platform.SetStaticLongField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jlong) -> Unit>>?
+        get() = platform.SetStaticLongField?.reinterpret()
         set(value) {
-            platform.SetStaticLongField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jlong) -> Unit>>?
+            platform.SetStaticLongField = value?.reinterpret()
         }
 
     actual var ExceptionDescribe: CPointer<CFunction<(CPointer<JNIEnvVar>?) -> Unit>>?
@@ -247,15 +248,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallShortMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
-        get() = platform.CallShortMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
+        get() = platform.CallShortMethodA?.reinterpret()
         set(value) {
-            platform.CallShortMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jshort>>?
+            platform.CallShortMethodA = value?.reinterpret()
         }
 
     actual var CallStaticVoidMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> Unit>>?
-        get() = platform.CallStaticVoidMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> Unit>>?
+        get() = platform.CallStaticVoidMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticVoidMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> Unit>>?
+            platform.CallStaticVoidMethodA = value?.reinterpret()
         }
 
     actual var ReleaseStringUTFChars: CPointer<CFunction<(CPointer<JNIEnvVar>?, jstring?, CPointer<ByteVar>?) -> Unit>>?
@@ -295,15 +296,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallCharMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jchar>>?
-        get() = platform.CallCharMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jchar>>?
+        get() = platform.CallCharMethodA?.reinterpret()
         set(value) {
-            platform.CallCharMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jchar>>?
+            platform.CallCharMethodA = value?.reinterpret()
         }
 
     actual var GetByteField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jbyte>>?
-        get() = platform.GetByteField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jbyte>>?
+        get() = platform.GetByteField?.reinterpret()
         set(value) {
-            platform.GetByteField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jbyte>>?
+            platform.GetByteField = value?.reinterpret()
         }
 
     actual var FindClass: CPointer<CFunction<(CPointer<JNIEnvVar>?, CPointer<ByteVar>?) -> jclass?>>?
@@ -313,15 +314,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetByteField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jbyte) -> Unit>>?
-        get() = platform.SetByteField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jbyte) -> Unit>>?
+        get() = platform.SetByteField?.reinterpret()
         set(value) {
-            platform.SetByteField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jbyte) -> Unit>>?
+            platform.SetByteField = value?.reinterpret()
         }
 
     actual var SetStaticShortField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jshort) -> Unit>>?
-        get() = platform.SetStaticShortField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jshort) -> Unit>>?
+        get() = platform.SetStaticShortField?.reinterpret()
         set(value) {
-            platform.SetStaticShortField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jshort) -> Unit>>?
+            platform.SetStaticShortField = value?.reinterpret()
         }
 
     actual var CallLongMethod: COpaquePointer?
@@ -337,9 +338,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetStaticDoubleField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jdouble) -> Unit>>?
-        get() = platform.SetStaticDoubleField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jdouble) -> Unit>>?
+        get() = platform.SetStaticDoubleField?.reinterpret()
         set(value) {
-            platform.SetStaticDoubleField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jdouble) -> Unit>>?
+            platform.SetStaticDoubleField = value?.reinterpret()
         }
 
     actual var CallIntMethod: COpaquePointer?
@@ -349,15 +350,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetBooleanField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jboolean>>?
-        get() = platform.GetBooleanField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jboolean>>?
+        get() = platform.GetBooleanField?.reinterpret()
         set(value) {
-            platform.GetBooleanField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jboolean>>?
+            platform.GetBooleanField = value?.reinterpret()
         }
 
     actual var GetStaticMethodID: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jmethodID?>>?
-        get() = platform.GetStaticMethodID as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jmethodID?>>?
+        get() = platform.GetStaticMethodID?.reinterpret()
         set(value) {
-            platform.GetStaticMethodID = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> platform.android.jmethodID?>>?
+            platform.GetStaticMethodID = value?.reinterpret()
         }
 
     actual var GetObjectArrayElement: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobjectArray?, jsize) -> jobject?>>?
@@ -373,9 +374,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallVoidMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> Unit>>?
-        get() = platform.CallVoidMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> Unit>>?
+        get() = platform.CallVoidMethodA?.reinterpret()
         set(value) {
-            platform.CallVoidMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> Unit>>?
+            platform.CallVoidMethodA = value?.reinterpret()
         }
 
     actual var reserved1: COpaquePointer?
@@ -403,15 +404,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualFloatMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
-        get() = platform.CallNonvirtualFloatMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
+        get() = platform.CallNonvirtualFloatMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualFloatMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jfloat>>?
+            platform.CallNonvirtualFloatMethodA = value?.reinterpret()
         }
 
     actual var CallNonvirtualByteMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jbyte>>?
-        get() = platform.CallNonvirtualByteMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jbyte>>?
+        get() = platform.CallNonvirtualByteMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualByteMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jbyte>>?
+            platform.CallNonvirtualByteMethodA = value?.reinterpret()
         }
 
     actual var GetPrimitiveArrayCritical: CPointer<CFunction<(CPointer<JNIEnvVar>?, jarray?, CPointer<jbooleanVar>?) -> COpaquePointer?>>?
@@ -427,9 +428,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetCharField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jchar) -> Unit>>?
-        get() = platform.SetCharField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jchar) -> Unit>>?
+        get() = platform.SetCharField?.reinterpret()
         set(value) {
-            platform.SetCharField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jchar) -> Unit>>?
+            platform.SetCharField = value?.reinterpret()
         }
 
     actual var GetCharArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jcharArray?, CPointer<jbooleanVar>?) -> CPointer<jcharVar>?>>?
@@ -445,9 +446,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualShortMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
-        get() = platform.CallNonvirtualShortMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
+        get() = platform.CallNonvirtualShortMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualShortMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jshort>>?
+            platform.CallNonvirtualShortMethodA = value?.reinterpret()
         }
 
     actual var CallStaticShortMethod: COpaquePointer?
@@ -463,9 +464,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetObjectField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jobject?) -> Unit>>?
-        get() = platform.SetObjectField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jobject?) -> Unit>>?
+        get() = platform.SetObjectField?.reinterpret()
         set(value) {
-            platform.SetObjectField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jobject?) -> Unit>>?
+            platform.SetObjectField = value?.reinterpret()
         }
 
     actual var GetSuperclass: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?) -> jclass?>>?
@@ -499,9 +500,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetFloatField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jfloat) -> Unit>>?
-        get() = platform.SetFloatField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jfloat) -> Unit>>?
+        get() = platform.SetFloatField?.reinterpret()
         set(value) {
-            platform.SetFloatField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jfloat) -> Unit>>?
+            platform.SetFloatField = value?.reinterpret()
         }
 
     actual var NewBooleanArray: CPointer<CFunction<(CPointer<JNIEnvVar>?, jsize) -> jbooleanArray?>>?
@@ -529,9 +530,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallFloatMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
-        get() = platform.CallFloatMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
+        get() = platform.CallFloatMethodA?.reinterpret()
         set(value) {
-            platform.CallFloatMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jfloat>>?
+            platform.CallFloatMethodA = value?.reinterpret()
         }
 
     actual var SetByteArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbyteArray?, jsize, jsize, CPointer<jbyteVar>?) -> Unit>>?
@@ -541,15 +542,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetStaticShortField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jshort>>?
-        get() = platform.GetStaticShortField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jshort>>?
+        get() = platform.GetStaticShortField?.reinterpret()
         set(value) {
-            platform.GetStaticShortField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jshort>>?
+            platform.GetStaticShortField = value?.reinterpret()
         }
 
     actual var CallStaticShortMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
-        get() = platform.CallStaticShortMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
+        get() = platform.CallStaticShortMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticShortMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jshort>>?
+            platform.CallStaticShortMethodA = value?.reinterpret()
         }
 
     actual var ReleaseBooleanArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbooleanArray?, CPointer<jbooleanVar>?, jint) -> Unit>>?
@@ -559,9 +560,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetStaticObjectField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jobject?>>?
-        get() = platform.GetStaticObjectField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jobject?>>?
+        get() = platform.GetStaticObjectField?.reinterpret()
         set(value) {
-            platform.GetStaticObjectField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jobject?>>?
+            platform.GetStaticObjectField = value?.reinterpret()
         }
 
     actual var MonitorEnter: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jint>>?
@@ -577,9 +578,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetLongField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jlong) -> Unit>>?
-        get() = platform.SetLongField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jlong) -> Unit>>?
+        get() = platform.SetLongField?.reinterpret()
         set(value) {
-            platform.SetLongField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jlong) -> Unit>>?
+            platform.SetLongField = value?.reinterpret()
         }
 
     actual var ReleaseStringCritical: CPointer<CFunction<(CPointer<JNIEnvVar>?, jstring?, CPointer<jcharVar>?) -> Unit>>?
@@ -589,9 +590,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetFloatField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jfloat>>?
-        get() = platform.GetFloatField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jfloat>>?
+        get() = platform.GetFloatField?.reinterpret()
         set(value) {
-            platform.GetFloatField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jfloat>>?
+            platform.GetFloatField = value?.reinterpret()
         }
 
     actual var CallByteMethod: COpaquePointer?
@@ -607,9 +608,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetIntField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jint>>?
-        get() = platform.GetIntField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jint>>?
+        get() = platform.GetIntField?.reinterpret()
         set(value) {
-            platform.GetIntField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jint>>?
+            platform.GetIntField = value?.reinterpret()
         }
 
     actual var GetObjectRefType: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jobjectRefType>>?
@@ -643,15 +644,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetDoubleField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jdouble) -> Unit>>?
-        get() = platform.SetDoubleField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jdouble) -> Unit>>?
+        get() = platform.SetDoubleField?.reinterpret()
         set(value) {
-            platform.SetDoubleField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jdouble) -> Unit>>?
+            platform.SetDoubleField = value?.reinterpret()
         }
 
     actual var CallBooleanMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jboolean>>?
-        get() = platform.CallBooleanMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jboolean>>?
+        get() = platform.CallBooleanMethodA?.reinterpret()
         set(value) {
-            platform.CallBooleanMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jboolean>>?
+            platform.CallBooleanMethodA = value?.reinterpret()
         }
 
     actual var GetShortArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jshortArray?, CPointer<jbooleanVar>?) -> CPointer<jshortVar>?>>?
@@ -661,15 +662,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualDoubleMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jdouble>>?
-        get() = platform.CallNonvirtualDoubleMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jdouble>>?
+        get() = platform.CallNonvirtualDoubleMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualDoubleMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jdouble>>?
+            platform.CallNonvirtualDoubleMethodA = value?.reinterpret()
         }
 
     actual var FromReflectedMethod: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jmethodID?>>?
-        get() = platform.FromReflectedMethod as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jmethodID?>>?
+        get() = platform.FromReflectedMethod?.reinterpret()
         set(value) {
-            platform.FromReflectedMethod = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> platform.android.jmethodID?>>?
+            platform.FromReflectedMethod = value?.reinterpret()
         }
 
     actual var CallNonvirtualIntMethod: COpaquePointer?
@@ -685,9 +686,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualVoidMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> Unit>>?
-        get() = platform.CallNonvirtualVoidMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> Unit>>?
+        get() = platform.CallNonvirtualVoidMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualVoidMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> Unit>>?
+            platform.CallNonvirtualVoidMethodA = value?.reinterpret()
         }
 
     actual var ReleaseShortArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jshortArray?, CPointer<jshortVar>?, jint) -> Unit>>?
@@ -697,9 +698,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var ToReflectedMethod: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, jboolean) -> jobject?>>?
-        get() = platform.ToReflectedMethod as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, jboolean) -> jobject?>>?
+        get() = platform.ToReflectedMethod?.reinterpret()
         set(value) {
-            platform.ToReflectedMethod = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, jboolean) -> jobject?>>?
+            platform.ToReflectedMethod = value?.reinterpret()
         }
 
     actual var GetDirectBufferCapacity: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jlong>>?
@@ -715,15 +716,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualCharMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jchar>>?
-        get() = platform.CallNonvirtualCharMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jchar>>?
+        get() = platform.CallNonvirtualCharMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualCharMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jchar>>?
+            platform.CallNonvirtualCharMethodA = value?.reinterpret()
         }
 
     actual var GetStaticCharField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jchar>>?
-        get() = platform.GetStaticCharField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jchar>>?
+        get() = platform.GetStaticCharField?.reinterpret()
         set(value) {
-            platform.GetStaticCharField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jchar>>?
+            platform.GetStaticCharField = value?.reinterpret()
         }
 
     actual var NewDirectByteBuffer: CPointer<CFunction<(CPointer<JNIEnvVar>?, COpaquePointer?, jlong) -> jobject?>>?
@@ -745,9 +746,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetShortField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jshort>>?
-        get() = platform.GetShortField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jshort>>?
+        get() = platform.GetShortField?.reinterpret()
         set(value) {
-            platform.GetShortField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jshort>>?
+            platform.GetShortField = value?.reinterpret()
         }
 
     actual var NewFloatArray: CPointer<CFunction<(CPointer<JNIEnvVar>?, jsize) -> jfloatArray?>>?
@@ -757,21 +758,21 @@ actual class CommonJNINativeInterface(
         }
 
     actual var FromReflectedField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jfieldID?>>?
-        get() = platform.FromReflectedField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jfieldID?>>?
+        get() = platform.FromReflectedField?.reinterpret()
         set(value) {
-            platform.FromReflectedField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> platform.android.jfieldID?>>?
+            platform.FromReflectedField = value?.reinterpret()
         }
 
     actual var GetStaticByteField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jbyte>>?
-        get() = platform.GetStaticByteField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jbyte>>?
+        get() = platform.GetStaticByteField?.reinterpret()
         set(value) {
-            platform.GetStaticByteField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jbyte>>?
+            platform.GetStaticByteField = value?.reinterpret()
         }
 
     actual var GetStaticLongField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jlong>>?
-        get() = platform.GetStaticLongField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jlong>>?
+        get() = platform.GetStaticLongField?.reinterpret()
         set(value) {
-            platform.GetStaticLongField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jlong>>?
+            platform.GetStaticLongField = value?.reinterpret()
         }
 
     actual var SetFloatArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jfloatArray?, jsize, jsize, CPointer<jfloatVar>?) -> Unit>>?
@@ -781,9 +782,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualIntMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jint>>?
-        get() = platform.CallNonvirtualIntMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jint>>?
+        get() = platform.CallNonvirtualIntMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualIntMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jint>>?
+            platform.CallNonvirtualIntMethodA = value?.reinterpret()
         }
 
     actual var GetStringUTFChars: CPointer<CFunction<(CPointer<JNIEnvVar>?, jstring?, CPointer<jbooleanVar>?) -> CPointer<ByteVar>?>>?
@@ -805,15 +806,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetShortField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jshort) -> Unit>>?
-        get() = platform.SetShortField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jshort) -> Unit>>?
+        get() = platform.SetShortField?.reinterpret()
         set(value) {
-            platform.SetShortField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jshort) -> Unit>>?
+            platform.SetShortField = value?.reinterpret()
         }
 
     actual var CallByteMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jbyte>>?
-        get() = platform.CallByteMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jbyte>>?
+        get() = platform.CallByteMethodA?.reinterpret()
         set(value) {
-            platform.CallByteMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jbyte>>?
+            platform.CallByteMethodA = value?.reinterpret()
         }
 
     actual var ReleaseCharArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jcharArray?, CPointer<jcharVar>?, jint) -> Unit>>?
@@ -829,9 +830,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallStaticIntMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jint>>?
-        get() = platform.CallStaticIntMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jint>>?
+        get() = platform.CallStaticIntMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticIntMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jint>>?
+            platform.CallStaticIntMethodA = value?.reinterpret()
         }
 
     actual var GetObjectClass: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jclass?>>?
@@ -847,9 +848,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallStaticByteMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jbyte>>?
-        get() = platform.CallStaticByteMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jbyte>>?
+        get() = platform.CallStaticByteMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticByteMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jbyte>>?
+            platform.CallStaticByteMethodA = value?.reinterpret()
         }
 
     actual var ReleaseDoubleArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jdoubleArray?, CPointer<jdoubleVar>?, jint) -> Unit>>?
@@ -859,9 +860,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetStaticFieldID: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jfieldID?>>?
-        get() = platform.GetStaticFieldID as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jfieldID?>>?
+        get() = platform.GetStaticFieldID?.reinterpret()
         set(value) {
-            platform.GetStaticFieldID = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> platform.android.jfieldID?>>?
+            platform.GetStaticFieldID = value?.reinterpret()
         }
 
     actual var SetBooleanArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbooleanArray?, jsize, jsize, CPointer<jbooleanVar>?) -> Unit>>?
@@ -907,9 +908,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallObjectMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
-        get() = platform.CallObjectMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+        get() = platform.CallObjectMethodA?.reinterpret()
         set(value) {
-            platform.CallObjectMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+            platform.CallObjectMethodA = value?.reinterpret()
         }
 
     actual var NewWeakGlobalRef: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> jweak?>>?
@@ -943,15 +944,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetStaticIntField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jint) -> Unit>>?
-        get() = platform.SetStaticIntField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jint) -> Unit>>?
+        get() = platform.SetStaticIntField?.reinterpret()
         set(value) {
-            platform.SetStaticIntField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jint) -> Unit>>?
+            platform.SetStaticIntField = value?.reinterpret()
         }
 
     actual var ToReflectedField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jboolean) -> jobject?>>?
-        get() = platform.ToReflectedField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jboolean) -> jobject?>>?
+        get() = platform.ToReflectedField?.reinterpret()
         set(value) {
-            platform.ToReflectedField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jboolean) -> jobject?>>?
+            platform.ToReflectedField = value?.reinterpret()
         }
 
     actual var GetStringRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jstring?, jsize, jsize, CPointer<jcharVar>?) -> Unit>>?
@@ -985,21 +986,21 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualLongMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jlong>>?
-        get() = platform.CallNonvirtualLongMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jlong>>?
+        get() = platform.CallNonvirtualLongMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualLongMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jlong>>?
+            platform.CallNonvirtualLongMethodA = value?.reinterpret()
         }
 
     actual var GetMethodID: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jmethodID?>>?
-        get() = platform.GetMethodID as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> jmethodID?>>?
+        get() = platform.GetMethodID?.reinterpret()
         set(value) {
-            platform.GetMethodID = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, CPointer<ByteVar>?, CPointer<ByteVar>?) -> platform.android.jmethodID?>>?
+            platform.GetMethodID = value?.reinterpret()
         }
 
     actual var CallIntMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jint>>?
-        get() = platform.CallIntMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jint>>?
+        get() = platform.CallIntMethodA?.reinterpret()
         set(value) {
-            platform.CallIntMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jint>>?
+            platform.CallIntMethodA = value?.reinterpret()
         }
 
     actual var DefineClass: CPointer<CFunction<(CPointer<JNIEnvVar>?, CPointer<ByteVar>?, jobject?, CPointer<jbyteVar>?, jsize) -> jclass?>>?
@@ -1021,15 +1022,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallDoubleMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jdouble>>?
-        get() = platform.CallDoubleMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jdouble>>?
+        get() = platform.CallDoubleMethodA?.reinterpret()
         set(value) {
-            platform.CallDoubleMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jmethodID?, CPointer<jvalue>?) -> jdouble>>?
+            platform.CallDoubleMethodA = value?.reinterpret()
         }
 
     actual var CallStaticObjectMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
-        get() = platform.CallStaticObjectMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+        get() = platform.CallStaticObjectMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticObjectMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+            platform.CallStaticObjectMethodA = value?.reinterpret()
         }
 
     actual var ReleaseStringChars: CPointer<CFunction<(CPointer<JNIEnvVar>?, jstring?, CPointer<jcharVar>?) -> Unit>>?
@@ -1039,9 +1040,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetStaticFloatField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jfloat>>?
-        get() = platform.GetStaticFloatField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jfloat>>?
+        get() = platform.GetStaticFloatField?.reinterpret()
         set(value) {
-            platform.GetStaticFloatField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?) -> jfloat>>?
+            platform.GetStaticFloatField = value?.reinterpret()
         }
 
     actual var GetIntArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jintArray?, CPointer<jbooleanVar>?) -> CPointer<jintVar>?>>?
@@ -1075,15 +1076,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var NewObjectA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
-        get() = platform.NewObjectA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+        get() = platform.NewObjectA?.reinterpret()
         set(value) {
-            platform.NewObjectA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jobject?>>?
+            platform.NewObjectA = value?.reinterpret()
         }
 
     actual var SetStaticCharField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jchar) -> Unit>>?
-        get() = platform.SetStaticCharField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jchar) -> Unit>>?
+        get() = platform.SetStaticCharField?.reinterpret()
         set(value) {
-            platform.SetStaticCharField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jchar) -> Unit>>?
+            platform.SetStaticCharField = value?.reinterpret()
         }
 
     actual var IsSameObject: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jobject?) -> jboolean>>?
@@ -1099,27 +1100,27 @@ actual class CommonJNINativeInterface(
         }
 
     actual var SetStaticBooleanField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jboolean) -> Unit>>?
-        get() = platform.SetStaticBooleanField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jboolean) -> Unit>>?
+        get() = platform.SetStaticBooleanField?.reinterpret()
         set(value) {
-            platform.SetStaticBooleanField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jboolean) -> Unit>>?
+            platform.SetStaticBooleanField = value?.reinterpret()
         }
 
     actual var SetStaticObjectField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jobject?) -> Unit>>?
-        get() = platform.SetStaticObjectField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jobject?) -> Unit>>?
+        get() = platform.SetStaticObjectField?.reinterpret()
         set(value) {
-            platform.SetStaticObjectField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jobject?) -> Unit>>?
+            platform.SetStaticObjectField = value?.reinterpret()
         }
 
     actual var CallStaticBooleanMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jboolean>>?
-        get() = platform.CallStaticBooleanMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jboolean>>?
+        get() = platform.CallStaticBooleanMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticBooleanMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jboolean>>?
+            platform.CallStaticBooleanMethodA = value?.reinterpret()
         }
 
     actual var SetStaticFloatField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jfloat) -> Unit>>?
-        get() = platform.SetStaticFloatField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?, jfloat) -> Unit>>?
+        get() = platform.SetStaticFloatField?.reinterpret()
         set(value) {
-            platform.SetStaticFloatField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jfieldID?, jfloat) -> Unit>>?
+            platform.SetStaticFloatField = value?.reinterpret()
         }
 
     actual var CallStaticVoidMethod: COpaquePointer?
@@ -1129,9 +1130,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallStaticCharMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jchar>>?
-        get() = platform.CallStaticCharMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jchar>>?
+        get() = platform.CallStaticCharMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticCharMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jchar>>?
+            platform.CallStaticCharMethodA = value?.reinterpret()
         }
 
     actual var DeleteGlobalRef: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?) -> Unit>>?
@@ -1153,9 +1154,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallStaticDoubleMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jdouble>>?
-        get() = platform.CallStaticDoubleMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jdouble>>?
+        get() = platform.CallStaticDoubleMethodA?.reinterpret()
         set(value) {
-            platform.CallStaticDoubleMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jdouble>>?
+            platform.CallStaticDoubleMethodA = value?.reinterpret()
         }
 
     actual var GetArrayLength: CPointer<CFunction<(CPointer<JNIEnvVar>?, jarray?) -> jsize>>?
@@ -1201,9 +1202,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetCharField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jchar>>?
-        get() = platform.GetCharField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jchar>>?
+        get() = platform.GetCharField?.reinterpret()
         set(value) {
-            platform.GetCharField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jchar>>?
+            platform.GetCharField = value?.reinterpret()
         }
 
     actual var reserved0: COpaquePointer?
@@ -1213,15 +1214,15 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetLongField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jlong>>?
-        get() = platform.GetLongField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jlong>>?
+        get() = platform.GetLongField?.reinterpret()
         set(value) {
-            platform.GetLongField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jlong>>?
+            platform.GetLongField = value?.reinterpret()
         }
 
     actual var SetBooleanField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jboolean) -> Unit>>?
-        get() = platform.SetBooleanField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?, jboolean) -> Unit>>?
+        get() = platform.SetBooleanField?.reinterpret()
         set(value) {
-            platform.SetBooleanField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?, jboolean) -> Unit>>?
+            platform.SetBooleanField = value?.reinterpret()
         }
 
     actual var SetDoubleArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jdoubleArray?, jsize, jsize, CPointer<jdoubleVar>?) -> Unit>>?
@@ -1231,9 +1232,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var GetDoubleField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jdouble>>?
-        get() = platform.GetDoubleField as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jfieldID?) -> jdouble>>?
+        get() = platform.GetDoubleField?.reinterpret()
         set(value) {
-            platform.GetDoubleField = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, platform.android.jfieldID?) -> jdouble>>?
+            platform.GetDoubleField = value?.reinterpret()
         }
 
     actual var ReleaseLongArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jlongArray?, CPointer<jlongVar>?, jint) -> Unit>>?
@@ -1243,9 +1244,9 @@ actual class CommonJNINativeInterface(
         }
 
     actual var CallNonvirtualBooleanMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jboolean>>?
-        get() = platform.CallNonvirtualBooleanMethodA as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, jmethodID?, CPointer<jvalue>?) -> jboolean>>?
+        get() = platform.CallNonvirtualBooleanMethodA?.reinterpret()
         set(value) {
-            platform.CallNonvirtualBooleanMethodA = value as CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jclass?, platform.android.jmethodID?, CPointer<jvalue>?) -> jboolean>>?
+            platform.CallNonvirtualBooleanMethodA = value?.reinterpret()
         }
 
     actual var NewString: CPointer<CFunction<(CPointer<JNIEnvVar>?, CPointer<jcharVar>?, jsize) -> jstring?>>?

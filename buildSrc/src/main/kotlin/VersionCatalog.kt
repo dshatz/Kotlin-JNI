@@ -6,12 +6,6 @@ import org.gradle.kotlin.dsl.getByType
 class VersionCatalog(project: Project) {
     private val libs: VCatalog = project.extensions.getByType<VCatalogEx>().named("libs")
 
-    val libVersion: String
-        get() = version("lib")
-
-    val libVersionCode: Int
-        get() = versionInt("lib")
-
     private fun version(key: String): String = libs.findVersion(key).get().requiredVersion
     private fun versionInt(key: String): Int = version(key).getDigitsOrNull()?.toIntOrNull() ?: version(key).toInt()
 
@@ -35,6 +29,3 @@ class VersionCatalog(project: Project) {
 
 val Project.libVersion: String
     get() = project.property("version").toString()
-
-val Project.libVersionCode: Int
-    get() = VersionCatalog(this).libVersionCode

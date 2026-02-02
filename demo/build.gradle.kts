@@ -5,6 +5,7 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(21)
     jvm {
         mainRun {
             mainClass = "dev.datlag.nkommons.MainKt"

@@ -12,6 +12,7 @@ group = libGroup
 version = libVersion
 
 kotlin {
+    jvmToolchain(21)
     androidLibrary {
         compileSdk = Configuration.compileSdk
         minSdk = Configuration.minSdk
@@ -47,19 +48,21 @@ kotlin {
     watchosSimulatorArm64()
     watchosDeviceArm64()
 
-    js {
-        browser()
-        nodejs()
+    if (project.hasProperty("enableWeb")) {
+        js {
+            browser()
+            nodejs()
+        }
+        wasmJs {
+            browser()
+            nodejs()
+        }
+        wasmWasi {
+            nodejs()
+        }
     }
 
-    wasmJs {
-        browser()
-        nodejs()
-    }
 
-    wasmWasi {
-        nodejs()
-    }
 
     applyDefaultHierarchyTemplate()
 }
@@ -107,3 +110,9 @@ mavenPublishing {
         }
     }
 }
+
+tasks.named { it == "commonizeNativeDistribution" }
+    .configureEach { dependsOn("downloadKotlinNativeDistribution") }
+
+tasks.named { it == "downloadKotlinNativeDistribution" }
+    .configureEach { outputs.cacheIf { false } }

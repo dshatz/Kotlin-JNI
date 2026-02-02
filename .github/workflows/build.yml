@@ -6,8 +6,18 @@ on:
       - master
 
 jobs:
-  build-annotations:
-    runs-on: macos-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tasks: ":annotations:build :ksp:build :jni:allTests"
+          - os: windows-latest
+            tasks: ":jni:mingwX64Test"
+          - os: macos-latest
+            tasks: ":jni:macosArm64Test"
+
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,54 +26,58 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
+          cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
 
-      - name: Build
-        run: ./gradlew :annotations:build
-
-  build-jni:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
-
-      - name: Build
-        id: build
+      - name: Build and Test
+        run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
         continue-on-error: true
-        run: ./gradlew :jni:build
 
-  build-ksp:
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-report-${{ runner.os }}
+          path: ./**/build/test-results/**/*.xml
+          retention-days: 5
+  publish-results:
+    needs: build
     runs-on: ubuntu-latest
+    if: always()
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: 17
+          path: artifacts
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Detailed Test Report Linux
+        uses: dorny/test-reporter@v1
+        if: always()
         with:
-          cache-read-only: false
+          name: "Tests: Linux"
+          path: "artifacts/test-report-Linux/**/*.xml"
+          reporter: java-junit
 
-      - name: Build
-        run: ./gradlew :ksp:build
+      - name: Detailed Test Report Windows
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Tests: Windows"
+          path: "artifacts/test-report-Windows/**/*.xml"
+          reporter: java-junit
+
+      - name: Detailed Test Report MacOS
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Tests: MacOS"
+          path: "artifacts/test-report-macOS/**/*.xml"
+          reporter: java-junit
