@@ -25,7 +25,7 @@ However, since the original repository no longer has a permissive license, this 
 - Type Conversion Utilities: A rich set of extension functions to effortlessly convert between JNI types and standard Kotlin types (e.g., `jstring.toKString()`, `IntArray.toJIntArray()`).
 - KSP Code Generation: Automatically generate JNI-compatible C-style function stubs from your idiomatic Kotlin functions using the `@JNIConnect` annotation.
 - Seamless Java Integration: Call your native Kotlin functions directly from Java with standard Kotlin types, just as you would with any other external method.
-
+C3SGXARS6
 ## 🛠️ Setup
 
 To use Kotlin-JNI in your project, add the dependencies to your `build.gradle.kts` file.
@@ -125,9 +125,6 @@ Write your function using standard Kotlin types and annotate it with `@JNIConnec
 
 ```kotlin
 import dev.datlag.nkommons.JNIConnect
-import dev.datlag.nkommons.JNIPackageName
-import dev.datlag.nkommons.JNIClassName
-import dev.datlag.nkommons.JNIFunctionName
 
 @JNIConnect
 @JNIPackageName("your.package.name")

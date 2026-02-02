@@ -1,4 +1,4 @@
-name: Test Build
+name: Test
 
 on:
   pull_request:
@@ -33,6 +33,12 @@ jobs:
         with:
           cache-read-only: false
           cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
+
+      - name: cache kotlin-konan
+        uses: actions/cache@v3
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-kotlin-konan
 
       - name: Build and Test
         run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
