@@ -110,3 +110,9 @@ mavenPublishing {
         }
     }
 }
+
+tasks.named { it == "commonizeNativeDistribution" }
+    .configureEach { dependsOn("downloadKotlinNativeDistribution") }
+
+tasks.named { it == "downloadKotlinNativeDistribution" }
+    .configureEach { outputs.cacheIf { false } }
