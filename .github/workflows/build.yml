@@ -11,7 +11,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            tasks: ":annotations:build :ksp:build :jni:linuxX64Test"
+            tasks: ":annotations:build :ksp:build :jni:allTests"
           - os: windows-latest
             tasks: ":jni:mingwX64Test"
           - os: macos-latest
@@ -33,8 +33,6 @@ jobs:
         with:
           cache-read-only: false
           cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
-          gradle-home-cache-includes: |
-            /home/runner/.konan
 
       - name: Build and Test
         run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
@@ -52,6 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
