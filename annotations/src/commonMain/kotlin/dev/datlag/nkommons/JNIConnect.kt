@@ -6,7 +6,7 @@ package dev.datlag.nkommons
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.SOURCE)
 annotation class JNIConnect(
-    /*val packageName: String = "",
+    val packageName: String = "",
     val className: String = "",
-    val functionName: String = ""*/
+    val functionName: String = ""
 )

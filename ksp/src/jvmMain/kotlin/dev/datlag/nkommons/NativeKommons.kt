@@ -17,6 +17,7 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import dev.datlag.nkommons.TypeMatcher.typeOf
+import dev.datlag.nkommons.kspfix.getAnnotationValue
 
 class NativeKommons : SymbolProcessorProvider {
     var called: Boolean = false
@@ -56,12 +57,9 @@ class NativeKommons : SymbolProcessorProvider {
                 declaration.parentDeclaration?.containingFile
             )
 
-            val packageNameAnnotation = declaration.getAnnotationsByType(JNIPackageName::class).firstOrNull()
-            val classNameAnnotation = declaration.getAnnotationsByType(JNIClassName::class).firstOrNull()
-            val functionNameAnnotation = declaration.getAnnotationsByType(JNIFunctionName::class).firstOrNull()
-            val expectedPackageName = packageNameAnnotation?.packageName?.ifBlank { null } ?: packageName
-            val expectedClassName = classNameAnnotation?.className?.ifBlank { null }
-            val expectedFunctionName = functionNameAnnotation?.functionName?.ifBlank { null } ?: functionName
+            val expectedPackageName = declaration.getAnnotationValue<JNIConnect, String>("packageName")?.ifBlank { null } ?: packageName
+            val expectedClassName = declaration.getAnnotationValue<JNIConnect, String>("className")?.ifBlank { null }
+            val expectedFunctionName = declaration.getAnnotationValue<JNIConnect, String>("functionName")?.ifBlank { null } ?: functionName
             val expectedReturnType = TypeMatcher.jniTypeFor(returnType, forReturn = true)
             val finalReturnType = expectedReturnType ?: returnType
 
