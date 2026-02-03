@@ -31,9 +31,9 @@ internal object TypeMatcher {
     val KShort = Short::class.asTypeName()
     val KShortArray = ShortArray::class.asTypeName()
     val KString = String::class.asTypeName()
-    val KByteBuffer = ClassName("dev.datlag.nkommons", "ByteBuffer")
-
     private const val TYPE_BINDING_PACKAGE = "dev.datlag.nkommons.binding"
+
+    val KByteBuffer = ClassName(TYPE_BINDING_PACKAGE, "ByteBuffer")
     val JBoolean = ClassName(TYPE_BINDING_PACKAGE, "jboolean")
     val JBooleanArray = ClassName(TYPE_BINDING_PACKAGE, "jbooleanArray")
     val JByte = ClassName(TYPE_BINDING_PACKAGE, "jbyte")
