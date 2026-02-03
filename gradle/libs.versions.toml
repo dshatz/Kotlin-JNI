@@ -30,3 +30,4 @@ osdetector = { id = "com.google.osdetector", version.ref = "osdetector" }
 kotest = { id = "io.kotest", version.ref = "kotest" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 publish = { id = "com.vanniktech.maven.publish", version.ref = "publish" }
+dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }

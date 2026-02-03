@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE vars SYSTEM "https://resources.jetbrains.com/writerside/1.0/vars.dtd">
+<vars>
+    <var name="product" value="Writerside"/>
+    <var name="latest_version" value="2.0.2"/>
+    <var name="package" value="com.dshatz.kni"/>
+    <var name="jniArtifact" value="jni"/>
+    <var name="kspArtifact" value="ksp"/>
+    <var name="annotationsArtifact" value="annotations"/>
+</vars>

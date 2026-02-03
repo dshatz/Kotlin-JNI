@@ -4,6 +4,8 @@ import java.net.URI
 import java.net.URL
 
 import com.android.build.api.dsl.androidLibrary
+import org.jetbrains.dokka.gradle.formats.DokkaFormatPlugin
+import org.jetbrains.dokka.gradle.internal.InternalDokkaGradlePluginApi
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -12,10 +14,14 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
+    alias(libs.plugins.dokka)
     `maven-publish`
     signing
 }
 
+dokka {
+    this.basePublicationsDirectory.set(project.rootProject.file("doc/Writerside/topics/Usage/Reference"))
+}
 val libGroup = VersionCatalog.artifactName()
 val libName = "jni"
 group = libGroup
