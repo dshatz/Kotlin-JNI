@@ -4,9 +4,17 @@ on:
   pull_request:
     branches:
       - master
+    paths-ignore:
+      - 'doc/**'
+      - '**.md'
+      - '**.txt'
   push:
     branches:
       - master
+    paths-ignore:
+      - 'doc/**'
+      - '**.md'
+      - '**.txt'
 
 jobs:
   build:

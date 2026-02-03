@@ -1,5 +1,7 @@
 package dev.datlag.nkommons
 
+import dev.datlag.nkommons.binding.ByteBuffer
+
 @CallableFromNative
 interface JvmService: Disposable {
 

@@ -1,4 +1,4 @@
-package dev.datlag.nkommons
+package dev.datlag.nkommons.binding
 
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer

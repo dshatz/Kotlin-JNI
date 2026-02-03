@@ -1,4 +1,4 @@
-package dev.datlag.nkommons
+package dev.datlag.nkommons.binding
 
 /**
  * Common wrapper for `java.nio.ByteBuffer`.

@@ -27,7 +27,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Get latest tag
@@ -36,9 +36,21 @@ jobs:
           # Finds the latest tag, defaults to 'latest' if no tags are found
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
           echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: false
+          cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
+
+      - name: cache kotlin-konan
+        uses: actions/cache@v3
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-kotlin-konan
 
       - name: Build Dokka (API Reference)
-        run: ./gradlew dokkaHtml -PprojectVersion=${{ steps.vars.outputs.tag }}
+        run: ./gradlew jni:dokkaGenerateHtml -PprojectVersion=${{ steps.vars.outputs.tag }} -PonlyDocs
 
       - name: Build Writerside (User Guide)
         uses: JetBrains/writerside-github-action@v4
@@ -49,15 +61,30 @@ jobs:
         env:
           # Injects the version into Writerside's %latest_version% variable (defined in v.list)
           INSTANCE_LATEST_VERSION: ${{ steps.vars.outputs.tag }}
-
       - name: Setup Staging Area
+        shell: bash
         run: |
-          # Create a fresh staging directory
           mkdir -p staging/api
+          mkdir -p temp_extract
+          touch staging/.nojekyll
           
-          cp -r artifacts/* staging/
+          unzip -oq "artifacts/*HI2*.zip" -d temp_extract
+          
+          INDEX_PATH=$(find temp_extract -name "index.html" | head -n 1)
+          
+          if [ -z "$INDEX_PATH" ]; then
+            echo "Error: index.html not found in any extracted files!"
+            ls -R temp_extract
+            exit 1
+          fi
+          
+          INDEX_DIR=$(dirname "$INDEX_PATH")
+          cp -r "$INDEX_DIR"/* staging/
           
           cp -r jni/build/dokka/html/* staging/api/
+          
+          echo "Final Staging Structure:"
+          ls -F staging
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

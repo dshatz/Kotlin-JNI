@@ -1,5 +1,6 @@
 import dev.datlag.nkommons.JNIConnect
 import dev.datlag.nkommons.*
+import dev.datlag.nkommons.binding.ByteBuffer
 import dev.datlag.nkommons.utils.memcpy
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UnsafeNumber

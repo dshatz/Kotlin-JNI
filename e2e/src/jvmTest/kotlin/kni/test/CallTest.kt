@@ -10,7 +10,7 @@ private val call = object : JvmCaller {
         return 11
     }
 
-    override fun fillBuffer(buffer: dev.datlag.nkommons.ByteBuffer): String {
+    override fun fillBuffer(buffer: dev.datlag.nkommons.binding.ByteBuffer): String {
         val bytes = Random.nextBytes(buffer.jvmBuffer.capacity())
         buffer.jvmBuffer.put(bytes)
         return bytes.toHexString()

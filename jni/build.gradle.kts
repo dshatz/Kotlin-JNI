@@ -15,9 +15,6 @@ plugins {
     signing
 }
 
-dokka {
-    this.basePublicationsDirectory.set(project.rootProject.file("doc/Writerside/topics/Usage/Reference"))
-}
 val libGroup = VersionCatalog.artifactName()
 val libName = "jni"
 group = libGroup

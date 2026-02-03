@@ -13,6 +13,8 @@
         <toc-element topic="CallingNative.md"/>
         <toc-element topic="CallingJvm.md"/>
     </toc-element>
-    <toc-element topic="apiref.md"/>
+    <toc-element toc-title="📋 API Reference"
+                 accepts-web-file-names="reference"
+                 target-for-accept-web-file-names="https://dshatz.github.io/Kotlin-JNI/api/"/>
 
 </instance-profile>

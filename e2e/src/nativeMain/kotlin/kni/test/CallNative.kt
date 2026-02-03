@@ -1,6 +1,6 @@
 package kni.test
 
-import dev.datlag.nkommons.ByteBuffer
+import dev.datlag.nkommons.binding.ByteBuffer
 import dev.datlag.nkommons.JNIConnect
 
 @JNIConnect(

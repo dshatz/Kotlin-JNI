@@ -52,7 +52,7 @@ class JvmServiceImpl: JvmService {
         return Random.nextBytes(4)
     }
 
-    override fun readBytesTo(buffer: dev.datlag.nkommons.ByteBuffer): Int {
+    override fun readBytesTo(buffer: dev.datlag.nkommons.binding.ByteBuffer): Int {
         val random = Random.nextBytes(4)
         buffer.jvmBuffer.put(random)
         println("Writing to buffer (call from native): ${random.toHexString()}")
