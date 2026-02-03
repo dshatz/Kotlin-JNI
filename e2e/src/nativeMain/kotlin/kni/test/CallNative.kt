@@ -43,5 +43,5 @@ fun init(caller: JvmCaller) {
     className = "CallTestKt",
 )
 fun dispose() {
-    callerRef.dispose()
+    callerRef.close()
 }

@@ -20,6 +20,11 @@ private val call = object : JvmCaller {
     override fun withTypeAlias(alias: TestAlias): TestAlias {
         return alias
     }
+
+    override fun close() {
+        // Clean up jvm-side resources.
+        println("Closing JVM-side JVMCaller")
+    }
 }
 
 external fun init(caller: JvmCaller)
@@ -29,13 +34,15 @@ external fun askJvmToFillBuffer(buffer: ByteBuffer): String
 external fun sendTypeAlias(alias: TestAlias): TestAlias
 
 class CallTest: DescribeSpec({
-    beforeTest {
-        init(call)
-    }
-    afterTest {
-        dispose()
-    }
     describe("jvm -> native -> jvm") {
+        beforeTest {
+            println("Initializing")
+            init(call)
+        }
+        afterTest { (case, result) ->
+            println("Disposing after ${case.name.name}. Result: $result")
+            dispose()
+        }
         it("int") {
             askJvmForANumber() shouldBe 11
         }

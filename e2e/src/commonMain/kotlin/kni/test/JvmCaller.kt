@@ -1,11 +1,10 @@
 package kni.test
 
-import dev.datlag.nkommons.binding.ByteBuffer
 import dev.datlag.nkommons.CallableFromNative
-import dev.datlag.nkommons.Disposable
+import dev.datlag.nkommons.binding.ByteBuffer
 
 @CallableFromNative
-interface JvmCaller: Disposable {
+interface JvmCaller: AutoCloseable {
     fun giveANumber(): Int
     fun fillBuffer(buffer: ByteBuffer): String
 

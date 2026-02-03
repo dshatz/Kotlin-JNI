@@ -58,4 +58,8 @@ class JvmServiceImpl: JvmService {
         println("Writing to buffer (call from native): ${random.toHexString()}")
         return random.size
     }
+
+    override fun close() {
+        // Clean up things
+    }
 }

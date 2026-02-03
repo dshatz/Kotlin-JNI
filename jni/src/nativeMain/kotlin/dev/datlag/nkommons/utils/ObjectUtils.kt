@@ -47,6 +47,16 @@ fun CPointer<JNIEnvVar>.NewGlobalRef(obj: jobject): jobject? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.DeleteGlobalRef(obj: jobject) {
+    pointed.pointedCommon!!.DeleteGlobalRef!!.invoke(this, obj)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.DeleteLocalRef(obj: jobject) {
+    pointed.pointedCommon!!.DeleteLocalRef!!.invoke(this, obj)
+}
+
+@OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.GetStaticMethodID(
     classRef: jobject,
     methodName: String,
