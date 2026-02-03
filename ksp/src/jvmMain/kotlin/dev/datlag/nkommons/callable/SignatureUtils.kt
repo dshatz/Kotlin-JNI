@@ -5,13 +5,14 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toClassName
 import dev.datlag.nkommons.TypeMatcher
+import dev.datlag.nkommons.utils.dereferenceTypeAlias
 
 fun KSFunctionDeclaration.getSignature(): String {
     val parameterDescriptors = parameters.joinToString("") { parameter ->
-        parameter.type.resolve().toJniDescriptor()
+        parameter.type.dereferenceTypeAlias().toJniDescriptor()
     }
 
-    val returnDescriptor = returnType?.resolve()?.toJniDescriptor() ?: "V"
+    val returnDescriptor = returnType?.dereferenceTypeAlias()?.toJniDescriptor() ?: "V"
 
     return "($parameterDescriptors)$returnDescriptor"
 }

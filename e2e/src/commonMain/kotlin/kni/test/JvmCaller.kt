@@ -8,4 +8,6 @@ import dev.datlag.nkommons.Disposable
 interface JvmCaller: Disposable {
     fun giveANumber(): Int
     fun fillBuffer(buffer: ByteBuffer): String
+
+    fun withTypeAlias(alias: TestAlias): TestAlias
 }

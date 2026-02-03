@@ -29,3 +29,11 @@ fun mixed(number: Long, value: CharArray, upper: Boolean): ByteArray {
         else it
     }.encodeToByteArray()
 }
+
+@JNIConnect(
+    packageName = "kni.test",
+    className = "Bridge",
+)
+fun withTypeAlias(long: TestAlias): TestAlias {
+    return long
+}

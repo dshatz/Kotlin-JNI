@@ -19,11 +19,10 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
-import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import dev.datlag.nkommons.TypeMatcher
 import dev.datlag.nkommons.TypeMatcher.Environment
-import dev.datlag.nkommons.TypeMatcher.KString
+import dev.datlag.nkommons.utils.dereferenceTypeAlias
 
 object NativeCallable {
 
@@ -44,7 +43,8 @@ object NativeCallable {
             return null
         }
         val funs = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
-            val returnType = f.returnType?.resolve()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
+            val originalReturnType = f.returnType?.resolve()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
+            val returnType = f.returnType?.dereferenceTypeAlias()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
             val call = Def.callHelper(returnType)
             val returnConverter = Def.returnTypeConverters[returnType] ?: CodeBlock.of("")
             val nullCheck = if (returnType.isNullable) "" else CodeBlock.of("!!")
@@ -113,7 +113,8 @@ private fun buildArgs(
         .addStatement("val args = %M<%T>(%L)", Def.allocArray, TypeMatcher.JValue, args.size)
         .apply {
             args.forEachIndexed { idx, arg ->
-                val (jniField, converter) = arg.type.resolve().toJValueField()
+                val type = arg.type.dereferenceTypeAlias()
+                val (jniField, converter) = type.toJValueField()
                 addStatement("args[%L].%L = %N%L", idx, jniField, arg.name!!.asString(), converter)
             }
         }
