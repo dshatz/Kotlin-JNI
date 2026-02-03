@@ -13,7 +13,7 @@ jobs:
           - os: ubuntu-latest
             tasks: ":annotations:build :ksp:build :jni:allTests"
           - os: windows-latest
-            tasks: ":jni:mechingwX64Test"
+            tasks: ":jni:mingwX64Test"
           - os: macos-latest
             tasks: ":jni:macosArm64Test"
 
