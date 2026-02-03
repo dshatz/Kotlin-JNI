@@ -59,7 +59,7 @@ jobs:
         uses: JetBrains/writerside-github-action@v4
         with:
           project-path: 'doc/Writerside'
-          instance: 'Writerside/hi'
+          instance: 'Writerside/kni'
           artifact-name: 'web-help'
         env:
           # Injects the version into Writerside's %latest_version% variable (defined in v.list)
