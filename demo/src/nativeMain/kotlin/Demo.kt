@@ -143,23 +143,3 @@ fun callJvmFromNative(obj: JvmService): String {
 fun writeToJvmBuffer(bridge: JvmService, buffer: ByteBuffer): Int {
     return bridge.readBytesTo(buffer)
 }
-
-lateinit var jvmCallback: JvmCallback
-
-// Native
-@JNIConnect(
-    packageName = "com.example",
-    className = "MainKt"
-)
-fun init(callback: JvmCallback) {
-    // Save the object for later.
-    jvmCallback = callback
-}
-
-@JNIConnect(
-    packageName = "com.example",
-    className = "MainKt"
-)
-fun dispose() {
-    jvmCallback.dispose()
-}

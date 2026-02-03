@@ -1,11 +1,7 @@
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.konan.target.Family
-import java.net.URI
-import java.net.URL
 
 import com.android.build.api.dsl.androidLibrary
-import org.jetbrains.dokka.gradle.formats.DokkaFormatPlugin
-import org.jetbrains.dokka.gradle.internal.InternalDokkaGradlePluginApi
 
 plugins {
     alias(libs.plugins.multiplatform)

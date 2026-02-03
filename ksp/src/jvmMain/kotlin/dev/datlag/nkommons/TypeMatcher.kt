@@ -54,7 +54,6 @@ internal object TypeMatcher {
     val JObject = ClassName(TYPE_BINDING_PACKAGE, "jobject")
     val JValue = ClassName("dev.datlag.nkommons", "jvalue")
     val BaseCallback = ClassName("dev.datlag.nkommons", "BaseCallback")
-
     val Disposable = ClassName("dev.datlag.nkommons", "Disposable")
 
     object Method {
