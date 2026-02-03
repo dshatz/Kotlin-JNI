@@ -23,10 +23,12 @@ kotlin {
     fun KotlinNativeTargetWithHostTests.setupTestLib() {
         binaries.sharedLib()
         binaries.withType<SharedLibrary> {
-            val linkTask = linkTaskProvider
-            tasks.withType<Test>().configureEach {
-                dependsOn(linkTask)
-                systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
+            if (this.buildType == NativeBuildType.DEBUG) {
+                val linkTask = linkTaskProvider
+                tasks.withType<Test>().configureEach {
+                    dependsOn(linkTask)
+                    systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
+                }
             }
         }
     }

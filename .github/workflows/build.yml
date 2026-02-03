@@ -1,4 +1,4 @@
-name: Test Build
+name: Test
 
 on:
   pull_request:
@@ -15,10 +15,13 @@ jobs:
         include:
           - os: ubuntu-latest
             tasks: ":annotations:build :ksp:build :jni:allTests"
+            jvm_heap: "-Xmx12g"
           - os: windows-latest
             tasks: ":jni:mingwX64Test"
+            jvm_heap: "-Xmx12g"
           - os: macos-latest
             tasks: ":jni:macosArm64Test"
+            jvm_heap: "-Xmx5g"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -32,14 +35,25 @@ jobs:
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: false
           cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
 
+      - name: cache kotlin-konan
+        uses: actions/cache@v3
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-kotlin-konan
+
       - name: Build and Test
         run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
         continue-on-error: true
+        env:
+          GRADLE_OPTS: >-
+            ${{ matrix.jvm_heap }}
+            -Dorg.gradle.jvmargs="${{ matrix.jvm_heap }} -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dkotlin.daemon.jvm.options="-Xmx2048m"
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
