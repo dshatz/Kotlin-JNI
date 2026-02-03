@@ -57,7 +57,7 @@ jobs:
           
           cp -r artifacts/* staging/
           
-          cp -r build/dokka/html/* staging/api/
+          cp -r jni/build/dokka/html/* staging/api/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

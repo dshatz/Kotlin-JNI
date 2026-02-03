@@ -33,14 +33,14 @@ object NativeCallable {
         val cls: ClassName
     )
 
-    fun generateNativeBridge(cls: KSClassDeclaration, logger: KSPLogger): CallableBridge {
+    fun generateNativeBridge(cls: KSClassDeclaration, logger: KSPLogger): CallableBridge? {
         val implCls = cls.toClassName().getNativeImplClass()
         if (cls.classKind != ClassKind.INTERFACE) {
             logger.error("@CallableFromNative can only be applied to an interface.")
             return null
         }
         if (cls.superTypes.none { it.resolve().toClassName() == TypeMatcher.Disposable }) {
-            logger.error("@CallableFromNative annotated interface should extend Disposable.")
+            logger.error("@CallableFromNative annotated interface should extend Disposable.", cls)
             return null
         }
         val funs = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
@@ -81,8 +81,6 @@ object NativeCallable {
             .addSuperclassConstructorParameter("instance")
             .addSuperinterface(cls.toClassName())
             .addProperty(generateGetClass(cls))
-            .addProperty(PropertySpec.builder("env", Environment).initializer("env").build())
-            .addProperty(PropertySpec.builder("instance", TypeMatcher.JObject).initializer("instance").build())
             .build()
 
         val deps = Dependencies(false, *listOfNotNull(
