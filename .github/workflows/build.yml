@@ -13,7 +13,7 @@ jobs:
           - os: ubuntu-latest
             tasks: ":annotations:build :ksp:build :jni:allTests"
           - os: windows-latest
-            tasks: ":jni:mingwX64Test"
+            tasks: ":jni:mechingwX64Test"
           - os: macos-latest
             tasks: ":jni:macosArm64Test"
 
@@ -29,7 +29,7 @@ jobs:
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: false
           cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
