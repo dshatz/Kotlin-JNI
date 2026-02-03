@@ -30,6 +30,7 @@ internal object TypeMatcher {
     val KShort = Short::class.asTypeName()
     val KShortArray = ShortArray::class.asTypeName()
     val KString = String::class.asTypeName()
+    val KByteBuffer = ClassName("dev.datlag.nkommons", "ByteBuffer")
 
     private const val TYPE_BINDING_PACKAGE = "dev.datlag.nkommons.binding"
     val JBoolean = ClassName(TYPE_BINDING_PACKAGE, "jboolean")
@@ -50,6 +51,7 @@ internal object TypeMatcher {
     val JShortArray = ClassName(TYPE_BINDING_PACKAGE, "jshortArray")
     val JString = ClassName(TYPE_BINDING_PACKAGE, "jstring")
     val JObject = ClassName(TYPE_BINDING_PACKAGE, "jobject")
+    val JValue = ClassName("dev.datlag.nkommons", "jvalue")
 
     object Method {
 
@@ -65,6 +67,8 @@ internal object TypeMatcher {
         val ToJShortArray = MemberName("dev.datlag.nkommons.utils", "toJShortArray")
         val ToJString = MemberName("dev.datlag.nkommons.utils", "toJString")
 
+        val ToJByteBuffer = MemberName("dev.datlag.nkommons.utils", "toJByteBuffer")
+
         val ToKBoolean = MemberName("dev.datlag.nkommons.utils", "toKBoolean")
         val ToKBooleanArray = MemberName("dev.datlag.nkommons.utils", "toKBooleanArray")
         val ToKByteArray = MemberName("dev.datlag.nkommons.utils", "toKByteArray")
@@ -76,6 +80,8 @@ internal object TypeMatcher {
         val ToKLongArray = MemberName("dev.datlag.nkommons.utils", "toKLongArray")
         val ToKShortArray = MemberName("dev.datlag.nkommons.utils", "toKShortArray")
         val ToKString = MemberName("dev.datlag.nkommons.utils", "toKString")
+        val ToKDirectByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKDirectByteBuffer")
+        val ToKByteBuffer = MemberName("dev.datlag.nkommons.utils", "toKByteBuffer")
     }
 
     fun jniTypeFor(param: TypeName, forReturn: Boolean): TypeName? {
@@ -132,6 +138,11 @@ internal object TypeMatcher {
                 JString.copy(nullable = true)
             } else {
                 JString.copy(nullable = param.isNullable)
+            }
+            KByteBuffer -> if (forReturn) {
+                JObject.copy(nullable = true)
+            } else {
+                JObject.copy(nullable = param.isNullable)
             }
 
             else -> null

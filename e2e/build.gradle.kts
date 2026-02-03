@@ -52,6 +52,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":annotations"))
+            implementation(project(":jni"))
         }
         commonTest.dependencies {
             implementation(libs.bundles.kotest)
@@ -62,7 +63,7 @@ kotlin {
             implementation(libs.kotest.junit)
         }
         nativeMain.dependencies {
-            implementation(project(":jni"))
+
         }
     }
 }

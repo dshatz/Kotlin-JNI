@@ -9,7 +9,9 @@ import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.MemberName
@@ -17,25 +19,35 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import dev.datlag.nkommons.TypeMatcher.typeOf
+import dev.datlag.nkommons.callable.NativeCallable
+import dev.datlag.nkommons.callable.getNativeImplClass
 import dev.datlag.nkommons.kspfix.getAnnotationValue
 
 class NativeKommons : SymbolProcessorProvider {
     var called: Boolean = false
         private set
 
+
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
         called = true
         return NativeKommonsProcessor(environment)
     }
 
+
     class NativeKommonsProcessor(
         private val env: SymbolProcessorEnvironment,
     ) : SymbolProcessor {
+
+        private val callableRegistry: MutableSet<ClassName> = mutableSetOf()
 
         private val codeGenerator: CodeGenerator
             get() = env.codeGenerator
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
+            getAnnotatedBridges(resolver).map(NativeCallable::generateNativeBridge).forEach {
+                it.fileSpec.writeTo(codeGenerator, it.deps)
+                callableRegistry.add(it.cls)
+            }
             getAnnotatedFunctions(resolver).forEach(::generateJNIMethod)
 
             return emptyList()
@@ -47,11 +59,16 @@ class NativeKommons : SymbolProcessorProvider {
             return (jniConnectAnnotated).filterIsInstance<KSFunctionDeclaration>().distinct()
         }
 
+        private fun getAnnotatedBridges(resolver: Resolver): List<KSClassDeclaration> {
+            val nativeCallableAnnotated = resolver.getSymbolsWithAnnotation(CallableFromNative::class.java.name).toList()
+            return nativeCallableAnnotated.filterIsInstance<KSClassDeclaration>().distinct()
+        }
+
         @OptIn(KspExperimental::class)
         private fun generateJNIMethod(declaration: KSFunctionDeclaration) {
             val packageName = declaration.packageName.asString()
             val functionName = declaration.simpleName.asString()
-            val returnType = declaration.returnType?.toTypeName() ?: TypeMatcher.UnitOrVoid
+            val kotlinReturnType = declaration.returnType?.toTypeName() ?: TypeMatcher.UnitOrVoid
             val source = listOfNotNull(
                 declaration.containingFile,
                 declaration.parentDeclaration?.containingFile
@@ -60,8 +77,11 @@ class NativeKommons : SymbolProcessorProvider {
             val expectedPackageName = declaration.getAnnotationValue<JNIConnect, String>("packageName")?.ifBlank { null } ?: packageName
             val expectedClassName = declaration.getAnnotationValue<JNIConnect, String>("className")?.ifBlank { null }
             val expectedFunctionName = declaration.getAnnotationValue<JNIConnect, String>("functionName")?.ifBlank { null } ?: functionName
-            val expectedReturnType = TypeMatcher.jniTypeFor(returnType, forReturn = true)
-            val finalReturnType = expectedReturnType ?: returnType
+            val jniReturnType = TypeMatcher.jniTypeFor(kotlinReturnType, forReturn = true) ?: run {
+                env.logger.error("Unsupported return type $kotlinReturnType", declaration.returnType)
+                return
+            }
+            val finalReturnType = jniReturnType ?: kotlinReturnType
 
             val jniCName = CNameUtils.jniFunctionCName(
                 packageName = expectedPackageName,
@@ -71,87 +91,103 @@ class NativeKommons : SymbolProcessorProvider {
 
             val params = declaration.parameters.mapIndexed { index, param ->
                 val name = "p$index"
-                val typeName = param.type.toTypeName()
-                val expectedTypeName = TypeMatcher.jniTypeFor(typeName, forReturn = false) ?: typeName
+                val kotlinType = param.type.toTypeName()
+                val jniType = TypeMatcher.jniTypeFor(kotlinType, forReturn = false) ?: run {
+                    if (kotlinType in callableRegistry) {
+                        TypeMatcher.JObject
+                    } else {
+                        env.logger.error("Unknown parameter type: $kotlinType", param)
+                        return
+                    }
+                }
                 val nullCheck = if (finalReturnType.isNullable) {
                     " ?: return null"
                 } else {
                     "!!"
                 }
                 val (code, subMember) = when {
-                    expectedTypeName typeOf TypeMatcher.JBoolean && typeName typeOf TypeMatcher.KBoolean -> {
+                    jniType typeOf TypeMatcher.JBoolean && kotlinType typeOf TypeMatcher.KBoolean -> {
                         "$name.%M()" to TypeMatcher.Method.ToKBoolean
                     }
-                    expectedTypeName typeOf TypeMatcher.JBooleanArray && typeName typeOf TypeMatcher.KBooleanArray -> {
+                    jniType typeOf TypeMatcher.JBooleanArray && kotlinType typeOf TypeMatcher.KBooleanArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKBooleanArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JByteArray && typeName typeOf TypeMatcher.KByteArray -> {
+                    jniType typeOf TypeMatcher.JByteArray && kotlinType typeOf TypeMatcher.KByteArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKByteArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JChar && typeName typeOf TypeMatcher.KChar -> {
+                    jniType typeOf TypeMatcher.JChar && kotlinType typeOf TypeMatcher.KChar -> {
                         "$name.%M()" to TypeMatcher.Method.ToKChar
                     }
-                    expectedTypeName typeOf TypeMatcher.JCharArray && typeName typeOf TypeMatcher.KCharArray -> {
+                    jniType typeOf TypeMatcher.JCharArray && kotlinType typeOf TypeMatcher.KCharArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKCharArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JDoubleArray && typeName typeOf TypeMatcher.KDoubleArray -> {
+                    jniType typeOf TypeMatcher.JDoubleArray && kotlinType typeOf TypeMatcher.KDoubleArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKDoubleArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JFloatArray && typeName typeOf TypeMatcher.KFloatArray -> {
+                    jniType typeOf TypeMatcher.JFloatArray && kotlinType typeOf TypeMatcher.KFloatArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKFloatArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JIntArray && typeName typeOf TypeMatcher.KIntArray -> {
+                    jniType typeOf TypeMatcher.JIntArray && kotlinType typeOf TypeMatcher.KIntArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKIntArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JLongArray && typeName typeOf TypeMatcher.KLongArray -> {
+                    jniType typeOf TypeMatcher.JLongArray && kotlinType typeOf TypeMatcher.KLongArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKLongArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JShortArray && typeName typeOf TypeMatcher.KShortArray -> {
+                    jniType typeOf TypeMatcher.JShortArray && kotlinType typeOf TypeMatcher.KShortArray -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKShortArray
                     }
-                    expectedTypeName typeOf TypeMatcher.JString && typeName typeOf TypeMatcher.KString -> {
+                    jniType typeOf TypeMatcher.JString && kotlinType typeOf TypeMatcher.KString -> {
                         "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKString
+                    }
+                    jniType typeOf TypeMatcher.JObject && kotlinType typeOf TypeMatcher.KByteBuffer -> {
+                        "$name.%M(env)$nullCheck" to TypeMatcher.Method.ToKDirectByteBuffer
+                    }
+                    jniType typeOf TypeMatcher.JObject && kotlinType in callableRegistry -> {
+                        val qualified = kotlinType.getNativeImplClass().let {
+                            it.packageName + "." + it.simpleName
+                        }
+                        "${qualified}(env, $name)" to null
                     }
                     else -> name to null
                 }
 
-                val spec = ParameterSpec.builder(name, expectedTypeName).build()
+                val spec = ParameterSpec.builder(name, jniType).build()
 
                 ParamInfo(code, subMember, spec)
             }
 
             val (code, subMember) = when {
-                expectedReturnType typeOf TypeMatcher.JBoolean && returnType typeOf TypeMatcher.KBoolean -> {
+                jniReturnType typeOf TypeMatcher.JBoolean && kotlinReturnType typeOf TypeMatcher.KBoolean -> {
                     "return %M(${params.joinToString { it.code }}).%M()" to TypeMatcher.Method.ToJBoolean
                 }
-                expectedReturnType typeOf TypeMatcher.JBooleanArray && returnType typeOf TypeMatcher.KBooleanArray -> {
+                jniReturnType typeOf TypeMatcher.JBooleanArray && kotlinReturnType typeOf TypeMatcher.KBooleanArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJBooleanArray
                 }
-                expectedReturnType typeOf TypeMatcher.JByteArray && returnType typeOf TypeMatcher.KByteArray -> {
+                jniReturnType typeOf TypeMatcher.JByteArray && kotlinReturnType typeOf TypeMatcher.KByteArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJByteArray
                 }
-                expectedReturnType typeOf TypeMatcher.JChar && returnType typeOf TypeMatcher.KChar -> {
+                jniReturnType typeOf TypeMatcher.JChar && kotlinReturnType typeOf TypeMatcher.KChar -> {
                     "return %M(${params.joinToString { it.code }}).%M()" to TypeMatcher.Method.ToJChar
                 }
-                expectedReturnType typeOf TypeMatcher.JCharArray && returnType typeOf TypeMatcher.KCharArray -> {
+                jniReturnType typeOf TypeMatcher.JCharArray && kotlinReturnType typeOf TypeMatcher.KCharArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJCharArray
                 }
-                expectedReturnType typeOf TypeMatcher.JDoubleArray && returnType typeOf TypeMatcher.KDoubleArray -> {
+                jniReturnType typeOf TypeMatcher.JDoubleArray && kotlinReturnType typeOf TypeMatcher.KDoubleArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJDoubleArray
                 }
-                expectedReturnType typeOf TypeMatcher.JFloatArray && returnType typeOf TypeMatcher.KFloatArray -> {
+                jniReturnType typeOf TypeMatcher.JFloatArray && kotlinReturnType typeOf TypeMatcher.KFloatArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJFloatArray
                 }
-                expectedReturnType typeOf TypeMatcher.JIntArray && returnType typeOf TypeMatcher.KIntArray -> {
+                jniReturnType typeOf TypeMatcher.JIntArray && kotlinReturnType typeOf TypeMatcher.KIntArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJIntArray
                 }
-                expectedReturnType typeOf TypeMatcher.JLongArray && returnType typeOf TypeMatcher.KLongArray -> {
+                jniReturnType typeOf TypeMatcher.JLongArray && kotlinReturnType typeOf TypeMatcher.KLongArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJLongArray
                 }
-                expectedReturnType typeOf TypeMatcher.JShortArray && returnType typeOf TypeMatcher.KShortArray -> {
+                jniReturnType typeOf TypeMatcher.JShortArray && kotlinReturnType typeOf TypeMatcher.KShortArray -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJShortArray
                 }
-                expectedReturnType typeOf TypeMatcher.JString && returnType typeOf TypeMatcher.KString -> {
+                jniReturnType typeOf TypeMatcher.JString && kotlinReturnType typeOf TypeMatcher.KString -> {
                     "return %M(${params.joinToString { it.code }}).%M(env)" to TypeMatcher.Method.ToJString
                 }
                 else -> "return %M(${params.joinToString { it.code }})" to null

@@ -171,3 +171,91 @@ Following types are currently supported for the auto generation:
 |  Long   |  LongArray   |
 |  Short  |  ShortArray  |
 | String  |              |
+
+
+#### java.nio.ByteBuffer support
+
+You can pass direct `ByteBuffer` from JVM to Native easily:
+
+```kotlin
+// JVM / Android
+external fun fillBuffer(buffer: java.nio.ByteBuffer): Boolean
+
+fun main() {
+    val buffer = ByteBuffer.allocateDirect(100)
+    fillBuffer(buffer)
+}
+```
+
+```kotlin
+// Native
+import dev.datlag.nkommons.ByteBuffer
+
+@JNIConnect(
+    packageName = "org.example",
+    className = "MainKt"
+)
+fun fillBuffer(buffer: ByteBuffer): Boolean {
+    val bufferAddress: CPointer<ByteVar> = buffer.address
+    val bufferCapacity: Long = buffer.size
+
+    Random.nextBytes(100).usePinned { randomBytes ->
+        memcpy(buffer.address, randomBytes.addressOf(0), size.toULong())
+    }
+    return true
+}
+```
+
+### Calling JVM code from native
+Calling back is easy too! 
+
+#### 1. Create a contract interface in `commonMain`
+```kotlin
+
+@CallableFromNative
+interface JvmCallback {
+    fun sayHello(): String
+}
+```
+The `@CallableFromNative` annotation will tell KSP to generate relevant bindings on the native side.
+> **_NOTE:_**  If you want to be passing ByteBuffers, use `dev.datlag.nkommons.ByteBuffer`. 
+#### 2. Create the JVM implementation
+```kotlin
+// JVM / Android
+class JvmCallbackImpl: JvmCallback {
+    override fun sayHello(): String = "Hello"
+}
+```
+
+#### 3. Call `sayHello()` from native!
+```kotlin
+// Native
+
+fun getGreetings(callback: JvmCallback) {
+    val message = callback.sayHello()
+    memScoped {
+        fprintf(stderr, "Message from JVM: %s\n", message.cstr.ptr)
+    }
+}
+
+```
+> **_NOTE:_**  You can pass a `JvmCallbackImpl` object to native via the `@JNIConnect` mechanism as described above. Example below.
+>
+```kotlin
+// JVM / Android
+fun main() = init(JvmCallbackImpl())
+
+external fun init(callback: JvmCallback)
+```
+
+```kotlin
+// Native
+@JNIConnect(
+    packageName = "com.example",
+    className = "MainKt"
+)
+fun init(callback: JvmCallback) {
+    // Now you can call methods on JvmCallback.
+    getGreetings(callback)
+}
+```
