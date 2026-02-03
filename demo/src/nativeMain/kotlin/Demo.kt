@@ -1,3 +1,4 @@
+import dev.datlag.nkommons.JNIConnect
 import dev.datlag.nkommons.*
 import dev.datlag.nkommons.utils.memcpy
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -27,7 +28,6 @@ fun byteArrayExample(value: ByteArray): ByteArray {
 }
 
 @JNIConnect
-@JNIFunctionName("characterExample")
 fun charExample(value: Char): Char {
     return if (value.isUpperCase()) {
         value.lowercaseChar()
@@ -91,9 +91,7 @@ fun shortArrayExample(value: ShortArray): ShortArray {
     return value.reversedArray()
 }
 
-@JNIConnect
-@JNIPackageName("dev.datlag.nkommons")
-@JNIClassName("MainKt")
+@JNIConnect("dev.datlag.nkommons", "MainKt")
 fun stringExample(): String {
     return "Hello Native!"
 }
@@ -108,17 +106,16 @@ fun concat(a: String, b: String): String {
     return "$a$b"
 }
 
-@JNIConnect
-@JNIPackageName("dev.datlag.nkommons")
-@JNIClassName("MainKt")
+@JNIConnect("dev.datlag.nkommons", "MainKt")
 fun mixed(a: String, b: Int, c: Boolean, d: IntArray, e: Char): String {
     return "$a, $b, $c, ${d.joinToString(separator = "|", prefix = "[", postfix = "]")}, $e"
 }
 
 @OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
-@JNIConnect
-@JNIPackageName("dev.datlag.nkommons")
-@JNIClassName("MainKt")
+@JNIConnect(
+    packageName = "dev.datlag.nkommons",
+    className = "MainKt"
+)
 fun byteBuffer(buffer: ByteBuffer, size: Long): ByteArray {
     val bytes = Random.nextBytes(size.toInt())
     bytes.usePinned {

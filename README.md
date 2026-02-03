@@ -25,8 +25,11 @@ However, since the original repository no longer has a permissive license, this 
 - Type Conversion Utilities: A rich set of extension functions to effortlessly convert between JNI types and standard Kotlin types (e.g., `jstring.toKString()`, `IntArray.toJIntArray()`).
 - KSP Code Generation: Automatically generate JNI-compatible C-style function stubs from your idiomatic Kotlin functions using the `@JNIConnect` annotation.
 - Seamless Java Integration: Call your native Kotlin functions directly from Java with standard Kotlin types, just as you would with any other external method.
-
+C3SGXARS6
 ## 🛠️ Setup
+
+[![Tests](https://github.com/dshatz/Kotlin-JNI/actions/workflows/build.yml/badge.svg)](https://github.com/dshatz/Kotlin-JNI/actions/workflows/build.yml)
+![Maven Central Version](https://img.shields.io/maven-central/v/com.dshatz.kni/jni)
 
 To use Kotlin-JNI in your project, add the dependencies to your `build.gradle.kts` file.
 
@@ -53,7 +56,7 @@ kotlin {
         val nativeMain by getting {
             dependencies {
                 // Add the core JNI utilities
-                implementation("dev.datlag.nkommons:jni:<version>")
+                implementation("com.dshatz.kni:jni:<version>")
             }
         }
     }
@@ -78,14 +81,14 @@ kotlin {
         val nativeMain by getting {
             dependencies {
                 // Add the annotations dependency for KSP
-                implementation("dev.datlag.nkommons:annotations:<version>")
+                implementation("com.dshatz.kni:annotations:<version>")
             }
         }
     }
 }
 
 dependencies {
-    ksp("dev.datlag.nkommons:ksp:<version>")
+    ksp("dev.dshatz.kni:ksp:<version>")
 }
 ```
 
@@ -125,23 +128,16 @@ Write your function using standard Kotlin types and annotate it with `@JNIConnec
 
 ```kotlin
 import dev.datlag.nkommons.JNIConnect
-import dev.datlag.nkommons.JNIPackageName
-import dev.datlag.nkommons.JNIClassName
-import dev.datlag.nkommons.JNIFunctionName
 
-@JNIConnect
-@JNIPackageName("your.package.name")
-@JNIClassName("YourClass")
-@JNIFunctionName("customFunction")
+@JNIConnect(
+    packageName = "your.package.name",
+    className = "YourClass",
+    functionName = "customFunction" // optional, defaults to function name (example).
+)
 fun example(a: String, b: Boolean, c: CharArray, d: Double): String {
     return "$a, $b, $c, $d"
 }
 ```
-
-> [!WARNING]
-> The provided `@JNIPackageName`, `@JNIClassName` and `@JNIFunctionName` annotations will be removed.  
-> Their parameters will be merged into `@JNIConnect`.  
-> Waiting for KSP fix: https://github.com/google/ksp/issues/2356
 
 #### 2. Let KSP generate the JNI Stub
 
