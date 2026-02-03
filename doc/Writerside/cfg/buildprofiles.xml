@@ -7,5 +7,10 @@
         <custom-favicons>kni.svg</custom-favicons>
         <header-logo>kni.svg</header-logo>
     </variables>
+    <build-profile instance="kni">
+        <variables>
+            <noindex-content>true</noindex-content>
+        </variables>
+    </build-profile>
 
 </buildprofiles>
