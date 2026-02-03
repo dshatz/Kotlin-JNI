@@ -21,7 +21,7 @@ fun main() {
     println("Sum: ${callJvmFromNative(JvmServiceImpl())}")
 
     val buffer2 = ByteBuffer.allocateDirect(100)
-    val size = writeToJvmBuffer(JvmServiceImpl(), ByteBuffer(buffer2))
+    val size = writeToJvmBuffer(JvmServiceImpl(), buffer2)
     val data = ByteArray(size).also {
         buffer2.get(it, 0, size)
     }
@@ -33,7 +33,7 @@ external fun mixed(a: String, b: Int, c: Boolean, d: IntArray, e: Char): String
 external fun byteBuffer(buffer: ByteBuffer, size: Long): ByteArray
 external fun callJvmFromNative(bridge: JvmService): String
 
-external fun writeToJvmBuffer(bridge: JvmService, buffer: dev.datlag.nkommons.ByteBuffer): Int
+external fun writeToJvmBuffer(bridge: JvmService, buffer: ByteBuffer): Int
 
 class JvmServiceImpl: JvmService {
     override fun sum(a: Int, b: Int): Int {
