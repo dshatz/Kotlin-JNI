@@ -54,7 +54,7 @@ jobs:
 
       - name: Inject Environment Variables
         run: |
-          sed -i "s/__VERSION_PLACEHOLDER__/${{ steps.vars.outputs.tag }}/g" Writerside/v.list
+          sed -i "s/__VERSION_PLACEHOLDER__/${{ steps.vars.outputs.tag }}/g" doc/Writerside/v.list
       - name: Build Writerside (User Guide)
         uses: JetBrains/writerside-github-action@v4
         with:
