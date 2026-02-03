@@ -2,6 +2,8 @@ package dev.datlag.nkommons.callable
 
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.Dependencies
+import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
@@ -31,14 +33,22 @@ object NativeCallable {
         val cls: ClassName
     )
 
-    fun generateNativeBridge(cls: KSClassDeclaration): CallableBridge {
+    fun generateNativeBridge(cls: KSClassDeclaration, logger: KSPLogger): CallableBridge? {
         val implCls = cls.toClassName().getNativeImplClass()
+        if (cls.classKind != ClassKind.INTERFACE) {
+            logger.error("@CallableFromNative can only be applied to an interface.")
+            return null
+        }
+        if (cls.superTypes.none { it.resolve().toClassName() == TypeMatcher.Disposable }) {
+            logger.error("@CallableFromNative annotated interface should extend Disposable.", cls)
+            return null
+        }
         val funs = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
             val returnType = f.returnType?.resolve()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
             val call = Def.callHelper(returnType)
             val returnConverter = Def.returnTypeConverters[returnType] ?: CodeBlock.of("")
             val nullCheck = if (returnType.isNullable) "" else CodeBlock.of("!!")
-            val callCode = CodeBlock.builder().addStatement("env.%M(%N, %N, %N)%L$nullCheck", call, "instance", "methodId", "args", returnConverter).build()
+            val callCode = CodeBlock.builder().addStatement("env.%M(%N, %N, %N)%L$nullCheck", call, "ref", "methodId", "args", returnConverter).build()
             FunSpec.builder(f.simpleName.asString())
                 .also {
                     f.parameters.forEach { param ->
@@ -65,11 +75,12 @@ object NativeCallable {
 
         val bridgeClass = TypeSpec.classBuilder(implCls)
             .addFunctions(funs.toList())
+            .superclass(TypeMatcher.BaseCallback)
             .primaryConstructor(constructor)
+            .addSuperclassConstructorParameter("env")
+            .addSuperclassConstructorParameter("instance")
             .addSuperinterface(cls.toClassName())
             .addProperty(generateGetClass(cls))
-            .addProperty(PropertySpec.builder("env", Environment).initializer("env").build())
-            .addProperty(PropertySpec.builder("instance", TypeMatcher.JObject).initializer("instance").build())
             .build()
 
         val deps = Dependencies(false, *listOfNotNull(

@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.asTypeName
 
 internal object TypeMatcher {
@@ -52,6 +53,8 @@ internal object TypeMatcher {
     val JString = ClassName(TYPE_BINDING_PACKAGE, "jstring")
     val JObject = ClassName(TYPE_BINDING_PACKAGE, "jobject")
     val JValue = ClassName("dev.datlag.nkommons", "jvalue")
+    val BaseCallback = ClassName("dev.datlag.nkommons", "BaseCallback")
+    val Disposable = ClassName("dev.datlag.nkommons", "Disposable")
 
     object Method {
 
@@ -144,6 +147,7 @@ internal object TypeMatcher {
             } else {
                 JObject.copy(nullable = param.isNullable)
             }
+            UNIT -> UNIT
 
             else -> null
         }

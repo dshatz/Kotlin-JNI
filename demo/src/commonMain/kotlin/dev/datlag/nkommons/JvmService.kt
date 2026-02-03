@@ -1,7 +1,7 @@
 package dev.datlag.nkommons
 
 @CallableFromNative
-interface JvmService {
+interface JvmService: Disposable {
 
     fun sum(a: Int, b: Int): Int
 

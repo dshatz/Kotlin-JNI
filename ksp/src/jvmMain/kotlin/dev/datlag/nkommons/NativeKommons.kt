@@ -44,7 +44,12 @@ class NativeKommons : SymbolProcessorProvider {
             get() = env.codeGenerator
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
-            getAnnotatedBridges(resolver).map(NativeCallable::generateNativeBridge).forEach {
+            val bridges = getAnnotatedBridges(resolver).map { NativeCallable.generateNativeBridge(it, env.logger) }
+            if (bridges.any { it == null }) {
+                env.logger.error("Callable processing failed")
+                return emptyList()
+            }
+            bridges.filterNotNull().forEach {
                 it.fileSpec.writeTo(codeGenerator, it.deps)
                 callableRegistry.add(it.cls)
             }
