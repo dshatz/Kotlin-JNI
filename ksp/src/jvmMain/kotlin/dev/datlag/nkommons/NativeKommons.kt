@@ -11,6 +11,7 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSTypeAlias
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -22,6 +23,7 @@ import dev.datlag.nkommons.TypeMatcher.typeOf
 import dev.datlag.nkommons.callable.NativeCallable
 import dev.datlag.nkommons.callable.getNativeImplClass
 import dev.datlag.nkommons.kspfix.getAnnotationValue
+import dev.datlag.nkommons.utils.dereferenceTypeAlias
 
 class NativeKommons : SymbolProcessorProvider {
     var called: Boolean = false
@@ -73,7 +75,8 @@ class NativeKommons : SymbolProcessorProvider {
         private fun generateJNIMethod(declaration: KSFunctionDeclaration) {
             val packageName = declaration.packageName.asString()
             val functionName = declaration.simpleName.asString()
-            val kotlinReturnType = declaration.returnType?.toTypeName() ?: TypeMatcher.UnitOrVoid
+            val originalReturnType = declaration.returnType?.toTypeName() ?: TypeMatcher.UnitOrVoid
+            val kotlinReturnType = declaration.returnType?.dereferenceTypeAlias()?.toTypeName() ?: TypeMatcher.UnitOrVoid
             val source = listOfNotNull(
                 declaration.containingFile,
                 declaration.parentDeclaration?.containingFile
@@ -83,7 +86,7 @@ class NativeKommons : SymbolProcessorProvider {
             val expectedClassName = declaration.getAnnotationValue<JNIConnect, String>("className")?.ifBlank { null }
             val expectedFunctionName = declaration.getAnnotationValue<JNIConnect, String>("functionName")?.ifBlank { null } ?: functionName
             val jniReturnType = TypeMatcher.jniTypeFor(kotlinReturnType, forReturn = true) ?: run {
-                env.logger.error("Unsupported return type $kotlinReturnType", declaration.returnType)
+                env.logger.error("Unsupported return type $originalReturnType", declaration.returnType)
                 return
             }
             val finalReturnType = jniReturnType ?: kotlinReturnType
@@ -96,7 +99,7 @@ class NativeKommons : SymbolProcessorProvider {
 
             val params = declaration.parameters.mapIndexed { index, param ->
                 val name = "p$index"
-                val kotlinType = param.type.toTypeName()
+                val kotlinType = param.type.dereferenceTypeAlias().toTypeName()
                 val jniType = TypeMatcher.jniTypeFor(kotlinType, forReturn = false) ?: run {
                     if (kotlinType in callableRegistry) {
                         TypeMatcher.JObject

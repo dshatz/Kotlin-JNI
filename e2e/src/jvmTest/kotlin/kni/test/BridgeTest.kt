@@ -2,6 +2,7 @@ package kni.test
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import kotlin.random.Random
 
 class BridgeTest: DescribeSpec({
     describe("Bridge test") {
@@ -21,6 +22,10 @@ class BridgeTest: DescribeSpec({
         it("negative long") {
             Bridge().mixed(Long.MIN_VALUE, " - negative value".toCharArray(), true).decodeToString() shouldBe
                     "${Long.MIN_VALUE} - negative value".uppercase()
+        }
+        it("Alias type") {
+            val value = Random.nextBytes(10).decodeToString()
+            Bridge().withTypeAlias(value) shouldBe value
         }
     }
 }) {

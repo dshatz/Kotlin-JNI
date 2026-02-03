@@ -8,4 +8,6 @@ class Bridge {
     external fun mixed(number: Long, value: CharArray, upper: Boolean): ByteArray
 
     external fun createByteBuffer(): ByteBuffer
+
+    external fun withTypeAlias(long: TestAlias): TestAlias
 }
