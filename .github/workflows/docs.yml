@@ -71,7 +71,7 @@ jobs:
           mkdir -p temp_extract
           touch staging/.nojekyll
           
-          unzip -oq "artifacts/*HI2*.zip" -d temp_extract
+          unzip -oq "artifacts/*KNI*.zip" -d temp_extract
           
           INDEX_PATH=$(find temp_extract -name "index.html" | head -n 1)
           
