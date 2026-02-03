@@ -124,9 +124,10 @@ fun byteBuffer(buffer: ByteBuffer, size: Long): ByteArray {
     return bytes
 }
 
-@JNIConnect
-@JNIPackageName("dev.datlag.nkommons")
-@JNIClassName("MainKt")
+@JNIConnect(
+    packageName = "dev.datlag.nkommons",
+    className = "MainKt"
+)
 fun callJvmFromNative(obj: JvmService): String {
     val sum = obj.sum(100, 200).toString()
     val greeting = obj.concat("Hello", "Jni")
@@ -135,9 +136,10 @@ fun callJvmFromNative(obj: JvmService): String {
     return obj.concat(sum, greeting)
 }
 
-@JNIConnect
-@JNIPackageName("dev.datlag.nkommons")
-@JNIClassName("MainKt")
-fun writeToJvmBuffer(bridge: JvmService, buffer: CommonByteBuffer): Int {
+@JNIConnect(
+    packageName = "dev.datlag.nkommons",
+    className = "MainKt"
+)
+fun writeToJvmBuffer(bridge: JvmService, buffer: ByteBuffer): Int {
     return bridge.readBytesTo(buffer)
 }

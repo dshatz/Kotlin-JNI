@@ -11,5 +11,5 @@ interface JvmService {
 
     fun readBytes(): ByteArray
 
-    fun readBytesTo(buffer: CommonByteBuffer): Int
+    fun readBytesTo(buffer: ByteBuffer): Int
 }
