@@ -199,3 +199,10 @@ tasks.withType<Test>().configureEach {
     logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
 }
+
+
+afterEvaluate {
+    tasks.named("mergeAndroidMainJniLibFolders").configure {
+        dependsOn(packageAndroidNatives)
+    }
+}
