@@ -133,7 +133,7 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: Linux"
+          name: "Linux"
           path: "artifacts/test-report-Linux/**/*.xml"
           reporter: java-junit
 
@@ -141,7 +141,7 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: Windows"
+          name: "Windows"
           path: "artifacts/test-report-Windows/**/*.xml"
           reporter: java-junit
 
@@ -149,7 +149,7 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: MacOS"
+          name: "MacOS"
           path: "artifacts/test-report-macOS/**/*.xml"
           reporter: java-junit
 
@@ -157,6 +157,6 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: Android"
+          name: "Android"
           path: "artifacts/test-report-android/**/*.xml"
           reporter: java-junit
