@@ -150,9 +150,11 @@ kotlin {
 
         val androidJvmMain by getting
         androidMain.dependsOn(androidJvmMain)
+        commonTest.dependencies {
+            implementation(libs.test)
+        }
         nativeTest.dependencies {
             implementation(libs.kotest)
-            implementation(libs.test)
             implementation(libs.test.kotest)
         }
     }
