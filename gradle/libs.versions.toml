@@ -7,6 +7,7 @@ kotest = "6.1.2"
 kotlinpoet = "2.2.0"
 ksp = "2.3.4"
 publish = "0.36.0"
+testBalloon = "0.8.2-K2.3.0"
 
 [libraries]
 kotest = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
@@ -19,9 +20,13 @@ kotlinpoet-ksp = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref 
 ksp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.10.2" }
+test-core = { module = "de.infix.testBalloon:testBalloon-framework-core", version.ref = "testBalloon" }
+android-runner = { module = "androidx.test:runner", version = "1.7.0" }
+test-kotest = { module = "de.infix.testBalloon:testBalloon-integration-kotest-assertions", version.ref = "testBalloon" }
+junit4 = { module = "junit:junit", version = "4.13.2" }
 
 [bundles]
-kotest = [ "kotest", "kotest-framework", "kotest-property" ]
+kotest = [ "kotest", "kotest-property" ]
 
 [plugins]
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
@@ -31,3 +36,4 @@ kotest = { id = "io.kotest", version.ref = "kotest" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 publish = { id = "com.vanniktech.maven.publish", version.ref = "publish" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
+test = { id = "de.infix.testBalloon", version.ref = "testBalloon" }

@@ -7,7 +7,7 @@ lateinit var callerRef: JvmCaller
 
 @JNIConnect(
     packageName = "kni.test",
-    className = "CallTestKt"
+    className = "CallerBridge"
 )
 fun askJvmForANumber(): Int {
     return callerRef.giveANumber()
@@ -15,7 +15,7 @@ fun askJvmForANumber(): Int {
 
 @JNIConnect(
     packageName = "kni.test",
-    className = "CallTestKt"
+    className = "CallerBridge"
 )
 fun askJvmToFillBuffer(buffer: ByteBuffer): String {
     return callerRef.fillBuffer(buffer)
@@ -23,7 +23,7 @@ fun askJvmToFillBuffer(buffer: ByteBuffer): String {
 
 @JNIConnect(
     packageName = "kni.test",
-    className = "CallTestKt",
+    className = "CallerBridge",
 )
 fun sendTypeAlias(alias: TestAlias): TestAlias {
     return callerRef.withTypeAlias(alias)
@@ -32,7 +32,7 @@ fun sendTypeAlias(alias: TestAlias): TestAlias {
 
 @JNIConnect(
     packageName = "kni.test",
-    className = "CallTestKt",
+    className = "CallerBridge",
 )
 fun init(caller: JvmCaller) {
     callerRef = caller
@@ -40,7 +40,7 @@ fun init(caller: JvmCaller) {
 
 @JNIConnect(
     packageName = "kni.test",
-    className = "CallTestKt",
+    className = "CallerBridge",
 )
 fun dispose() {
     callerRef.close()

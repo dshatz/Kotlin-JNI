@@ -1,13 +1,16 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.konan.target.Family
 
 import com.android.build.api.dsl.androidLibrary
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.osdetector)
-    alias(libs.plugins.kotest)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.test)
     alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
     alias(libs.plugins.dokka)
@@ -123,20 +126,34 @@ kotlin {
         }
     }
 
-    applyDefaultHierarchyTemplate()
+    applyDefaultHierarchyTemplate {
+        common {
+            group("native") {
+                group("desktopNative") {
+                    withLinux()
+                    withMacos()
+                    withMingw()
+                }
+                group("androidNative") {
+                    withAndroidNative()
+                }
+            }
+            group("androidJvm") {
+                withAndroidTarget()
+                withJvm()
+            }
+        }
+    }
 
     sourceSets {
+        val androidMain by getting
+
+        val androidJvmMain by getting
+        androidMain.dependsOn(androidJvmMain)
         nativeTest.dependencies {
-            implementation(libs.bundles.kotest)
-        }
-
-        val desktopNativeMain by creating {
-            dependsOn(nativeMain.get())
-
-            linuxMain.orNull?.dependsOn(this)
-            mingwMain.orNull?.dependsOn(this)
-
-            macosMain.orNull?.dependsOn(this)
+            implementation(libs.kotest)
+            implementation(libs.test)
+            implementation(libs.test.kotest)
         }
     }
     compilerOptions {

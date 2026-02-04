@@ -10,7 +10,7 @@ import kotlinx.cinterop.*
 
 
 /**
- * Convert jobject representing a java.nio.ByteBuffer to a native [ByteBuffer] wrapper.
+ * Convert jobject representing a java.nio.ByteBuffer to a native [binding.ByteBuffer] wrapper.
  *
  * @receiver a java.nio.ByteBuffer as received into a native function.
  */
@@ -24,9 +24,9 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
 
 
 /**
- * Convert a native wrapper [ByteBuffer] to a jobject representing the same [ByteBuffer].
+ * Convert a native wrapper [binding.ByteBuffer] to a jobject representing the same [binding.ByteBuffer].
  *
- * @return a jobject representing a [dev.datlag.nkommons.binding.ByteBuffer] or null if operation failed.
+ * @return a jobject representing a [binding.ByteBuffer] or null if operation failed.
  */
 @OptIn(ExperimentalForeignApi::class)
 fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
