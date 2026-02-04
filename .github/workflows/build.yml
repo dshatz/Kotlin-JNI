@@ -72,11 +72,17 @@ jobs:
           retention-days: 5
 
       # Now Android
-      - name: Login to Google Cloud
+      - name: Set up google cloud
         if: ${{ runner.os == 'Linux' }}
         uses: google-github-actions/setup-gcloud@v1
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
+
+      - name: Auth google cloud
+        uses: 'google-github-actions/auth@v3'
+        with:
+          project_id: 'kotlin-jni'
+          credentials_json: ${{ secrets.GCLOUD_AUTH }}
 
       - name: Set current project
         if: ${{ runner.os == 'Linux' }}
@@ -88,13 +94,7 @@ jobs:
           APP_DEBUG_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
           ANDROID_TEST_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
           DEVICE_MODEL: SmallPhone.arm,version=35
-        run: gcloud firebase test android run \
-          --type instrumentation \
-          --app $APP_DEBUG_LOCATION \
-          --test $ANDROID_TEST_LOCATION \
-          --device model=$DEVICE_MODEL \
-          --results-dir="run-${{ github.run_id }}" \
-          --no-record-video
+        run: gcloud firebase test android run --type instrumentation --app $APP_DEBUG_LOCATION --test $ANDROID_TEST_LOCATION --device model=$DEVICE_MODEL --results-dir="run-${{ github.run_id }}" --no-record-video
       - name: Download Results
         if: ${{ runner.os == 'Linux' }}
         run: |
