@@ -100,7 +100,7 @@ jobs:
         run: |
           mkdir -p firebase-results
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
-          gsutil -m cp -r "gs://test-lab-duz7wkikhd4qa-n6cdwhda63m1u/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/
+          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
