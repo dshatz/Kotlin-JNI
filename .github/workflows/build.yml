@@ -73,17 +73,17 @@ jobs:
 
       # Now Android
       - name: Login to Google Cloud
-        if: runner.os == 'Linux'
-        uses: google-github-actions/setup-gcloud@v0
+        if: ${{ runner.os == 'Linux' }}
+        uses: google-github-actions/setup-gcloud@v1
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
 
       - name: Set current project
-        if: runner.os == 'Linux'
+        if: ${{ runner.os == 'Linux' }}
         run: gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Run Instrumentation Tests in Firebase Test Lab
-        if: ${{ runner.os }} == 'Linux'
+        if: ${{ runner.os == 'Linux' }}
         env:
           APP_DEBUG_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
           ANDROID_TEST_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
@@ -96,7 +96,7 @@ jobs:
           --results-dir="run-${{ github.run_id }}" \
           --no-record-video
       - name: Download Results
-        if: always() && runner.os == 'Linux'
+        if: ${{ runner.os == 'Linux' }}
         run: |
           mkdir -p firebase-results
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
-        if: always() && runner.os == 'Linux'
+        if: ${{ runner.os == 'Linux' }}
         with:
           name: test-report-android
           path: firebase-results/
