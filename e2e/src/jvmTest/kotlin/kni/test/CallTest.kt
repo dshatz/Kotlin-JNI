@@ -56,7 +56,7 @@ class CallTest: DescribeSpec({
             actual.toHexString() shouldBe expected
         }
         it("Alias type") {
-            val value = Random.nextBytes(10).decodeToString()
+            val value = (1..10).map { ('a'..'z').random() }.joinToString("")
             sendTypeAlias(value) shouldBe value
         }
     }
