@@ -11,6 +11,8 @@ import kotlinx.cinterop.*
 
 /**
  * Convert jobject representing a java.nio.ByteBuffer to a native [ByteBuffer] wrapper.
+ *
+ * @receiver a java.nio.ByteBuffer as received into a native function.
  */
 @OptIn(ExperimentalForeignApi::class)
 fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
@@ -23,6 +25,8 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
 
 /**
  * Convert a native wrapper [ByteBuffer] to a jobject representing the same [ByteBuffer].
+ *
+ * @return a jobject representing a [dev.datlag.nkommons.binding.ByteBuffer] or null if operation failed.
  */
 @OptIn(ExperimentalForeignApi::class)
 fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
@@ -36,26 +40,63 @@ fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
     }
 }
 
+/**
+ * Since JDK 1.2, when FindClass is called through the Invocation Interface, there is no current native method or its associated class loader. In that case, the result of ClassLoader.getSystemClassLoader is used. This is the class loader the virtual machine creates for applications, and is able to locate classes listed in the java.class.path property.
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ *
+ * @param name a fully-qualified class name (that is, a package name, delimited by “/”, followed by the class name). If the name begins with “[“ (the array signature character), it returns an array class. The string is encoded in modified UTF-8.
+ * @return a class object from a fully-qualified name, or NULL if the class cannot be found.
+ *
+ */
 @OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.FindClass(name: String): jclass? = memScoped {
     pointed.pointedCommon!!.FindClass!!.invoke(this@FindClass, name.cstr.ptr)
 }
 
+/**
+ * Creates a new global reference to the object referred to by the [obj] argument. The obj argument may be a global or local reference. Global references must be explicitly disposed of by calling [DeleteGlobalRef].
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ *
+ * @param obj a global or local reference. May be a NULL value, in which case this function will return NULL.
+ * @return a global reference to the given obj.
+ */
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.NewGlobalRef(obj: jobject): jobject? {
+fun CPointer<JNIEnvVar>.NewGlobalRef(obj: jobject?): jobject? {
     return pointed.pointedCommon!!.NewGlobalRef!!.invoke(this, obj)
 }
 
+/**
+ * Deletes the global reference pointed to by [globalRef].
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ *
+ * @see [NewGlobalRef].
+ */
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.DeleteGlobalRef(obj: jobject) {
-    pointed.pointedCommon!!.DeleteGlobalRef!!.invoke(this, obj)
+fun CPointer<JNIEnvVar>.DeleteGlobalRef(globalRef: jobject) {
+    pointed.pointedCommon!!.DeleteGlobalRef!!.invoke(this, globalRef)
 }
 
+/**
+ * Deletes the local reference pointed to by localRef.
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ * @param localRef a local reference. The function does nothing in the case of a NULL value passed here.
+ */
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.DeleteLocalRef(obj: jobject) {
-    pointed.pointedCommon!!.DeleteLocalRef!!.invoke(this, obj)
+fun CPointer<JNIEnvVar>.DeleteLocalRef(localRef: jobject?) {
+    pointed.pointedCommon!!.DeleteLocalRef!!.invoke(this, localRef)
 }
 
+/**
+ * Returns the method ID for a static method of a class. The method is specified by its name and signature.
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ *
+ * @return a method ID, or NULL if the operation fails.
+ */
 @OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.GetStaticMethodID(
     classRef: jobject,
@@ -70,6 +111,17 @@ fun CPointer<JNIEnvVar>.GetStaticMethodID(
     )
 }
 
+/**
+ * Returns the method ID for an instance (nonstatic) method of a class or interface. The method may be defined in one of the clazz’s supertypes and inherited by clazz. The method is determined by its name and signature.
+ *
+ * GetMethodID() causes an uninitialized class to be initialized.
+ *
+ * To obtain the method ID of a constructor, supply <init> as the method name and void (V) as the return type.
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ *
+ * @return a method ID, or NULL if the specified method cannot be found.
+ */
 @OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.GetMethodID(
     classRef: jobject,
@@ -84,6 +136,13 @@ fun CPointer<JNIEnvVar>.GetMethodID(
     )
 }
 
+/**
+ * Returns the field ID for an instance (nonstatic) field of a class. The field is specified by its name and signature.
+ *
+ * *See also:* [JNI Reference](https://docs.oracle.com/en/java/javase/21/docs/specs/jni/functions.html).
+ *
+ * @return a field ID, or NULL if the operation fails.
+ */
 @OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.GetFieldID(
     classRef: jobject,

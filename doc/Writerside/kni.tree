@@ -17,4 +17,8 @@
                  accepts-web-file-names="reference"
                  target-for-accept-web-file-names="https://dshatz.github.io/Kotlin-JNI/api/"/>
 
+    <toc-element hidden="true"
+                 accepts-web-file-names="class"
+                 target-for-accept-web-file-names="https://dshatz.github.io/api"/>
+
 </instance-profile>

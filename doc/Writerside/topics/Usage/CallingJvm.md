@@ -47,7 +47,15 @@ The `@CallableFromNative` annotation will tell KSP to generate relevant bindings
 {collapsible="true" collapsed-title="Generated _disposeJNI.kt" src="callable/disposeGenerated.kt"}
 
 > **Critical:** Do not forget to call `callback.dispose()` when you no longer need it.
+> 
+> As soon as the object arrives to Native, a JNI [`GlobalRef` is created](https://dshatz.github.io/Kotlin-JNI/api/jni/dev.datlag.nkommons.utils/-new-global-ref.html). 
+> Therefore, it's essential to free it later by using `dispose()` to avoid memory leaks and other nasty problems. 
 {style="warning"}
+
+> **Note:** Calling `dispose()` in Native will also call `dispose()` on the JVM object. No need to call it manually.
+> 
+> If you attempt to use the native object after calling `dispose()`, you will get an error.
+{style="note"}
 
 ### 4. Call `sayHello()` from native!
 ```kotlin
