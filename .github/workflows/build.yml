@@ -94,7 +94,15 @@ jobs:
           APP_DEBUG_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
           ANDROID_TEST_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
           DEVICE_MODEL: SmallPhone.arm,version=35
-        run: gcloud firebase test android run --type instrumentation --app $APP_DEBUG_LOCATION --test $ANDROID_TEST_LOCATION --device model=$DEVICE_MODEL --results-dir="run-${{ github.run_id }}" --no-record-video
+        run: >
+          gcloud firebase test android run
+          --type instrumentation
+          --app $APP_DEBUG_LOCATION
+          --test $ANDROID_TEST_LOCATION
+          --device model=$DEVICE_MODEL
+          --results-bucket=jni-firebase-test
+          --results-dir="run-${{ github.run_id }}"
+          --no-record-video
       - name: Download Results
         if: ${{ runner.os == 'Linux' }}
         run: |
