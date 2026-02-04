@@ -15,13 +15,14 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toClassName
 import dev.datlag.nkommons.TypeMatcher
 import dev.datlag.nkommons.TypeMatcher.Environment
+import dev.datlag.nkommons.TypeMatcher.JObject
+import dev.datlag.nkommons.TypeMatcher.typeOf
 import dev.datlag.nkommons.utils.dereferenceTypeAlias
 
 object NativeCallable {
@@ -38,8 +39,8 @@ object NativeCallable {
             logger.error("@CallableFromNative can only be applied to an interface.")
             return null
         }
-        if (cls.superTypes.none { it.resolve().toClassName() == TypeMatcher.Disposable }) {
-            logger.error("@CallableFromNative annotated interface should extend Disposable.", cls)
+        if (cls.superTypes.none { it.resolve().toClassName() typeOf TypeMatcher.AutoCloseable }) {
+            logger.error("@CallableFromNative annotated interface should extend kotlin.AutoCloseable.", cls)
             return null
         }
         val funs = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
@@ -70,7 +71,7 @@ object NativeCallable {
 
         val constructor = FunSpec.constructorBuilder()
             .addParameter(ParameterSpec("env", Environment))
-            .addParameter(ParameterSpec("instance", TypeMatcher.JObject))
+            .addParameter(ParameterSpec("instance", JObject))
             .build()
 
         val bridgeClass = TypeSpec.classBuilder(implCls)
@@ -78,9 +79,9 @@ object NativeCallable {
             .superclass(TypeMatcher.BaseCallback)
             .primaryConstructor(constructor)
             .addSuperclassConstructorParameter("env")
+            .addSuperclassConstructorParameter("%S", cls.jniClassName())
             .addSuperclassConstructorParameter("instance")
             .addSuperinterface(cls.toClassName())
-            .addProperty(generateGetClass(cls))
             .build()
 
         val deps = Dependencies(false, *listOfNotNull(
@@ -93,6 +94,10 @@ object NativeCallable {
             .addAnnotation(optin())
             .build()
         return CallableBridge(fileSpec, deps, cls.toClassName())
+    }
+
+    private fun KSClassDeclaration.jniClassName(): String {
+        return qualifiedName!!.asString().replace('.', '/')
     }
 }
 
@@ -123,13 +128,6 @@ private fun buildArgs(
         .build()
 }
 
-private fun generateGetClass(cls: KSClassDeclaration): PropertySpec {
-    val name = cls.qualifiedName!!.asString().replace('.', '/')
-    return PropertySpec.builder("jvmClass", TypeMatcher.JObject)
-        .getter(FunSpec.getterBuilder().addStatement("return %N.%M(%S)!!", "env", Def.FindClass, name).build())
-        .build()
-}
-
 private fun optin(): AnnotationSpec {
     return AnnotationSpec.builder(ClassName("kotlin", "OptIn"))
         .addMember("%T::class", ClassName("kotlinx.cinterop", "ExperimentalForeignApi"))
@@ -141,9 +139,17 @@ internal object Def {
     val GetMethodID = MemberName("dev.datlag.nkommons.utils", "GetMethodID")
     val CallObjMethodA = MemberName("dev.datlag.nkommons.utils", "CallObjectMethodA")
     val CallVoidMethodA = MemberName("dev.datlag.nkommons.utils", "CallVoidMethodA")
+    val NewGlobalRef = MemberName("dev.datlag.nkommons.utils", "NewGlobalRef")
+    val DeleteGlobalRef = MemberName("dev.datlag.nkommons.utils", "DeleteGlobalRef")
     val memScoped = MemberName("kotlinx.cinterop", "memScoped")
     val allocArray = MemberName("kotlinx.cinterop", "allocArray")
     val reinterpret = MemberName("kotlinx.cinterop", "reinterpret")
+
+    fun optIn(): AnnotationSpec {
+        return AnnotationSpec.builder(ClassName("kotlinx", "OptIn"))
+            .addMember("%T::class", MemberName("kotlinx.cinterop", "ExperimentalForeignApi"))
+            .build()
+    }
 
     internal fun callHelper(type: ClassName): MemberName {
         return when (type) {

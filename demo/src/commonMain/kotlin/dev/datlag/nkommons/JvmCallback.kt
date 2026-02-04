@@ -1,6 +1,6 @@
 package dev.datlag.nkommons
 
 @CallableFromNative
-interface JvmCallback: Disposable {
+interface JvmCallback: AutoCloseable {
     fun sayHello(): String
 }

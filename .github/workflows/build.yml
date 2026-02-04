@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            tasks: ":annotations:build :ksp:build :jni:allTests"
+            tasks: ":annotations:build :ksp:build :jni:allTests e2e:packageAndroidNatives e2e:assembleAndroidDeviceTest"
             jvm_heap: "-Xmx12g"
           - os: windows-latest
             tasks: ":jni:mingwX64Test"
@@ -70,6 +70,52 @@ jobs:
           name: test-report-${{ runner.os }}
           path: ./**/build/test-results/**/*.xml
           retention-days: 5
+
+      # Now Android
+      - name: Set up google cloud
+        if: ${{ runner.os == 'Linux' }}
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCLOUD_AUTH }}
+
+      - name: Auth google cloud
+        uses: 'google-github-actions/auth@v3'
+        with:
+          project_id: 'kotlin-jni'
+          credentials_json: ${{ secrets.GCLOUD_AUTH }}
+
+      - name: Set current project
+        if: ${{ runner.os == 'Linux' }}
+        run: gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Run Instrumentation Tests in Firebase Test Lab
+        if: ${{ runner.os == 'Linux' }}
+        env:
+          APP_DEBUG_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          ANDROID_TEST_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          DEVICE_MODEL: SmallPhone.arm,version=35
+        run: >
+          gcloud firebase test android run
+          --type instrumentation
+          --app $APP_DEBUG_LOCATION
+          --test $ANDROID_TEST_LOCATION
+          --device model=$DEVICE_MODEL
+          --results-bucket=jni-firebase-test
+          --results-dir="run-${{ github.run_id }}"
+          --no-record-video
+      - name: Download Results
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          mkdir -p firebase-results
+          # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
+          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ runner.os == 'Linux' }}
+        with:
+          name: test-report-android
+          path: firebase-results/
   publish-results:
     needs: build
     runs-on: ubuntu-latest
@@ -87,7 +133,7 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: Linux"
+          name: "Linux"
           path: "artifacts/test-report-Linux/**/*.xml"
           reporter: java-junit
 
@@ -95,7 +141,7 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: Windows"
+          name: "Windows"
           path: "artifacts/test-report-Windows/**/*.xml"
           reporter: java-junit
 
@@ -103,6 +149,14 @@ jobs:
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: "Tests: MacOS"
+          name: "MacOS"
           path: "artifacts/test-report-macOS/**/*.xml"
+          reporter: java-junit
+
+      - name: Detailed Test Report Android
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: "Android"
+          path: "artifacts/test-report-android/**/*.xml"
           reporter: java-junit

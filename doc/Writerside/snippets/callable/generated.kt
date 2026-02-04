@@ -16,10 +16,8 @@ import kotlinx.cinterop.memScoped
 public class _JvmCallbackNativeImpl(
     env: CPointer<JNIEnvVar>,
     instance: jobject,
-) : BaseCallback(env, instance),
+) : BaseCallback(env, "dev/datlag/nkommons/JvmCallback", instance),
     JvmCallback {
-    public val jvmClass: jobject
-        get() = env.FindClass("dev/datlag/nkommons/JvmCallback")!!
 
     override fun sayHello(): String {
         val cls = jvmClass
@@ -28,3 +26,5 @@ public class _JvmCallbackNativeImpl(
             val args = allocArray<jvalue>(0)
             env.CallObjectMethodA(ref, methodId, args)?.toKString(env)!!
         }
+    }
+}

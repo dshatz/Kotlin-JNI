@@ -1,13 +1,10 @@
 name: Deploy Multi-Docs
 
 on:
-  push:
-    branches: ["master"]
-    paths:
-      - 'doc/Writerside/**'
-      - 'src/**' # Rebuild API if source code changes
-  release:
-    types: [published]
+  workflow_run:
+    workflows: [ "Publish Release" ]
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -18,11 +15,13 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to fetch tags for versioning
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4
