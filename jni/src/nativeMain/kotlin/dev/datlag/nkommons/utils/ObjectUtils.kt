@@ -173,6 +173,20 @@ fun CPointer<JNIEnvVar>.CallIntMethodA(
 }
 
 @OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallLongMethodA(
+    obj: jobject,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jlong {
+    return pointed.pointedCommon!!.CallLongMethodA!!.invoke(
+        this,
+        obj,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.CallObjectMethodA(
     obj: jobject,
     method: jmethodID,
