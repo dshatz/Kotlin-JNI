@@ -1,7 +1,7 @@
 name: Test
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - master
     paths-ignore:
@@ -17,63 +17,115 @@ on:
       - '**.txt'
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            tasks: ":annotations:build :ksp:build :jni:allTests e2e:packageAndroidNatives e2e:assembleAndroidDeviceTest"
-            jvm_heap: "-Xmx12g"
-          - os: windows-latest
-            tasks: ":jni:mingwX64Test"
-            jvm_heap: "-Xmx12g"
-          - os: macos-latest
-            tasks: ":jni:macosArm64Test"
-            jvm_heap: "-Xmx5g"
-
-    runs-on: ${{ matrix.os }}
+  test-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/checkout@v6
         with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup
+        uses: ./.github/actions/build-setup
         with:
-          cache-read-only: false
-          cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
-
-      - name: cache kotlin-konan
-        uses: actions/cache@v3
-        with:
-          path: ~/.konan
-          key: ${{ runner.os }}-kotlin-konan
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
 
       - name: Build and Test
-        run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
-        continue-on-error: true
+        run: ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest -PenableWeb
         env:
           GRADLE_OPTS: >-
-            ${{ matrix.jvm_heap }}
-            -Dorg.gradle.jvmargs="${{ matrix.jvm_heap }} -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dorg.gradle.jvmargs="-Xmx12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
             -Dkotlin.daemon.jvm.options="-Xmx2048m"
-
       - name: Upload Test Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: test-report-${{ runner.os }}
+          name: test-report-ubuntu-latest
           path: ./**/build/test-results/**/*.xml
           retention-days: 5
+      - name: Upload Android Test APK (e2e)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-androidTest.apk
+          path: ./e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          archive: false
+      - name: Upload Android Test APK (plugintest)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: plugintest-androidTest.apk
+          path: ./plugintest/build/outputs/apk/androidTest/plugintest-androidTest.apk
+          archive: false
 
-      # Now Android
+  test-windows:
+    permissions:
+      contents: read
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup
+        uses: ./.github/actions/build-setup
+        with:
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+      - name: Build and Test
+        run: ./gradlew allTests
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.jvmargs="-Xmx12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dkotlin.daemon.jvm.options="-Xmx2048m"
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-report-windows-latest
+          path: ./**/build/test-results/**/*.xml
+
+  test-macos:
+    permissions:
+      contents: read
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup
+        uses: ./.github/actions/build-setup
+        with:
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+      - name: Build and Test
+        run: ./gradlew allTests
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.jvmargs="-Xmx5g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dkotlin.daemon.jvm.options="-Xmx2048m"
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-report-macos-latest
+          path: ./**/build/test-results/**/*.xml
+
+  test-android:
+    needs: ["test-linux"]
+    strategy:
+      matrix:
+        module: ["e2e", "plugintest"]
+      fail-fast: false
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{matrix.module}}-androidTest.apk
       - name: Set up google cloud
-        if: ${{ runner.os == 'Linux' }}
         uses: google-github-actions/setup-gcloud@v1
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
@@ -85,14 +137,13 @@ jobs:
           credentials_json: ${{ secrets.GCLOUD_AUTH }}
 
       - name: Set current project
-        if: ${{ runner.os == 'Linux' }}
         run: gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Run Instrumentation Tests in Firebase Test Lab
-        if: ${{ runner.os == 'Linux' }}
+        continue-on-error: true
         env:
-          APP_DEBUG_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
-          ANDROID_TEST_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          APP_DEBUG_LOCATION: ${{matrix.module}}-androidTest.apk
+          ANDROID_TEST_LOCATION: ${{matrix.module}}-androidTest.apk
           DEVICE_MODEL: SmallPhone.arm,version=35
         run: >
           gcloud firebase test android run
@@ -104,59 +155,57 @@ jobs:
           --results-dir="run-${{ github.run_id }}"
           --no-record-video
       - name: Download Results
-        if: ${{ runner.os == 'Linux' }}
         run: |
-          mkdir -p firebase-results
+          mkdir -p firebase-results/${{matrix.module}}
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
-          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/
+          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}/
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        if: ${{ runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v7
         with:
-          name: test-report-android
-          path: firebase-results/
+          name: test-report-android-${{matrix.module}}
+          path: firebase-results/${{matrix.module}}/
+
   publish-results:
-    needs: build
+    needs:
+      - test-linux
+      - test-android
+      - test-macos
+      - test-windows
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      contents: read
+      checks: write
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/actions
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
-      - name: Detailed Test Report Linux
-        uses: dorny/test-reporter@v1
-        if: always()
+      - name: Test Report Linux
+        uses: ./.github/actions/test-report
         with:
-          name: "Linux"
-          path: "artifacts/test-report-Linux/**/*.xml"
-          reporter: java-junit
-
-      - name: Detailed Test Report Windows
-        uses: dorny/test-reporter@v1
-        if: always()
+          platform_name: Linux
+          artifact_name: ubuntu-latest
+      - name: Test Report MacOS
+        uses: ./.github/actions/test-report
         with:
-          name: "Windows"
-          path: "artifacts/test-report-Windows/**/*.xml"
-          reporter: java-junit
-
-      - name: Detailed Test Report MacOS
-        uses: dorny/test-reporter@v1
-        if: always()
+          platform_name: MacOS
+          artifact_name: macos-latest
+      - name: Test Report MacOS
+        uses: ./.github/actions/test-report
         with:
-          name: "MacOS"
-          path: "artifacts/test-report-macOS/**/*.xml"
-          reporter: java-junit
-
-      - name: Detailed Test Report Android
-        uses: dorny/test-reporter@v1
-        if: always()
+          platform_name: Windows
+          artifact_name: windows-latest
+      - name: Test Report Android
+        uses: ./.github/actions/test-report
         with:
-          name: "Android"
-          path: "artifacts/test-report-android/**/*.xml"
-          reporter: java-junit
+          platform_name: Android
+          artifact_name: android*
