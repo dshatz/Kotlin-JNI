@@ -15,7 +15,7 @@ fun TestSuiteScope.bridgeTests() {
 
     test("mixed") {
         Bridge().apply {
-            Bridge().mixed(Long.MAX_VALUE, " - max value".toCharArray(), false).decodeToString() shouldBe
+            mixed(Long.MAX_VALUE, " - max value".toCharArray(), false).decodeToString() shouldBe
                     "${Long.MAX_VALUE} - max value"
         }
     }
@@ -24,7 +24,7 @@ fun TestSuiteScope.bridgeTests() {
                 "${Long.MIN_VALUE} - negative value".uppercase()
     }
     test("Alias type") {
-        val value = Random.nextBytes(10).decodeToString()
+        val value: TestAlias = generateSequence { "abc123".random() }.take(10).toList().toCharArray().concatToString()
         Bridge().withTypeAlias(value) shouldBe value
     }
 }

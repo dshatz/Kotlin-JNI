@@ -1,7 +1,7 @@
 package kni.test
 
-import dev.datlag.nkommons.CallableFromNative
-import dev.datlag.nkommons.binding.ByteBuffer
+import com.dshatz.kni.buffers.ByteBuffer
+import com.dshatz.kni.annotations.CallableFromNative
 
 @CallableFromNative
 interface JvmCaller: AutoCloseable {

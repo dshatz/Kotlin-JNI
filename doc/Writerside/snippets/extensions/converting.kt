@@ -1,8 +1,8 @@
-import dev.datlag.nkommons.utils.*
-import dev.datlag.nkommons.JNIEnvVar
-import dev.datlag.nkommons.binding.jstring
-import dev.datlag.nkommons.binding.jintArray
-import dev.datlag.nkommons.binding.jbyteArray
+import com.dshatz.kni.utils.*
+import com.dshatz.kni.JNIEnvVar
+import com.dshatz.kni.binding.jstring
+import com.dshatz.kni.binding.jintArray
+import com.dshatz.kni.binding.jbyteArray
 import kotlinx.cinterop.CPointer
 
 val jMessage: jstring = ...

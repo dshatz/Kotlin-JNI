@@ -27,7 +27,7 @@ kotlin {
 
     jvmToolchain(21)
     androidLibrary {
-        namespace = "dev.datlag.nkommons.e2e"
+        namespace = "com.dshatz.kni.e2e"
         compileSdk = 36
         withDeviceTestBuilder {
             sourceSetTreeName = "test"
@@ -144,7 +144,10 @@ kotlin {
             implementation(libs.kotest.junit)
         }
         nativeMain.dependencies {
-
+            implementation(libs.coroutines.core)
+        }
+        commonMain.dependencies {
+            implementation(project(":buffers"))
         }
     }
 }

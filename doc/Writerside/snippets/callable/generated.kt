@@ -1,10 +1,10 @@
 package dev.datlag.nkommons
 
-import dev.datlag.nkommons.binding.jobject
-import dev.datlag.nkommons.utils.CallObjectMethodA
-import dev.datlag.nkommons.utils.FindClass
-import dev.datlag.nkommons.utils.GetMethodID
-import dev.datlag.nkommons.utils.toKString
+import com.dshatz.kni.binding.jobject
+import com.dshatz.kni.utils.CallObjectMethodA
+import com.dshatz.kni.utils.FindClass
+import com.dshatz.kni.utils.GetMethodID
+import com.dshatz.kni.utils.toKString
 import kotlin.OptIn
 import kotlin.String
 import kotlinx.cinterop.CPointer

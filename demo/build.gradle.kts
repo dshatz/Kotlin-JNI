@@ -8,7 +8,7 @@ kotlin {
     jvmToolchain(21)
     jvm {
         mainRun {
-            mainClass = "dev.datlag.nkommons.MainKt"
+            mainClass = "com.dshatz.kni.MainKt"
         }
     }
 
@@ -53,6 +53,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":annotations"))
             implementation(project(":jni"))
+            implementation(project(":buffers"))
         }
     }
 }

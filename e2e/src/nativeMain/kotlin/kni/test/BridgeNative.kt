@@ -1,6 +1,6 @@
 package kni.test
 
-import dev.datlag.nkommons.JNIConnect
+import com.dshatz.kni.annotations.JNIConnect
 import kotlin.random.Random
 
 @JNIConnect(

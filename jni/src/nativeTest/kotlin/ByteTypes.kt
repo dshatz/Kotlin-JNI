@@ -1,5 +1,5 @@
 import de.infix.testBalloon.framework.core.testSuite
-import dev.datlag.nkommons.binding.jbyte
+import com.dshatz.kni.binding.jbyte
 import io.kotest.matchers.shouldBe
 
 val ByteTypes by testSuite {

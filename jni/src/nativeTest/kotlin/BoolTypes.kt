@@ -1,7 +1,7 @@
 import de.infix.testBalloon.framework.core.testSuite
-import dev.datlag.nkommons.binding.jboolean
-import dev.datlag.nkommons.utils.toJBoolean
-import dev.datlag.nkommons.utils.toKBoolean
+import com.dshatz.kni.binding.jboolean
+import com.dshatz.kni.utils.toJBoolean
+import com.dshatz.kni.utils.toKBoolean
 import io.kotest.matchers.shouldBe
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.toByte

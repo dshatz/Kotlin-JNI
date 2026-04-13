@@ -7,6 +7,7 @@ if (!settings.extra.has("onlyDocs")) {
     include(":ksp")
 }
 include(":jni")
+include(":buffers")
 
 pluginManagement {
     repositories {
@@ -31,7 +32,5 @@ develocity {
     buildScan {
         termsOfUseAgree.set("yes")
         termsOfUseUrl = "https://gradle.com/terms-of-service"
-
-//        publishing.onlyIf { System.getenv("GITHUB_ACTIONS") == "true" }
     }
 }

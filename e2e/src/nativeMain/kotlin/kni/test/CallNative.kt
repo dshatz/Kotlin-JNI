@@ -1,7 +1,10 @@
 package kni.test
 
-import dev.datlag.nkommons.binding.ByteBuffer
-import dev.datlag.nkommons.JNIConnect
+import com.dshatz.kni.annotations.JNIConnect
+import com.dshatz.kni.buffers.ByteBuffer
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.*
+import kotlin.native.concurrent.ObsoleteWorkersApi
 
 lateinit var callerRef: JvmCaller
 
@@ -44,4 +47,18 @@ fun init(caller: JvmCaller) {
 )
 fun dispose() {
     callerRef.close()
+}
+
+
+val bridgeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+@OptIn(ObsoleteWorkersApi::class, ExperimentalForeignApi::class)
+@JNIConnect(
+    packageName = "kni.test",
+    className = "CallerBridge",
+)
+fun callbackFromCoroutine(callback: Callback, coroutineName: String) {
+    bridgeScope.launch(CoroutineName(coroutineName)) {
+        callback.onComplete(true)
+    }
 }
