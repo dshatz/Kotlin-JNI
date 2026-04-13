@@ -1,0 +1,36 @@
+name: "Test Report"
+inputs:
+  platform_name:
+    required: true
+  artifact_name:
+    required: true
+  token:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Publish ${{ inputs.platform_name }} Test Results
+      uses: dshatz/github-test-reporter@main
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      with:
+        report-path: "test-report-${{ inputs.artifact_name }}/**/*.xml"
+        status-check: true
+        pull-request-report: false
+        issue: ${{ inputs.pr_number || steps.get_pr.outputs.nr }}
+        status-check-name: ${{ inputs.platform_name }}
+        integrations-config: |
+          {
+            "junit-to-ctrf": {
+              "enabled": true,
+              "action": "convert",
+              "options": {
+                "output": "./ctrf-reports/ctrf-report.json",
+                "toolname": "junit-to-ctrf",
+                "useSuiteName": false,
+                "env": {
+                  "appName": "pdfmp"
+                }
+              }
+            }
+          }
