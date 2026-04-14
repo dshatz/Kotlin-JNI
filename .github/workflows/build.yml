@@ -35,7 +35,6 @@ jobs:
         run: ./gradlew allTests e2e:assembleAndroidDeviceTest
         env:
           GRADLE_OPTS: >-
-            -Xmg12g
             -Dorg.gradle.jvmargs="-Xmg12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
             -Dkotlin.daemon.jvm.options="-Xmx2048m"
       - name: Upload Test Report
@@ -71,7 +70,6 @@ jobs:
         run: ./gradlew allTests
         env:
           GRADLE_OPTS: >-
-            -Xmg12g
             -Dorg.gradle.jvmargs="-Xmg12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
             -Dkotlin.daemon.jvm.options="-Xmx2048m"
       - name: Upload Test Report
@@ -99,7 +97,6 @@ jobs:
         run: ./gradlew allTests
         env:
           GRADLE_OPTS: >-
-            -Xmg5g
             -Dorg.gradle.jvmargs="-Xmg5g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
             -Dkotlin.daemon.jvm.options="-Xmx2048m"
       - name: Upload Test Report
