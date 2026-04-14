@@ -156,9 +156,9 @@ jobs:
           --no-record-video
       - name: Download Results
         run: |
-          mkdir -p firebase-results
+          mkdir -p firebase-results/${{matrix.module}}
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
-          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}
+          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
