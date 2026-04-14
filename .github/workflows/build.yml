@@ -32,7 +32,7 @@ jobs:
           configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
 
       - name: Build and Test
-        run: ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest
+        run: ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest -PenableWeb
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs="-Xmx12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
@@ -178,43 +178,34 @@ jobs:
       contents: read
       checks: write
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github/actions
+
       - name: Download Artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
 
-      - name: Detailed Test Report Linux
-        uses: dorny/test-reporter@v1
-        continue-on-error: true
-        if: always()
+      - name: Test Report Linux
+        uses: ./.github/actions/test-report
         with:
-          name: "Linux"
-          path: "artifacts/test-report-Linux/**/*.xml"
-          reporter: java-junit
-
-      - name: Detailed Test Report Windows
-        uses: dorny/test-reporter@v1
-        continue-on-error: true
-        if: always()
+          platform_name: Linux
+          artifact_name: ubuntu-latest
+      - name: Test Report MacOS
+        uses: ./.github/actions/test-report
         with:
-          name: "Windows"
-          path: "artifacts/test-report-Windows/**/*.xml"
-          reporter: java-junit
-
-      - name: Detailed Test Report MacOS
-        uses: dorny/test-reporter@v1
-        continue-on-error: true
-        if: always()
+          platform_name: MacOS
+          artifact_name: macos-latest
+      - name: Test Report MacOS
+        uses: ./.github/actions/test-report
         with:
-          name: "MacOS"
-          path: "artifacts/test-report-macOS/**/*.xml"
-          reporter: java-junit
-
-      - name: Detailed Test Report Android
-        uses: dorny/test-reporter@v1
-        if: always()
-        continue-on-error: true
+          platform_name: Windows
+          artifact_name: windows-latest
+      - name: Test Report Android
+        uses: ./.github/actions/test-report
         with:
-          name: "Android"
-          path: "artifacts/test-report-android*/**/*.xml"
-          reporter: java-junit
+          platform_name: Android
+          artifact_name: android*
