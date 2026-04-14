@@ -4,13 +4,15 @@ inputs:
     required: true
   artifact_name:
     required: true
+  token:
+    required: true
 runs:
   using: "composite"
   steps:
     - name: Publish ${{ inputs.platform_name }} Test Results
       uses: dshatz/github-test-reporter@main
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ inputs.token }}
       with:
         report-path: "${{ inputs.artifact_name }}/**/*.xml"
         status-check: true

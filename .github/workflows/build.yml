@@ -194,18 +194,22 @@ jobs:
         with:
           platform_name: Linux
           artifact_name: ubuntu-latest
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Test Report MacOS
         uses: ./.github/actions/test-report
         with:
           platform_name: MacOS
           artifact_name: macos-latest
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Test Report MacOS
         uses: ./.github/actions/test-report
         with:
           platform_name: Windows
           artifact_name: windows-latest
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Test Report Android
         uses: ./.github/actions/test-report
         with:
           platform_name: Android
           artifact_name: android*
+          token: ${{ secrets.GITHUB_TOKEN }}
