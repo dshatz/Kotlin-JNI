@@ -1,7 +1,6 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
-import org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 
@@ -10,6 +9,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
     alias(libs.plugins.test)
+    id("com.dshatz.kni")
     `maven-publish`
     signing
 }
@@ -27,7 +27,6 @@ kotlin {
 
         namespace = "$libGroup.$libName"
     }
-    jvm()
 
     fun KotlinNativeTargetWithHostTests.setupTestLib() {
         binaries.sharedLib()
@@ -47,21 +46,25 @@ kotlin {
     androidNativeX86()
     androidNativeArm32()
 
-    linuxX64 {
-        setupTestLib()
-    }
-    linuxArm64()
+    val desktopTargets = listOf(
+        linuxX64 {
+            setupTestLib()
+        },
+        linuxArm64(),
 
-    mingwX64 {
-        setupTestLib()
-    }
+        mingwX64 {
+            setupTestLib()
+        },
 
-    macosX64 {
-        setupTestLib()
-    }
-    macosArm64 {
-        setupTestLib()
-    }
+        macosX64 {
+            setupTestLib()
+        },
+        macosArm64 {
+            setupTestLib()
+        }
+    )
+
+    jvm()
 
     iosX64()
     iosArm64()

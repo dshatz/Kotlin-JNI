@@ -2,10 +2,10 @@ package kni.test
 
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
-import kotlin.random.Random
+import com.dshatz.kni.load.BundledLibLoader
 
 fun TestSuiteScope.bridgeTests() {
-    System.loadLibrary("e2e")
+    BundledLibLoader.loadBundledLibrary("e2e")
     test("Strings") {
         Bridge().uppercase("hello") shouldBe "HELLO"
     }

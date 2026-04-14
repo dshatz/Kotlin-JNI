@@ -32,8 +32,8 @@ kotest = [ "kotest", "kotest-property" ]
 [plugins]
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 osdetector = { id = "com.google.osdetector", version.ref = "osdetector" }
-kotest = { id = "io.kotest", version.ref = "kotest" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 publish = { id = "com.vanniktech.maven.publish", version.ref = "publish" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }

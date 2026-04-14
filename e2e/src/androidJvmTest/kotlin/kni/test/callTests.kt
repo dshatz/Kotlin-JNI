@@ -8,10 +8,11 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
+import com.dshatz.kni.load.BundledLibLoader
 
 fun TestSuiteScope.callTests() {
     try {
-        System.loadLibrary("e2e")
+        BundledLibLoader.loadBundledLibrary("e2e")
         println("e2e.so loaded")
     } catch (e: Exception) {
         e.printStackTrace()

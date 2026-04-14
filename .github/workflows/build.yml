@@ -17,21 +17,8 @@ on:
       - '**.txt'
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            tasks: ":annotations:build :ksp:build :jni:allTests e2e:packageAndroidNatives e2e:assembleAndroidDeviceTest"
-            jvm_heap: "-Xmx12g"
-          - os: windows-latest
-            tasks: ":jni:mingwX64Test"
-            jvm_heap: "-Xmx12g"
-          - os: macos-latest
-            tasks: ":jni:macosArm64Test"
-            jvm_heap: "-Xmx5g"
-
-    runs-on: ${{ matrix.os }}
+  test-linux:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -39,65 +26,119 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - name: Setup
+        uses: ./.github/actions/build-setup
         with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
-        with:
-          cache-read-only: false
-          cache-encryption-key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
-
-      - name: cache kotlin-konan
-        uses: actions/cache@v3
-        with:
-          path: ~/.konan
-          key: ${{ runner.os }}-kotlin-konan
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
 
       - name: Build and Test
-        run: ./gradlew ${{ matrix.tasks }} :e2e:jvmTest
+        run: ./gradlew allTests e2e:assembleAndroidDeviceTest
         env:
           GRADLE_OPTS: >-
-            ${{ matrix.jvm_heap }}
-            -Dorg.gradle.jvmargs="${{ matrix.jvm_heap }} -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Xmg12g
+            -Dorg.gradle.jvmargs="-Xmg12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
             -Dkotlin.daemon.jvm.options="-Xmx2048m"
-
       - name: Upload Test Report
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: test-report-${{ runner.os }}
+          name: test-report-ubuntu-latest
           path: ./**/build/test-results/**/*.xml
+          archive: false
           retention-days: 5
+      - name: Upload Android Test APK
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-androidTest.apk
+          path: ./e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          archive: false
 
-      # Now Android
+  test-windows:
+    permissions:
+      contents: read
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup
+        uses: ./.github/actions/build-setup
+        with:
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+      - name: Build and Test
+        run: ./gradlew allTests
+        env:
+          GRADLE_OPTS: >-
+            -Xmg12g
+            -Dorg.gradle.jvmargs="-Xmg12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dkotlin.daemon.jvm.options="-Xmx2048m"
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-report-windows-latest
+          path: ./**/build/test-results/**/*.xml
+          archive: false
+
+  test-macos:
+    permissions:
+      contents: read
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Setup
+        uses: ./.github/actions/build-setup
+        with:
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+      - name: Build and Test
+        run: ./gradlew allTests
+        env:
+          GRADLE_OPTS: >-
+            -Xmg5g
+            -Dorg.gradle.jvmargs="-Xmg5g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dkotlin.daemon.jvm.options="-Xmx2048m"
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-report-macos-latest
+          path: ./**/build/test-results/**/*.xml
+          archive: false
+
+  test-android:
+    needs: ["test-linux"]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-androidTest.apk
       - name: Set up google cloud
-        if: ${{ runner.os == 'Linux' }}
         uses: google-github-actions/setup-gcloud@v1
         with:
           service_account_key: ${{ secrets.GCLOUD_AUTH }}
 
       - name: Auth google cloud
         uses: 'google-github-actions/auth@v3'
-        if: ${{ runner.os == 'Linux' }}
         with:
           project_id: 'kotlin-jni'
           credentials_json: ${{ secrets.GCLOUD_AUTH }}
 
       - name: Set current project
-        if: ${{ runner.os == 'Linux' }}
         run: gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Run Instrumentation Tests in Firebase Test Lab
-        if: ${{ runner.os == 'Linux' }}
         continue-on-error: true
         env:
-          APP_DEBUG_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
-          ANDROID_TEST_LOCATION: e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          APP_DEBUG_LOCATION: e2e-androidTest.apk
+          ANDROID_TEST_LOCATION: e2e-androidTest.apk
           DEVICE_MODEL: SmallPhone.arm,version=35
         run: >
           gcloud firebase test android run
@@ -109,7 +150,6 @@ jobs:
           --results-dir="run-${{ github.run_id }}"
           --no-record-video
       - name: Download Results
-        if: ${{ runner.os == 'Linux' }}
         run: |
           mkdir -p firebase-results
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
@@ -117,13 +157,16 @@ jobs:
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
-        if: ${{ runner.os == 'Linux' }}
         with:
           name: test-report-android
           path: firebase-results/
 
   publish-results:
-    needs: build
+    needs:
+      - test-linux
+      - test-android
+      - test-macos
+      - test-windows
     runs-on: ubuntu-latest
     if: always()
     permissions:

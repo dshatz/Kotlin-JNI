@@ -8,6 +8,8 @@ if (!settings.extra.has("onlyDocs")) {
 }
 include(":jni")
 include(":buffers")
+includeBuild("plugin")
+include(":plugintest")
 
 pluginManagement {
     repositories {
