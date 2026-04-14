@@ -125,9 +125,11 @@ kotlin {
             }
         }
 
-        val jsMain by getting {
-            dependencies {
-                implementation(libs.coroutines.core)
+        if (project.hasProperty("enableWeb")) {
+            val jsMain by getting {
+                dependencies {
+                    implementation(libs.coroutines.core)
+                }
             }
         }
         val jvmTest by getting {

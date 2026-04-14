@@ -46,6 +46,9 @@ kotlin {
             add(macosArm64 {
                 setupTestLib()
             })
+            add(macosX64 {
+                setupTestLib()
+            })
         }
 
         if (getHost() == Host.Windows) {
