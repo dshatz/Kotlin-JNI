@@ -84,7 +84,6 @@ jobs:
         with:
           name: test-report-windows-latest
           path: ./**/build/test-results/**/*.xml
-          archive: false
 
   test-macos:
     permissions:
@@ -111,7 +110,6 @@ jobs:
         with:
           name: test-report-macos-latest
           path: ./**/build/test-results/**/*.xml
-          archive: false
 
   test-android:
     needs: ["test-linux"]
@@ -160,7 +158,7 @@ jobs:
         run: |
           mkdir -p firebase-results
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
-          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}/
+          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
