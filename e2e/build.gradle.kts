@@ -55,12 +55,6 @@ kotlin {
         }
     }
 
-    if (getHost() == Host.Windows) {
-        mingwX64 {
-            setupTestLib()
-        }
-    }
-
     val androidNativeTargets = listOf(
         androidNativeX64 {
             binaries.sharedLib()

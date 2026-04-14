@@ -32,7 +32,7 @@ jobs:
           configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
 
       - name: Build and Test
-        run: ./gradlew allTests e2e:assembleAndroidDeviceTest
+        run: ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs="-Xmx12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
@@ -43,14 +43,20 @@ jobs:
         with:
           name: test-report-ubuntu-latest
           path: ./**/build/test-results/**/*.xml
-          archive: false
           retention-days: 5
-      - name: Upload Android Test APK
+      - name: Upload Android Test APK (e2e)
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-androidTest.apk
           path: ./e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
+          archive: false
+      - name: Upload Android Test APK (plugintest)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: plugintest-androidTest.apk
+          path: ./plugintest/build/outputs/apk/androidTest/plugintest-androidTest.apk
           archive: false
 
   test-windows:
@@ -109,6 +115,10 @@ jobs:
 
   test-android:
     needs: ["test-linux"]
+    strategy:
+      matrix:
+        module: ["e2e", "plugintest"]
+      fail-fast: false
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -116,7 +126,7 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v8
         with:
-          name: e2e-androidTest.apk
+          name: ${{matrix.module}}-androidTest.apk
       - name: Set up google cloud
         uses: google-github-actions/setup-gcloud@v1
         with:
@@ -134,8 +144,8 @@ jobs:
       - name: Run Instrumentation Tests in Firebase Test Lab
         continue-on-error: true
         env:
-          APP_DEBUG_LOCATION: e2e-androidTest.apk
-          ANDROID_TEST_LOCATION: e2e-androidTest.apk
+          APP_DEBUG_LOCATION: ${{matrix.module}}-androidTest.apk
+          ANDROID_TEST_LOCATION: ${{matrix.module}}-androidTest.apk
           DEVICE_MODEL: SmallPhone.arm,version=35
         run: >
           gcloud firebase test android run
@@ -150,13 +160,13 @@ jobs:
         run: |
           mkdir -p firebase-results
           # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
-          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/
+          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: test-report-android
-          path: firebase-results/
+          name: test-report-android-${{matrix.module}}
+          path: firebase-results/${{matrix.module}}/
 
   publish-results:
     needs:
@@ -208,5 +218,5 @@ jobs:
         continue-on-error: true
         with:
           name: "Android"
-          path: "artifacts/test-report-android/**/*.xml"
+          path: "artifacts/test-report-android*/**/*.xml"
           reporter: java-junit
