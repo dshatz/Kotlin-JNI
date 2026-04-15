@@ -37,9 +37,7 @@ private fun List<KotlinNativeTarget>.findSharedLibs(buildType: NativeBuildType):
 }
 
 private fun Project.getNativeBuildType(): NativeBuildType {
-    val requestedType = project.findProperty(Config.ARG_NATIVE_BUILD_TYPE)?.toString()
-        ?: localProperties().getProperty(Config.ARG_NATIVE_BUILD_TYPE, null)
-        ?: "release"
+    val requestedType = project.getKniProperty(Config.ARG_NATIVE_BUILD_TYPE) ?: "release"
     return NativeBuildType.valueOf(requestedType.uppercase())
 }
 
