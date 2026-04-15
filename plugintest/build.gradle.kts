@@ -1,6 +1,6 @@
 import com.dshatz.kni.bundlesNatives
 import com.dshatz.kni.bundlesPrebuiltNatives
-import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
+import com.dshatz.kni.addKspForNative
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -13,12 +13,17 @@ plugins {
 kotlin {
     jvmToolchain(21)
     applyDefaultHierarchyTemplate()
-    val androidNatives = listOf(androidNativeX64 {
-        binaries.sharedLib()
-    },
-    androidNativeArm64 {
-        binaries.sharedLib()
-    })
+
+    val androidNatives = optionalTargets.run {
+        listOfNotNull(
+            androidNativeX64 {
+                binaries.sharedLib()
+            },
+            androidNativeArm64 {
+                binaries.sharedLib()
+            }
+        )
+    }
     androidLibrary {
         namespace = "com.dshatz.kni.plugintest"
         compileSdk = 36
@@ -34,18 +39,20 @@ kotlin {
         }
     }
 
-    val desktopTargets = listOf(
-        linuxX64 {
-            binaries.sharedLib {
+    val desktopTargets = optionalTargets.run {
+        listOfNotNull(
+            linuxX64 {
+                binaries.sharedLib {
 
-            }
-        },
-        linuxArm64 {
-            binaries.sharedLib {
+                }
+            },
+            linuxArm64 {
+                binaries.sharedLib {
 
+                }
             }
-        }
-    )
+        )
+    }
     jvm {
         this.mainRun {
             mainClass = "com.dshatz.kni.plugintest.MainKt"
@@ -98,19 +105,11 @@ kotlin {
 }
 
 dependencies {
-    add("kspLinuxX64", project(":ksp"))
-    add("kspLinuxArm64", project(":ksp"))
-    add("kspAndroidNativeArm64", project(":ksp"))
-    add("kspAndroidNativeX64", project(":ksp"))
+    addKspForNative(project(":ksp"))
 }
 
 tasks.named<Jar>("jvmJar") {
     manifest {
         attributes["Main-Class"] = "com.dshatz.kni.plugintest.MainKt"
     }
-}
-
-tasks.withType<KotlinJvmTest>().configureEach {
-    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
-    outputs.upToDateWhen { false }
 }

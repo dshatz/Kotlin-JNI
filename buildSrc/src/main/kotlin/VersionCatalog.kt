@@ -1,7 +1,4 @@
 import org.gradle.api.Project
-import org.gradle.api.artifacts.VersionCatalog as VCatalog
-import org.gradle.api.artifacts.VersionCatalogsExtension as VCatalogEx
-import org.gradle.kotlin.dsl.getByType
 
 class VersionCatalog() {
     companion object {

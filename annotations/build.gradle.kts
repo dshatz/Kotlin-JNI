@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
+    id("com.dshatz.kni")
     `maven-publish`
     signing
 }
@@ -26,48 +27,38 @@ kotlin {
     }
     jvm()
 
-    androidNativeX64()
-    androidNativeArm64()
-    androidNativeX86()
-    androidNativeArm32()
+    optionalTargets {
+        androidNativeX64()
+        androidNativeArm64()
+        androidNativeX86()
+        androidNativeArm32()
 
-    linuxX64()
-    linuxArm64()
+        linuxX64()
+        linuxArm64()
 
-    mingwX64()
+        mingwX64()
 
-    macosX64()
-    macosArm64()
+        macosX64()
+        macosArm64()
 
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+        iosX64()
+        iosArm64()
+        iosSimulatorArm64()
 
-    tvosX64()
-    tvosArm64()
-    tvosSimulatorArm64()
+        tvosX64()
+        tvosArm64()
+        tvosSimulatorArm64()
 
-    watchosX64()
-    watchosArm32()
-    watchosArm64()
-    watchosSimulatorArm64()
-    watchosDeviceArm64()
+        watchosX64()
+        watchosArm32()
+        watchosArm64()
+        watchosSimulatorArm64()
+        watchosDeviceArm64()
 
-    if (project.hasProperty("enableWeb")) {
-        js {
-            browser()
-            nodejs()
-        }
-        wasmJs {
-            browser()
-            nodejs()
-        }
-        wasmWasi {
-            nodejs()
-        }
+        js()
+        wasmJs()
+        wasmWasi()
     }
-
-
 
     applyDefaultHierarchyTemplate {
         common {
