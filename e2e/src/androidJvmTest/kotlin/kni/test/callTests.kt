@@ -2,19 +2,27 @@ package kni.test
 
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.*
 import java.nio.ByteBuffer
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
+import com.dshatz.kni.load.BundledLibLoader
 
 fun TestSuiteScope.callTests() {
     try {
-        System.loadLibrary("e2e")
+        BundledLibLoader.loadBundledLibrary("e2e")
         println("e2e.so loaded")
     } catch (e: Exception) {
         e.printStackTrace()
     }
     testFixture {
         println("Initialize caller")
-        JvmCallerImpl().also { CallerBridge().init(it) }
+        JvmCallerImpl().also {
+            CallerBridge().init(it)
+            println("Initialized")
+        }
     } closeWith {
         println("Dispose caller")
         close()
@@ -35,17 +43,50 @@ fun TestSuiteScope.callTests() {
             val value = (1..10).map { ('a'..'z').random() }.joinToString("")
             CallerBridge().sendTypeAlias(value) shouldBe value
         }
+        test("threaded") {
+            // Initialize on test scope, call on test scope and other threads.
+            CallerBridge().askJvmForANumber() shouldBe 11
+            withContext(Dispatchers.Default) {
+                CallerBridge().askJvmForANumber() shouldBe 11
+            }
+            withContext(Dispatchers.IO) {
+                CallerBridge().askJvmForANumber() shouldBe 11
+                CallerBridge().askJvmForANumber() shouldBe 11
+            }
+        }
+        test("spam native callbacks") {
+            withContext(Dispatchers.IO) {
+                withTimeout(2.seconds) {
+                    (1..20).map {
+                        async {
+                            suspendCancellableCoroutine { cont ->
+                                CallerBridge().callbackFromCoroutine(object : Callback {
+                                    override fun onComplete(result: Boolean) {
+                                        println("Received result! $result; Thread = ${Thread.currentThread().name}")
+                                        cont.resume(result)
+                                    }
+
+                                    override fun close() {}
+
+                                }, "Coroutine $it")
+                            } shouldBe true
+                        }
+                    }.awaitAll()
+                }
+            }
+        }
     }
 }
 
 private class JvmCallerImpl : JvmCaller {
     override fun giveANumber(): Int {
+        println(Thread.currentThread().name)
         return 11
     }
 
-    override fun fillBuffer(buffer: dev.datlag.nkommons.binding.ByteBuffer): String {
-        val bytes = Random.nextBytes(buffer.jvmBuffer.capacity())
-        buffer.jvmBuffer.put(bytes)
+    override fun fillBuffer(buffer: com.dshatz.kni.buffers.ByteBuffer): String {
+        val bytes = Random.nextBytes(buffer.capacity.toInt())
+        buffer.put(bytes)
         return bytes.toHexString()
     }
 

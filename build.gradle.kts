@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.publish) apply false
     alias(libs.plugins.osdetector) apply false
 
-    alias(libs.plugins.kotest) apply false
+    alias(libs.plugins.test) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.dokka) apply false
 }

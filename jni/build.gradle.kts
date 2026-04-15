@@ -103,7 +103,7 @@ kotlin {
     }
     jvm()
     androidLibrary {
-        namespace = "dev.datlag.nkommons.jni"
+        namespace = "$libGroup.$libName"
         compileSdk = 36
     }
 
@@ -157,6 +157,9 @@ kotlin {
             implementation(libs.kotest)
             implementation(libs.test.kotest)
         }
+        nativeMain.dependencies {
+            implementation(project(":buffers"))
+        }
     }
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
@@ -175,7 +178,7 @@ mavenPublishing {
 
     pom {
         name.set("Kotlin-JNI")
-        description.set("Painless JNI with Kotlin/Native using a KSP processor.")
+        description.set("High-performance common ByteBuffer for Kotlin/Native.")
         url.set("https://github.com/dshatz/Kotlin-JNI")
         inceptionYear.set("2026")
 

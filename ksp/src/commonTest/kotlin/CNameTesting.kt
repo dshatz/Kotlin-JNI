@@ -1,4 +1,4 @@
-import dev.datlag.nkommons.CNameUtils
+import com.dshatz.kni.CNameUtils
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

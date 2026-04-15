@@ -1,6 +1,6 @@
 import de.infix.testBalloon.framework.core.testSuite
-import dev.datlag.nkommons.binding.jint
-import dev.datlag.nkommons.binding.jsize
+import com.dshatz.kni.binding.jint
+import com.dshatz.kni.binding.jsize
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import kotlinx.cinterop.ExperimentalForeignApi

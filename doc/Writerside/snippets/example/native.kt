@@ -1,4 +1,4 @@
-import dev.datlag.nkommons.JNIConnect
+import com.dshatz.kni.JNIConnect
 
 @JNIConnect(
     packageName = "your.package.name",

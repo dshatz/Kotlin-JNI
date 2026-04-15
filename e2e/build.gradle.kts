@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.dshatz.kni.bundlesNatives
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
@@ -10,15 +11,9 @@ plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.test)
     alias(libs.plugins.ksp)
+    id("com.dshatz.kni")
     alias(libs.plugins.osdetector)
     alias(libs.plugins.android.library)
-}
-
-val packageAndroidNatives = tasks.register<Copy>("packageAndroidNatives") {
-    group = "build"
-    description = "Aggregates all native libs for Android packaging."
-    val outputDir = project.file("src/androidMain/jniLibs")
-    into(outputDir)
 }
 
 kotlin {
@@ -26,8 +21,59 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     jvmToolchain(21)
+
+    fun KotlinNativeTargetWithHostTests.setupTestLib() {
+        binaries.sharedLib()
+        /*binaries.withType<SharedLibrary> {
+            if (this.buildType == NativeBuildType.DEBUG) {
+                val linkTask = linkTaskProvider
+                tasks.withType<Test>().configureEach {
+                    dependsOn(linkTask)
+                    systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
+                }
+            }
+        }*/
+    }
+
+    val desktopNativeTargets = buildList {
+        if (getHost() == Host.Linux) {
+            add(linuxX64 {
+                setupTestLib()
+            })
+        }
+
+        if (getHost() == Host.MAC) {
+            add(macosArm64 {
+                setupTestLib()
+            })
+            add(macosX64 {
+                setupTestLib()
+            })
+        }
+
+        if (getHost() == Host.Windows) {
+            add(mingwX64 {
+                setupTestLib()
+            })
+        }
+    }
+
+    val androidNativeTargets = listOf(
+        androidNativeX64 {
+            binaries.sharedLib()
+        },
+        androidNativeArm64 {
+            binaries.sharedLib()
+        }
+    )
+
+
+    jvm {
+        bundlesNatives(desktopNativeTargets)
+    }
+
     androidLibrary {
-        namespace = "dev.datlag.nkommons.e2e"
+        namespace = "com.dshatz.kni.e2e"
         compileSdk = 36
         withDeviceTestBuilder {
             sourceSetTreeName = "test"
@@ -39,65 +85,10 @@ kotlin {
             resources.excludes.add("META-INF/LGPL2.1")
         }
         minSdk = 26
-    }
-    jvm()
-
-    fun KotlinNativeTargetWithHostTests.setupTestLib() {
-        binaries.sharedLib()
-        binaries.withType<SharedLibrary> {
-            if (this.buildType == NativeBuildType.DEBUG) {
-                val linkTask = linkTaskProvider
-                tasks.withType<Test>().configureEach {
-                    dependsOn(linkTask)
-                    systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
-                }
-            }
-        }
-    }
-
-    if (getHost() == Host.Linux) {
-        linuxX64 {
-            setupTestLib()
-        }
-    }
-    if (getHost() == Host.MAC) {
-        macosArm64 {
-            setupTestLib()
-        }
-    }
-    if (getHost() == Host.Windows) {
-        mingwX64 {
-            setupTestLib()
-        }
-    }
-
-    val androidArchMap = mapOf(
-        "androidNativeArm64" to "android/arm64-v8a",
-        "androidNativeX64"   to "android/x86_64",
-        "androidNativeArm32" to "android/armeabi-v7a",
-        "androidNativeX86"   to "android/x86"
-    )
-
-    androidNativeX64 {
-        binaries.sharedLib()
+        bundlesNatives(androidNativeTargets)
     }
 
 
-    androidNativeArm64 {
-        val target = this
-        binaries.sharedLib()
-        binaries.withType<TestExecutable>().configureEach {
-            val binary = binaries.getSharedLib(NativeBuildType.DEBUG)
-            packageAndroidNatives.configure {
-                dependsOn(binary.linkTaskProvider)
-                from(binary.outputFile) {
-                    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-                    val folder = androidArchMap[target.name]!!.substringAfter("android/")
-                    into(folder)
-                }
-            }
-        }
-    }
 
     sourceSets {
         commonTest.dependencies {
@@ -140,11 +131,11 @@ kotlin {
         }
         androidDeviceTest.dependsOn(androidJvmTest)
 
-        jvmTest.dependencies {
-            implementation(libs.kotest.junit)
-        }
         nativeMain.dependencies {
-
+            implementation(libs.coroutines.core)
+        }
+        commonMain.dependencies {
+            implementation(project(":buffers"))
         }
     }
 }
@@ -198,11 +189,4 @@ enum class Host(val label: String) {
 tasks.withType<Test>().configureEach {
     logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
-}
-
-
-afterEvaluate {
-    tasks.named("mergeAndroidMainJniLibFolders").configure {
-        dependsOn(packageAndroidNatives)
-    }
 }

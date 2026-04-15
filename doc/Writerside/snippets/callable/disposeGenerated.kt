@@ -1,5 +1,5 @@
-import dev.datlag.nkommons.JNIEnvVar
-import dev.datlag.nkommons.binding.jobject
+import com.dshatz.kni.JNIEnvVar
+import com.dshatz.kni.binding.jobject
 import kotlin.OptIn
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.CName

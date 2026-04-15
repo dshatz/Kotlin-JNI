@@ -9,4 +9,5 @@ class CallerBridge {
     external fun askJvmForANumber(): Int
     external fun askJvmToFillBuffer(buffer: ByteBuffer): String
     external fun sendTypeAlias(alias: TestAlias): TestAlias
+    external fun callbackFromCoroutine(callback: Callback, coroutineName: String)
 }

@@ -1,5 +1,5 @@
 // Native
-import dev.datlag.nkommons.ByteBuffer
+import com.dshatz.kni.ByteBuffer
 
 @JNIConnect(
     packageName = "org.example",

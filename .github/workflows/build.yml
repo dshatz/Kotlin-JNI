@@ -190,6 +190,11 @@ jobs:
       - name: Multiplatform Test Report
         uses: dshatz/testballoon-github-reporter@master
         with:
-          reports-linux: "test-report-ubuntu-*/**/*.xml"
-          reports-macos: "test-report-macos-latest/**/*.xml"
-          reports-windows: "test-report-windows-latest/**/*.xml"
+          reports: "test-report-*/**/*.xml"
+          platform-hints: |
+            {
+              "test-report-ubuntu-latest/**/*.xml": "Linux",
+              "test-report-windows-latest/**/*.xml": "Windows",
+              "test-report-macos-latest/**/*.xml": "macOS",
+              "test-report-ubuntu-android-*/**/*.xml": "Android"
+            }

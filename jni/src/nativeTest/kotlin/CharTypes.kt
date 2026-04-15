@@ -1,7 +1,7 @@
 import de.infix.testBalloon.framework.core.testSuite
-import dev.datlag.nkommons.binding.jchar
-import dev.datlag.nkommons.utils.toJChar
-import dev.datlag.nkommons.utils.toKChar
+import com.dshatz.kni.binding.jchar
+import com.dshatz.kni.utils.toJChar
+import com.dshatz.kni.utils.toKChar
 import io.kotest.matchers.shouldBe
 
 val CharTypes by testSuite {
