@@ -1,3 +1,6 @@
+import org.gradle.api.Project
+import org.gradle.kotlin.dsl.provideDelegate
+
 object Configuration {
     const val compileSdk = 36
     const val minSdk = 21

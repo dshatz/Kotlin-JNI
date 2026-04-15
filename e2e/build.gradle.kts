@@ -1,11 +1,8 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import com.dshatz.kni.bundlesNatives
+import com.dshatz.kni.addKspForNative
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
-import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -22,50 +19,25 @@ kotlin {
 
     jvmToolchain(21)
 
-    fun KotlinNativeTargetWithHostTests.setupTestLib() {
-        binaries.sharedLib()
-        /*binaries.withType<SharedLibrary> {
-            if (this.buildType == NativeBuildType.DEBUG) {
-                val linkTask = linkTaskProvider
-                tasks.withType<Test>().configureEach {
-                    dependsOn(linkTask)
-                    systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
-                }
-            }
-        }*/
+    val desktopNativeTargets = optionalTargets.run {
+        listOfNotNull(
+            linuxX64(),
+            linuxArm64(),
+            macosArm64(),
+            macosX64(),
+            mingwX64()
+        )
+
     }
 
-    val desktopNativeTargets = buildList {
-        if (getHost() == Host.Linux) {
-            add(linuxX64 {
-                setupTestLib()
-            })
-        }
-
-        if (getHost() == Host.MAC) {
-            add(macosArm64 {
-                setupTestLib()
-            })
-            add(macosX64 {
-                setupTestLib()
-            })
-        }
-
-        if (getHost() == Host.Windows) {
-            add(mingwX64 {
-                setupTestLib()
-            })
-        }
+    val androidNativeTargets = optionalTargets.run {
+        listOfNotNull(
+            androidNativeX64(),
+            androidNativeArm64()
+        )
     }
-
-    val androidNativeTargets = listOf(
-        androidNativeX64 {
-            binaries.sharedLib()
-        },
-        androidNativeArm64 {
-            binaries.sharedLib()
-        }
-    )
+    desktopNativeTargets.forEach { it.binaries.sharedLib() }
+    androidNativeTargets.forEach { it.binaries.sharedLib() }
 
 
     jvm {
@@ -141,52 +113,11 @@ kotlin {
 }
 
 tasks.withType<Test>().configureEach {
-//    useJUnitPlatform()
     reports {
         junitXml.required.set(true)
     }
 }
 
 dependencies {
-    if (getHost() == Host.Linux) {
-        add("kspLinuxX64", project(":ksp"))
-    }
-    if (getHost() == Host.MAC) {
-        add("kspMacosArm64", project(":ksp"))
-    }
-    if (getHost() == Host.Windows) {
-        add("kspMingwX64", project(":ksp"))
-    }
-    add("kspAndroidNativeX64", project(":ksp"))
-    add("kspAndroidNativeArm64", project(":ksp"))
-}
-
-fun getHost(): Host {
-    return when (osdetector.os) {
-        "linux" -> Host.Linux
-        "osx" -> Host.MAC
-        "windows" -> Host.Windows
-        else -> {
-            val hostOs = System.getProperty("os.name")
-            val isMingwX64 = hostOs.startsWith("Windows")
-
-            when {
-                hostOs == "Linux" -> Host.Linux
-                hostOs == "Mac OS X" -> Host.MAC
-                isMingwX64 -> Host.Windows
-                else -> throw IllegalStateException("Unknown OS: ${osdetector.classifier}")
-            }
-        }
-    }
-}
-
-enum class Host(val label: String) {
-    Linux("linux"),
-    Windows("win"),
-    MAC("mac");
-}
-
-tasks.withType<Test>().configureEach {
-    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
-    outputs.upToDateWhen { false }
+    addKspForNative(project(":ksp"))
 }

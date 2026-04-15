@@ -24,6 +24,8 @@ import javax.inject.Inject
 class Plugin: Plugin<Project> {
 
     override fun apply(target: Project) {
+        val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
+        kotlin.extensions.create("optionalTargets", OptionalTargetsExtension::class.java, kotlin)
     }
 }
 
@@ -35,7 +37,9 @@ private fun List<KotlinNativeTarget>.findSharedLibs(buildType: NativeBuildType):
 }
 
 private fun Project.getNativeBuildType(): NativeBuildType {
-    val requestedType = project.findProperty("nativeBuildType")?.toString() ?: "release"
+    val requestedType = project.findProperty(Config.ARG_NATIVE_BUILD_TYPE)?.toString()
+        ?: localProperties().getProperty(Config.ARG_NATIVE_BUILD_TYPE, null)
+        ?: "release"
     return NativeBuildType.valueOf(requestedType.uppercase())
 }
 

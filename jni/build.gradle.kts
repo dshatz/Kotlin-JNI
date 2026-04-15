@@ -14,6 +14,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
     alias(libs.plugins.dokka)
+    id("com.dshatz.kni")
     `maven-publish`
     signing
 }
@@ -25,105 +26,80 @@ version = libVersion
 
 kotlin {
     jvmToolchain(21)
-    androidNativeX86 {
-        binaries {
-            sharedLib()
-            staticLib()
-        }
-    }
-    androidNativeX64 {
-        binaries {
-            sharedLib {
-                linkerOpts += listOf(
-                    "-Wl,-z,max-page-size=16384",
-                    "-Wl,-z,common-page-size=16384",
-                    "-v"
-                )
-            }
-            staticLib {
-                linkerOpts += listOf(
-                    "-Wl,-z,max-page-size=16384",
-                    "-Wl,-z,common-page-size=16384",
-                    "-v"
-                )
+
+    optionalTargets {
+        androidNativeX86 {
+            binaries {
+                sharedLib()
+                staticLib()
             }
         }
-    }
-    androidNativeArm32 {
-        binaries {
-            sharedLib()
-            staticLib()
+        androidNativeX64 {
+            binaries {
+                sharedLib {
+                    linkerOpts += listOf(
+                        "-Wl,-z,max-page-size=16384",
+                        "-Wl,-z,common-page-size=16384",
+                        "-v"
+                    )
+                }
+                staticLib {
+                    linkerOpts += listOf(
+                        "-Wl,-z,max-page-size=16384",
+                        "-Wl,-z,common-page-size=16384",
+                        "-v"
+                    )
+                }
+            }
         }
-    }
-    androidNativeArm64 {
-        binaries {
-            sharedLib()
-            staticLib()
+        androidNativeArm32 {
+            binaries {
+                sharedLib()
+                staticLib()
+            }
+        }
+        androidNativeArm64 {
+            binaries {
+                sharedLib()
+                staticLib()
+            }
+        }
+        val desktopTargets = listOfNotNull(
+            linuxX64 {},
+            linuxArm64(),
+            mingwX64(),
+            macosX64(),
+            macosArm64()
+        )
+
+        desktopTargets.forEach { target ->
+            target.binaries {
+                sharedLib()
+                staticLib()
+            }
+            target.compilations.getByName("main") {
+                cinterops {
+                    create("jni") {
+                        val osFolder = when {
+                            target.konanTarget.family.isAppleFamily -> "darwin"
+                            target.konanTarget.family == Family.LINUX -> "linux"
+                            target.konanTarget.family == Family.MINGW -> "win32"
+                            else -> null
+                        }
+
+                        val jniHeadersBase = project.file("jni-headers")
+                        includeDirs.allHeaders(jniHeadersBase)
+                        osFolder?.let { includeDirs.allHeaders(jniHeadersBase.resolve(it)) }
+                    }
+                }
+            }
         }
     }
 
-    val desktopTargets = mutableListOf(
-        linuxX64 {
-            binaries {
-                sharedLib()
-                staticLib()
-            }
-        },
-        linuxArm64 {
-            binaries {
-                sharedLib()
-                staticLib()
-            }
-        },
-        mingwX64 {
-            binaries {
-                sharedLib()
-                staticLib()
-            }
-        }
-    )
-
-    if (getHost() == Host.MAC) {
-        desktopTargets.add(
-            macosX64 {
-                binaries {
-                    sharedLib()
-                    staticLib()
-                }
-            }
-        )
-        desktopTargets.add(
-            macosArm64 {
-                binaries {
-                    sharedLib()
-                    staticLib()
-                }
-            }
-        )
-    }
     jvm()
     androidLibrary {
         namespace = "$libGroup.$libName"
         compileSdk = 36
-    }
-
-    desktopTargets.forEach { target ->
-        target.compilations.getByName("main") {
-            cinterops {
-                create("jni") {
-                    val osFolder = when {
-                        target.konanTarget.family.isAppleFamily -> "darwin"
-                        target.konanTarget.family == Family.LINUX -> "linux"
-                        target.konanTarget.family == Family.MINGW -> "win32"
-                        else -> null
-                    }
-
-                    val jniHeadersBase = project.file("jni-headers")
-                    includeDirs.allHeaders(jniHeadersBase)
-                    osFolder?.let { includeDirs.allHeaders(jniHeadersBase.resolve(it)) }
-                }
-            }
-        }
     }
 
     applyDefaultHierarchyTemplate {
@@ -210,31 +186,6 @@ mavenPublishing {
     }
 }
 
-fun getHost(): Host {
-    return when (osdetector.os) {
-        "linux" -> Host.Linux
-        "osx" -> Host.MAC
-        "windows" -> Host.Windows
-        else -> {
-            val hostOs = System.getProperty("os.name")
-            val isMingwX64 = hostOs.startsWith("Windows")
-
-            when {
-                hostOs == "Linux" -> Host.Linux
-                hostOs == "Mac OS X" -> Host.MAC
-                isMingwX64 -> Host.Windows
-                else -> throw IllegalStateException("Unknown OS: ${osdetector.classifier}")
-            }
-        }
-    }
-}
-
-enum class Host(val label: String) {
-    Linux("linux"),
-    Windows("win"),
-    MAC("mac");
-}
-
 tasks.withType<Test>().configureEach {
     reports {
         junitXml.required.set(true)
@@ -242,6 +193,5 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.withType<KotlinNativeTest>().configureEach {
-    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
 }

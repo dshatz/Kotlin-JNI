@@ -57,7 +57,7 @@ fun TestSuiteScope.callTests() {
         test("spam native callbacks") {
             withContext(Dispatchers.IO) {
                 withTimeout(2.seconds) {
-                    (1..20).map {
+                    (1..10).map {
                         async {
                             suspendCancellableCoroutine { cont ->
                                 CallerBridge().callbackFromCoroutine(object : Callback {

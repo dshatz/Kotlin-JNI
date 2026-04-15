@@ -8,6 +8,7 @@ import com.dshatz.kni.binding.jobject
 import com.dshatz.kni.utils.AttachCurrentThread
 import com.dshatz.kni.utils.CallVoidMethodA
 import com.dshatz.kni.utils.DeleteGlobalRef
+import com.dshatz.kni.utils.DeleteLocalRef
 import com.dshatz.kni.utils.FindClass
 import com.dshatz.kni.utils.GetMethodID
 import com.dshatz.kni.utils.NewGlobalRef
@@ -57,11 +58,19 @@ open class BaseCallback(
         }.also { envCache = it }
     }
 
-    public val jvmClass: jobject
+    /*public val jvmClass: jobject
         get() {
             if (isClosed) error("This native instance of ${this.className} has been closed.")
-            return env.FindClass(className)!!
-        }
+            return env.FindClass(className) ?: error("Class not found $className")
+        }*/
+
+    private val jvmClassGlobal: jobject = env.run {
+        val localClass = FindClass(className) ?: error("Class not found: $className")
+        NewGlobalRef(localClass) ?: error("Failed to create GlobalRef for class $className")
+    }.also {
+        // FindClass creates a local ref; we should delete it after making the global one
+        env.DeleteLocalRef(env.FindClass(className))
+    }
 
     private var isClosed: Boolean = false
 
@@ -69,7 +78,7 @@ open class BaseCallback(
 
     fun lazyMethodId(name: String, signature: String): Lazy<jmethodID> {
         return lazy {
-            env.GetMethodID(jvmClass, name, signature) ?: error("$name method not found $signature")
+            env.GetMethodID(jvmClassGlobal, name, signature) ?: error("$name method not found $signature")
         }
     }
 
@@ -93,6 +102,7 @@ open class BaseCallback(
         runCatching {
             // Get rid of the global ref.
             env.DeleteGlobalRef(ref)
+            env.DeleteGlobalRef(jvmClassGlobal)
             isClosed = true
         }.onFailure {
             it.printStackTrace()

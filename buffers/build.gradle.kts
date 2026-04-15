@@ -1,3 +1,8 @@
+@file:OptIn(ExperimentalWasmDsl::class, ExperimentalKotlinGradlePluginApi::class)
+
+import com.dshatz.kni.gettingOptional
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
@@ -19,6 +24,19 @@ val libName = "buffers"
 group = libGroup
 version = libVersion
 
+fun KotlinNativeTargetWithHostTests.setupTestLib() {
+    binaries.sharedLib()
+    binaries.withType<SharedLibrary> {
+        if (this.buildType == NativeBuildType.DEBUG) {
+            val linkTask = linkTaskProvider
+            tasks.withType<Test>().configureEach {
+                dependsOn(linkTask)
+                systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
+            }
+        }
+    }
+}
+
 kotlin {
     jvmToolchain(21)
     androidLibrary {
@@ -26,61 +44,49 @@ kotlin {
         minSdk = Configuration.minSdk
 
         namespace = "$libGroup.$libName"
-    }
 
-    fun KotlinNativeTargetWithHostTests.setupTestLib() {
-        binaries.sharedLib()
-        binaries.withType<SharedLibrary> {
-            if (this.buildType == NativeBuildType.DEBUG) {
-                val linkTask = linkTaskProvider
-                tasks.withType<Test>().configureEach {
-                    dependsOn(linkTask)
-                    systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
-                }
-            }
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }.configure {
+            this.instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
     }
-
-    androidNativeX64()
-    androidNativeArm64()
-    androidNativeX86()
-    androidNativeArm32()
-
-    val desktopTargets = listOf(
-        linuxX64 {
-            setupTestLib()
-        },
-        linuxArm64(),
-
-        mingwX64 {
-            setupTestLib()
-        },
-
-        macosX64 {
-            setupTestLib()
-        },
-        macosArm64 {
-            setupTestLib()
-        }
-    )
 
     jvm()
 
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    optionalTargets {
 
-    tvosX64()
-    tvosArm64()
-    tvosSimulatorArm64()
+        androidNativeX64()
+        androidNativeArm64()
+        androidNativeX86()
+        androidNativeArm32()
 
-    watchosX64()
-    watchosArm32()
-    watchosArm64()
-    watchosSimulatorArm64()
-    watchosDeviceArm64()
+        val desktopTargets = listOfNotNull(
+            linuxX64(),
+            linuxArm64(),
+            mingwX64(),
+            macosX64(),
+            macosArm64()
+        )
 
-    if (project.hasProperty("enableWeb")) {
+        desktopTargets.filterIsInstance<KotlinNativeTargetWithHostTests>().forEach {
+            it.setupTestLib()
+        }
+
+        iosX64()
+        iosArm64()
+        iosSimulatorArm64()
+
+        tvosX64()
+        tvosArm64()
+        tvosSimulatorArm64()
+
+        watchosX64()
+        watchosArm32()
+        watchosArm64()
+        watchosSimulatorArm64()
+        watchosDeviceArm64()
+
         js {
             browser {
                 testTask {
@@ -103,6 +109,7 @@ kotlin {
         }
     }
 
+
     applyDefaultHierarchyTemplate {
         common {
             group("androidJvm") {
@@ -114,8 +121,13 @@ kotlin {
 
     sourceSets {
         val androidJvmMain by getting
-        val androidMain by getting {
-            dependsOn(androidJvmMain)
+        val androidJvmTest by getting
+        val androidDeviceTest by getting
+
+        val jsMain by gettingOptional {
+            dependencies {
+                implementation(libs.coroutines.core)
+            }
         }
 
         val commonTest by getting {
@@ -125,12 +137,15 @@ kotlin {
             }
         }
 
-        if (project.hasProperty("enableWeb")) {
-            val jsMain by getting {
-                dependencies {
-                    implementation(libs.coroutines.core)
-                }
-            }
+        androidDeviceTest.dependencies {
+            implementation(libs.android.runner)
+            implementation(libs.test.core)
+            implementation(libs.junit4)
+        }
+        androidDeviceTest.dependsOn(androidJvmTest)
+
+        val androidMain by getting {
+            dependsOn(androidJvmMain)
         }
     }
 
@@ -184,7 +199,6 @@ mavenPublishing {
 }
 
 tasks.withType<Test>().configureEach {
-    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
     reports {
         junitXml.required.set(true)
@@ -192,7 +206,6 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.withType<KotlinNativeTest>().configureEach {
-    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
     reports {
         junitXml.required.set(true)
@@ -200,6 +213,5 @@ tasks.withType<KotlinNativeTest>().configureEach {
 }
 
 tasks.withType<KotlinTest>().configureEach {
-    logger.lifecycle("UP-TO-DATE check for $name is disabled, forcing it to run.")
     outputs.upToDateWhen { false }
 }
