@@ -41,17 +41,15 @@ kotlin {
 
     val desktopTargets = optionalTargets.run {
         listOfNotNull(
-            linuxX64 {
-                binaries.sharedLib {
-
-                }
-            },
-            linuxArm64 {
-                binaries.sharedLib {
-
-                }
-            }
+            linuxX64(),
+            linuxArm64(),
+            mingwX64(),
+            macosX64(),
+            macosArm64()
         )
+    }
+    desktopTargets.forEach {
+        it.binaries.sharedLib()
     }
     jvm {
         this.mainRun {
