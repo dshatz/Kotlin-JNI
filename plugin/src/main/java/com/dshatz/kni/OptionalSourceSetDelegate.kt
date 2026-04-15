@@ -6,14 +6,18 @@ import kotlin.reflect.KProperty
 
 class OptionalSourceSetDelegate(
     private val container: NamedDomainObjectContainer<KotlinSourceSet>,
-    private val configure: (KotlinSourceSet.() -> Unit)? = null
+    private val configure: (KotlinSourceSet.() -> Unit)?
 ) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): KotlinSourceSet? {
-        val sourceSet = container.findByName(property.name)
-        return sourceSet?.apply {
+    private var memoized: KotlinSourceSet? = null
+
+    operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): OptionalSourceSetDelegate {
+        memoized = container.findByName(property.name)?.apply {
             configure?.invoke(this)
         }
+        return this
     }
+
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): KotlinSourceSet? = memoized
 }
 
 fun NamedDomainObjectContainer<KotlinSourceSet>.gettingOptional(
