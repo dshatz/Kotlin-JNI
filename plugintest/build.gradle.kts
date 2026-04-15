@@ -65,6 +65,8 @@ kotlin {
             linuxX64.add(project.layout.projectDirectory.dir("prebuilt/linuxX64"))
             linuxArm64.add(project.layout.projectDirectory.dir("prebuilt/linuxArm64"))
             mingwX64.add(project.layout.projectDirectory.dir("prebuilt/mingwX64"))
+            macosX64.add(project.layout.projectDirectory.dir("prebuilt/macosX64"))
+            macosArm64.add(project.layout.projectDirectory.dir("prebuilt/macosArm64"))
         }
     }
 
