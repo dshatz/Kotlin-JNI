@@ -5,8 +5,10 @@ import java.util.Properties
 
 internal fun Project.localProperties(): Properties {
     val localProps = Properties()
-    rootProject.layout.settingsDirectory.file("local.properties").asFile.inputStream().use {
-        localProps.load(it)
+    runCatching {
+        rootProject.layout.settingsDirectory.file("local.properties").asFile.inputStream().use {
+            localProps.load(it)
+        }
     }
     return localProps
 }
