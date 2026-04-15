@@ -1,11 +1,14 @@
 package com.dshatz.kni.buffers
 
+import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.testSuite
+import de.infix.testBalloon.framework.shared.TestDisplayName
+import de.infix.testBalloon.framework.shared.TestElementName
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.random.Random
 
-val BufferTest by testSuite {
+val BufferTest by testSuite("BufferTest") {
 
     test("write read") {
         val bytes = Random.nextBytes(100)
@@ -31,46 +34,44 @@ val BufferTest by testSuite {
         }
     }
 
-    testSuite("invalid operations") {
-        test("allocate negative size") {
-            shouldThrow<Exception> {
-                allocateBuffer(-1L)
-            }
+    test("allocate negative size") {
+        shouldThrow<Exception> {
+            allocateBuffer(-1L)
         }
+    }
 
-        test("read out of bounds") {
-            val buffer = allocateBuffer(100)
-            shouldThrow<IllegalArgumentException> {
-                buffer.read(byteArrayOf(10), 0, 1000)
-            }
+    test("read out of bounds") {
+        val buffer = allocateBuffer(100)
+        shouldThrow<IllegalArgumentException> {
+            buffer.read(byteArrayOf(10), 0, 1000)
         }
+    }
 
-        test("read overflow destination") {
-            val buffer = allocateBuffer(100)
-            shouldThrow<IllegalArgumentException> {
-                buffer.read(byteArrayOf(10), 0, 100)
-            }
+    test("read overflow destination") {
+        val buffer = allocateBuffer(100)
+        shouldThrow<IllegalArgumentException> {
+            buffer.read(byteArrayOf(10), 0, 100)
         }
+    }
 
-        test("read from negative offset") {
-            val buffer = allocateBuffer(100)
-            shouldThrow<IllegalArgumentException> {
-                buffer.read(byteArrayOf(10), -1, 10)
-            }
+    test("read from negative offset") {
+        val buffer = allocateBuffer(100)
+        shouldThrow<IllegalArgumentException> {
+            buffer.read(byteArrayOf(10), -1, 10)
         }
+    }
 
-        test("write negative offset") {
-            val buffer = allocateBuffer(999999)
-            shouldThrow<IllegalArgumentException> {
-                buffer.put(Random.nextBytes(buffer.capacity.toInt()), -1)
-            }
+    test("write negative offset") {
+        val buffer = allocateBuffer(999999)
+        shouldThrow<IllegalArgumentException> {
+            buffer.put(Random.nextBytes(buffer.capacity.toInt()), -1)
         }
+    }
 
-        test("write past end") {
-            val buffer = allocateBuffer(999999)
-            shouldThrow<IllegalArgumentException> {
-                buffer.put(Random.nextBytes(buffer.capacity.toInt()), 1)
-            }
+    test("write past end") {
+        val buffer = allocateBuffer(999999)
+        shouldThrow<IllegalArgumentException> {
+            buffer.put(Random.nextBytes(buffer.capacity.toInt()), 1)
         }
     }
 }

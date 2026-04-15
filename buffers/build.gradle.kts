@@ -132,11 +132,6 @@ kotlin {
                 }
             }
         }
-        val jvmTest by getting {
-            dependencies {
-                implementation(libs.kotest.junit)
-            }
-        }
     }
 
     compilerOptions {

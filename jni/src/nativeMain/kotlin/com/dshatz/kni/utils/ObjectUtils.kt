@@ -12,6 +12,7 @@ import com.dshatz.kni.binding.jlong
 import com.dshatz.kni.binding.jmethodID
 import com.dshatz.kni.binding.jobject
 import com.dshatz.kni.buffers.ByteBuffer
+import com.dshatz.kni.buffers.DelicateBufferAPI
 import com.dshatz.kni.jvalue
 import com.dshatz.kni.l
 import com.dshatz.kni.pointedCommon
@@ -25,12 +26,15 @@ import kotlinx.cinterop.invoke
  *
  * @receiver a java.nio.ByteBuffer as received into a native function.
  */
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, DelicateBufferAPI::class)
 fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
-    val rawAddress = env.pointed.pointedCommon!!.GetDirectBufferAddress!!.invoke(env, this)
-    val size = env.pointed.pointedCommon!!.GetDirectBufferCapacity!!.invoke(env, this)
+    val globalRef = env.NewGlobalRef(this)
+    val rawAddress = env.pointed.pointedCommon!!.GetDirectBufferAddress!!.invoke(env, globalRef)
+    val size = env.pointed.pointedCommon!!.GetDirectBufferCapacity!!.invoke(env, globalRef)
     val address = rawAddress!!.reinterpret<ByteVar>()
-    return ByteBuffer.wrapAddress(address, size, memoryOwner = this)
+    return ByteBuffer.wrapAddress(address, size, owner = globalRef, finalizer = {
+        it?.let(env::DeleteGlobalRef)
+    })
 }
 
 

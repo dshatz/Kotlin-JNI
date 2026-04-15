@@ -12,6 +12,8 @@ actual fun allocateBuffer(size: Long): ByteBuffer {
     return ByteBuffer(
         _address = ptr,
         capacity = size,
-        memoryOwner = null
+        finalizer = {
+            nativeHeap.free(ptr.rawValue)
+        }
     )
 }

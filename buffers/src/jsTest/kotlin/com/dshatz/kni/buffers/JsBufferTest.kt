@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import kotlin.random.Random
 
 @OptIn(ExperimentalUnsignedTypes::class)
-val JsBufferTest by testSuite {
+val JsBufferTest by testSuite("JsBufferTest") {
     test("allocate and write") {
         val buffer = allocateBuffer(100)
 

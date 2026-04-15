@@ -3,6 +3,9 @@ package com.dshatz.kni.buffers
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.convert
+import kotlinx.cinterop.objcPtr
+import kotlinx.cinterop.objc_release
+import kotlinx.cinterop.objc_retain
 import kotlinx.cinterop.reinterpret
 import platform.Foundation.NSData
 import platform.Foundation.create
@@ -17,9 +20,13 @@ fun ByteBuffer.toNSData(): NSData {
 
 @OptIn(ExperimentalForeignApi::class)
 fun NSData.toByteBuffer(): ByteBuffer {
+    val retainedData = this.objcPtr()
+    objc_retain(retainedData)
     return ByteBuffer(
         _address =  this.bytes?.reinterpret(),
         capacity = this.length.convert(),
-        memoryOwner = this
+        finalizer = {
+            objc_release(retainedData)
+        }
     )
 }

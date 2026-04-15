@@ -12,7 +12,7 @@ import platform.posix.memcpy
 actual class ByteBuffer internal constructor(
     actual override val capacity: Long,
     internal var _address: CPointer<ByteVar>?,
-    internal var memoryOwner: Any?,
+    internal var finalizer: () -> Unit,
 ): IByteBuffer() {
     val address: CPointer<ByteVar>
         get() = _address ?: throw BufferReleasedException()
@@ -29,13 +29,7 @@ actual class ByteBuffer internal constructor(
         val ptr = _address
         _address = null
 
-        if (memoryOwner == null && ptr != null) {
-            // We own the memory.
-            nativeHeap.free(ptr.rawValue)
-        } else {
-            (memoryOwner as? Pinned<*>)?.unpin()
-            memoryOwner = null
-        }
+        finalizer()
     }
 
     private var _released: Boolean = false
@@ -62,17 +56,43 @@ actual class ByteBuffer internal constructor(
             return ByteBuffer(
                 bytes.size.convert(),
                 pinned.addressOf(0),
-                pinned
+                finalizer = {
+                    pinned.unpin()
+                }
             )
         }
 
-
-        fun wrapAddress(address: CPointer<ByteVar>, size: Long, memoryOwner: Any? = address): ByteBuffer {
+        /**
+         * Create the [ByteBuffer] by wrapping the given [address].
+         *
+         * It is the caller's responsibility to release the memory in the [finalizer] and to make sure that memory is not overwritten while this object is being used.
+         */
+        @DelicateBufferAPI
+        fun <T> wrapAddress(address: CPointer<ByteVar>, size: Long, owner: T, finalizer: (T) -> Unit): ByteBuffer {
             return ByteBuffer(
                 capacity = size,
                 _address = address,
-                memoryOwner = memoryOwner
+                finalizer = {
+                    finalizer(owner)
+                }
             )
+        }
+
+        fun wrapAddressMemScope(memScope: MemScope, address: CPointer<ByteVar>, size: Long): ByteBuffer {
+            val buffer = ByteBuffer(
+                capacity = size,
+                _address = address,
+                finalizer = {
+
+                }
+            )
+            memScope.defer {
+                buffer.release()
+            }
+            return buffer
         }
     }
 }
+
+@RequiresOptIn("This is delicate Buffer API. Please read the kdoc.")
+annotation class DelicateBufferAPI

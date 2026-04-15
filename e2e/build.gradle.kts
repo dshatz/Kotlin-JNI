@@ -131,9 +131,6 @@ kotlin {
         }
         androidDeviceTest.dependsOn(androidJvmTest)
 
-        jvmTest.dependencies {
-            implementation(libs.kotest.junit)
-        }
         nativeMain.dependencies {
             implementation(libs.coroutines.core)
         }
