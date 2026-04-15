@@ -32,7 +32,7 @@ jobs:
           configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
 
       - name: Build and Test
-        run: ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest -PenableWeb
+        run: ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest -PenableWeb -PnativeBuildType=debug
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs="-Xmx12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
@@ -73,7 +73,7 @@ jobs:
         with:
           configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
       - name: Build and Test
-        run: ./gradlew allTests
+        run: ./gradlew allTests -PnativeBuildType=debug
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs="-Xmx12g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
@@ -99,7 +99,7 @@ jobs:
         with:
           configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
       - name: Build and Test
-        run: ./gradlew allTests
+        run: ./gradlew allTests -PnativeBuildType=debug
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs="-Xmx5g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
