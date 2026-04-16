@@ -41,17 +41,15 @@ kotlin {
 
     val desktopTargets = optionalTargets.run {
         listOfNotNull(
-            linuxX64 {
-                binaries.sharedLib {
-
-                }
-            },
-            linuxArm64 {
-                binaries.sharedLib {
-
-                }
-            }
+            linuxX64(),
+            linuxArm64(),
+            mingwX64(),
+            macosX64(),
+            macosArm64()
         )
+    }
+    desktopTargets.forEach {
+        it.binaries.sharedLib()
     }
     jvm {
         this.mainRun {
@@ -66,6 +64,9 @@ kotlin {
         bundlesPrebuiltNatives {
             linuxX64.add(project.layout.projectDirectory.dir("prebuilt/linuxX64"))
             linuxArm64.add(project.layout.projectDirectory.dir("prebuilt/linuxArm64"))
+            mingwX64.add(project.layout.projectDirectory.dir("prebuilt/mingwX64"))
+            macosX64.add(project.layout.projectDirectory.dir("prebuilt/macosX64"))
+            macosArm64.add(project.layout.projectDirectory.dir("prebuilt/macosArm64"))
         }
     }
 

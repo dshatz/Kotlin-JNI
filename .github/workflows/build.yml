@@ -33,7 +33,7 @@ jobs:
 
       - name: Build and Test
         run: |
-          ./gradlew allTests e2e:assembleAndroidDeviceTest plugintest:assembleAndroidDeviceTest \
+          ./gradlew allTests assembleAndroidDeviceTest assembleAndroidDeviceTest \
             -PkniNativeBuildType=debug \
             -PkniAllowedTargets=linuxX64,androidNativeArm64,wasmJs,js,wasmWasi
         env:
@@ -60,6 +60,13 @@ jobs:
         with:
           name: plugintest-androidTest.apk
           path: ./plugintest/build/outputs/apk/androidTest/plugintest-androidTest.apk
+          archive: false
+      - name: Upload Android Test APK (buffers)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: buffers-androidTest.apk
+          path: ./buffers/build/outputs/apk/androidTest/buffers-androidTest.apk
           archive: false
 
   test-windows:
@@ -120,7 +127,7 @@ jobs:
     needs: ["test-linux"]
     strategy:
       matrix:
-        module: ["e2e", "plugintest"]
+        module: ["e2e", "plugintest", "buffers"]
       fail-fast: false
     permissions:
       contents: read

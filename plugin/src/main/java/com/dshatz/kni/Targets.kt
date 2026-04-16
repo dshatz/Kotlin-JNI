@@ -198,11 +198,6 @@ private val webTargets = listOf(
 )
 
 val Project.allowedTargets get() = run {
-    val nativeTargets: String? = if (project.hasProperty(Config.ARG_ALLOWED_TARGETS)) {
-        project.property(Config.ARG_ALLOWED_TARGETS).toString()
-    } else {
-        val localProps = localProperties()
-        localProps.getProperty(Config.ARG_ALLOWED_TARGETS, null)
-    }
-    nativeTargets?.split(',') ?: (linuxTargets + appleTargets + windowsTargets + androidTargets + webTargets)
+    getKniProperty(Config.ARG_ALLOWED_TARGETS)?.split(',')
+        ?: (linuxTargets + appleTargets + windowsTargets + androidTargets + webTargets)
 }

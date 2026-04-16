@@ -55,8 +55,14 @@ kotlin {
         watchosSimulatorArm64()
         watchosDeviceArm64()
 
-        js()
-        wasmJs()
+        js {
+            browser()
+            nodejs()
+        }
+        wasmJs() {
+            browser()
+            nodejs()
+        }
         wasmWasi()
     }
 
