@@ -122,6 +122,9 @@ kotlin {
     }
 
     sourceSets {
+        commonMain.dependencies {
+            api(libs.io)
+        }
         val androidMain by getting
 
         val androidJvmMain by getting

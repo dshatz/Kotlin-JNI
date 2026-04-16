@@ -65,15 +65,6 @@ kotlin {
         }
         wasmWasi()
     }
-
-    applyDefaultHierarchyTemplate {
-        common {
-            group("jni") {
-                withAndroidTarget()
-                withJvm()
-            }
-        }
-    }
 }
 
 mavenPublishing {

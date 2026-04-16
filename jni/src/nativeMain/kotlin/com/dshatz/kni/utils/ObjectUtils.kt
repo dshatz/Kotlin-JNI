@@ -1,28 +1,17 @@
 package com.dshatz.kni.utils
 
 import com.dshatz.kni.JNIEnvVar
-import com.dshatz.kni.binding.jboolean
-import com.dshatz.kni.binding.jbyte
-import com.dshatz.kni.binding.jchar
-import com.dshatz.kni.binding.jclass
-import com.dshatz.kni.binding.jdouble
-import com.dshatz.kni.binding.jfloat
-import com.dshatz.kni.binding.jint
-import com.dshatz.kni.binding.jlong
-import com.dshatz.kni.binding.jmethodID
-import com.dshatz.kni.binding.jobject
+import com.dshatz.kni.binding.*
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.DelicateBufferAPI
 import com.dshatz.kni.jvalue
 import com.dshatz.kni.l
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.*
-import kotlinx.cinterop.get
-import kotlinx.cinterop.invoke
 
 
 /**
- * Convert jobject representing a java.nio.ByteBuffer to a native [binding.ByteBuffer] wrapper.
+ * Convert jobject representing a java.nio.ByteBuffer to a native [ByteBuffer] wrapper.
  *
  * @receiver a java.nio.ByteBuffer as received into a native function.
  */

@@ -1,4 +1,7 @@
-import com.dshatz.kni.addKspForNative
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
+import com.dshatz.kni.bundlesNatives
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -7,16 +10,16 @@ plugins {
     id("com.dshatz.kni")
 }
 
+kni {
+    autoWire {
+        kspDependency = project(":ksp")
+    }
+}
+
 kotlin {
     jvmToolchain(21)
-    jvm {
-        mainRun {
-            mainClass = "com.dshatz.kni.MainKt"
-        }
-    }
 
     optionalTargets {
-
         androidNativeX64()
         androidNativeArm64()
         androidNativeX86()
@@ -32,6 +35,13 @@ kotlin {
         desktopTargets.forEach {
             it.binaries.sharedLib()
         }
+
+        jvm {
+            mainRun {
+                mainClass = "com.dshatz.kni.MainKt"
+            }
+            bundlesNatives(desktopTargets)
+        }
     }
 
     applyDefaultHierarchyTemplate()
@@ -43,8 +53,4 @@ kotlin {
             implementation(project(":buffers"))
         }
     }
-}
-
-dependencies {
-    addKspForNative(project(":ksp"))
 }

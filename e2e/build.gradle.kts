@@ -1,16 +1,21 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import com.dshatz.kni.bundlesNatives
-import com.dshatz.kni.addKspForNative
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.test)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.android.library)
     id("com.dshatz.kni")
     alias(libs.plugins.osdetector)
-    alias(libs.plugins.android.library)
+}
+
+kni {
+    autoWire {
+        kspDependency = project(":ksp")
+    }
 }
 
 kotlin {
@@ -79,21 +84,8 @@ kotlin {
         }
         val androidDeviceTest by getting
 
-        val androidJvmMain by creating {
-            dependsOn(commonMain)
-        }
-        val androidMain by getting {
-            dependsOn(androidJvmMain)
-        }
-        val jvmMain by getting
-
-
-        val androidJvmTest by creating {
-            dependsOn(commonTest.get())
-        }
-
-        val jvmTest by getting {
-            dependsOn(androidJvmTest)
+        val jniJvmMain by getting {
+            println("Got jniJvmMain")
         }
 
         androidDeviceTest.dependencies {
@@ -101,7 +93,6 @@ kotlin {
             implementation(libs.test.core)
             implementation(libs.junit4)
         }
-        androidDeviceTest.dependsOn(androidJvmTest)
 
         nativeMain.dependencies {
             implementation(libs.coroutines.core)
@@ -110,14 +101,13 @@ kotlin {
             implementation(project(":buffers"))
         }
     }
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 }
 
 tasks.withType<Test>().configureEach {
     reports {
         junitXml.required.set(true)
     }
-}
-
-dependencies {
-    addKspForNative(project(":ksp"))
 }

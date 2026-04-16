@@ -15,6 +15,7 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.internal.extensions.stdlib.capitalized
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
@@ -26,6 +27,66 @@ class Plugin: Plugin<Project> {
     override fun apply(target: Project) {
         val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
         kotlin.extensions.create("optionalTargets", OptionalTargetsExtension::class.java, kotlin)
+        target.extensions.create("kni", KniExtension::class.java, target.objects)
+    }
+}
+
+internal fun autoWire(target: Project, config: AutoWireExtension) {
+    val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
+    target.pluginManager.withPlugin("com.google.devtools.ksp") {
+        kotlin.targets.withType(KotlinMultiplatformAndroidLibraryTarget::class.java).all { androidTarget ->
+            kotlin.addJniSourceSets(androidTarget, "jniJvm", "common")
+            target.dependencies.add("ksp${androidTarget.name.capitalized()}", config.kspDependency)
+        }
+    }
+
+    val jniNatives = (androidNativeTargets + linuxTargets + macOsTargets + windowsTargets)
+    val jniJvms = listOf("android", "jvm")
+    kotlin.targets.all {
+        if (it.name == "metadata") return@all
+        val (groupName, dependOn) = when (it.name) {
+            in jniNatives -> {
+                "jniNative" to "native"
+            }
+
+            in jniJvms -> {
+                "jniJvm" to "common"
+            }
+
+            else -> null to null
+        }
+        if (groupName == null || dependOn == null) return@all
+        kotlin.addJniSourceSets(it, groupName, dependOn)
+        target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
+    }
+}
+
+private fun KotlinMultiplatformExtension.addJniSourceSets(target: KotlinTarget, groupSourceSet: String, dependOn: String) {
+    val (main, test) = if (dependOn == "common") {
+        sourceSets.commonMain to sourceSets.commonTest
+    } else if (dependOn == "native") {
+        sourceSets.nativeMain to sourceSets.nativeTest
+    } else error("Unknown dependOn value")
+    target.compilations.all { compilation ->
+        when (compilation.name) {
+            "main" -> {
+                val s = sourceSets.maybeCreate("${groupSourceSet}Main")
+                main.configure {
+                    s.dependsOn(it)
+                }
+                compilation.defaultSourceSet.dependsOn(s)
+                project.logger.info("Adding dependency from ${compilation.defaultSourceSet.name} to ${s.name}")
+            }
+
+            "deviceTest", "test" -> {
+                val s = sourceSets.maybeCreate("${groupSourceSet}Test")
+                test.configure {
+                    s.dependsOn(it)
+                }
+                compilation.defaultSourceSet.dependsOn(s)
+                project.logger.info("Adding dependency from ${compilation.defaultSourceSet.name} to ${s.name}")
+            }
+        }
     }
 }
 

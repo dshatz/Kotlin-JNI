@@ -3,7 +3,7 @@ package com.dshatz.kni.buffers
 import java.nio.ByteBuffer
 
 
-actual data class ByteBuffer(internal val jvmBuffer: ByteBuffer) : IByteBuffer() {
+actual data class ByteBuffer(val jvmBuffer: ByteBuffer) : IByteBuffer() {
     actual override val capacity: Long get() = jvmBuffer.capacity().toLong()
 
     actual override fun putInternal(src: ByteArray, dstOffset: Int, length: Int) {

@@ -66,10 +66,9 @@ open class BaseCallback(
 
     private val jvmClassGlobal: jobject = env.run {
         val localClass = FindClass(className) ?: error("Class not found: $className")
-        NewGlobalRef(localClass) ?: error("Failed to create GlobalRef for class $className")
-    }.also {
-        // FindClass creates a local ref; we should delete it after making the global one
-        env.DeleteLocalRef(env.FindClass(className))
+        val globalClass = NewGlobalRef(localClass) ?: error("Failed to create GlobalRef")
+        DeleteLocalRef(localClass) // Delete the exact one you just made
+        globalClass // Return the global ref to be assigned
     }
 
     private var isClosed: Boolean = false
