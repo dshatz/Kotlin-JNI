@@ -6,6 +6,7 @@ import com.dshatz.kni.annotations.CallableFromNative
 import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.callable.NativeCallable
 import com.dshatz.kni.serialization.SerializerProcessor
+import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
@@ -65,21 +66,30 @@ class NativeKommons : SymbolProcessorProvider {
                 return emptyList()
             } else {
                 val funs = getAnnotatedCallables(resolver)
-                generator.generateNativeProxies(funs).forEach {
+                generator.generateNativeFuns(funs).forEach {
                     it.writeTo(codeGenerator, Dependencies(false, sources = funs.mapNotNull { it.containingFile }.toTypedArray()))
                 }
             }
             return emptyList()
         }
 
+        @OptIn(KspExperimental::class)
         private fun getAnnotatedCallables(resolver: Resolver): List<KSFunctionDeclaration> {
+            val allowedClassKinds = setOf(ClassKind.OBJECT, ClassKind.CLASS)
             return resolver.getSymbolsWithAnnotation(Callable::class.java.name).toList()
                 .filterIsInstance<KSFunctionDeclaration>()
                 .filter {
-                    if ((it.parent as? KSClassDeclaration)?.classKind != ClassKind.OBJECT) {
-                        env.logger.error("@Callable is only supported inside Objects", it)
-                        false
-                    } else true
+                    val parentClass = it.parent as? KSClassDeclaration
+                    if (parentClass == null) {
+                        // top level function
+                        true
+                    } else {
+                        if (parentClass?.classKind !in allowedClassKinds) {
+                            println("Loc: ${it.location}, parent: ${it.parent}")
+                            env.logger.error("@Callable is only supported inside classes/objects or on top-level functions.", it)
+                            false
+                        } else true
+                    }
                 }
                 .distinctBy { it.qualifiedName?.asString() }
         }

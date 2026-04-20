@@ -1,26 +1,12 @@
 package com.dshatz.kni.callable
 
-import com.dshatz.kni.CNameUtils
-import com.dshatz.kni.Registry
-import com.dshatz.kni.TypeInfo
-import com.dshatz.kni.TypeMapper
-import com.dshatz.kni.TypeMatcher
-import com.dshatz.kni.annotations.Callable
-import com.google.devtools.ksp.closestClassDeclaration
+import com.dshatz.kni.*
+import com.dshatz.kni.kspfix.FunLocation
+import com.dshatz.kni.kspfix.functionLocation
+import com.dshatz.kni.kspfix.withLocations
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.AnnotationSpec
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.asTypeName
-import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.*
 
 class CallableProcessor(
     private val registry: Registry,
@@ -28,29 +14,23 @@ class CallableProcessor(
 ) {
     private val mapper: TypeMapper = TypeMapper(registry)
 
-    fun generateNativeProxies(
+    fun generateNativeFuns(
         funs: List<KSFunctionDeclaration>,
     ): List<FileSpec> {
-        return funs.groupBy { it.parentDeclaration }.map { (parent, functions) ->
-            val cls = parent?.closestClassDeclaration()!!.toClassName()
+        return funs.withLocations().groupBy { it.location.className }.map { (parent, functions) ->
 
-            val funSpecs = functions.map { f ->
-                if (
-                    f.modifiers.contains(Modifier.ACTUAL) &&
-                    f.annotations.any { it.annotationType.toTypeName() == Callable::class.asTypeName() }) {
-                    logger.warn("@Callable can only be applied to a top-level expect function.", f)
-                }
+            val funSpecs = functions.map { (f, location) ->
                 val params = f.parameters.map {
                     ParamInfo(it.name!!.asString(), mapper.mapType(it.type))
                 }
 
                 val returnType = mapper.mapType(f.returnType!!)
 
-                val actualMember = MemberName(cls, f.simpleName.asString())
-                generateCnameFunction(actualMember, params, returnType)
+                generateCnameFunction(location.toMemberName(f.simpleName.asString()), location, params, returnType)
             }
 
-            FileSpec.builder(cls)
+            logger.warn("Adding file ${parent.simpleName}: generateNativeFuns(${funs.joinToString { it.simpleName.asString() }})")
+            FileSpec.builder(parent)
                 .addFunctions(funSpecs)
                 .build()
         }
@@ -58,13 +38,14 @@ class CallableProcessor(
 
     private fun generateCnameFunction(
         callFun: MemberName,
+        funLocation: FunLocation,
         params: List<ParamInfo>,
         returnType: TypeInfo
     ): FunSpec {
 
         val jniCName = CNameUtils.jniFunctionCName(
             packageName = callFun.packageName,
-            className = callFun.enclosingClassName!!.simpleName,
+            className = funLocation.classNameKt.simpleName,
             functionName = callFun.simpleName + "External"
         )
 
@@ -101,77 +82,82 @@ class CallableProcessor(
             )
             .build()
         return f
-        /*return FileSpec.builder(ClassName(callFun.packageName, funName))
-            .addFunction(f)
-            .build()*/
     }
 
     fun generateJvmActuals(
         funs: List<KSFunctionDeclaration>,
     ): List<FileSpec> {
-        return funs.groupBy { it.parentDeclaration }.map { (parent, functions) ->
-            val cls = parent?.closestClassDeclaration()!!.toClassName()
-            val funNames = functions.associateWith { f ->
-                MemberName(cls, f.simpleName.asString())
+        return funs.withLocations().groupBy { it.location.className }.map { (parent, functions) ->
+            val funNames = functions.associate { f ->
+                f.f to MemberName(f.location.className, f.f.simpleName.asString())
             }
 
-            val funSpecs = functions.flatMap { f ->
+            val funSpecs = functions.groupBy { it.location.topLevel }.mapValues { (_, functions) ->
+                functions.flatMap { (f, loc) ->
 
-                val externalMember = funNames[f]!!.let {
-                    MemberName(f.packageName.asString(), f.simpleName.asString() + "External")
-                }
-                val params = f.parameters.map {
-                    it.name!!.asString() to mapper.mapType(it.type)
-                }
-                val returnType = mapper.mapType(f.returnType!!)
-
-                val funSpec = FunSpec.builder(funNames[f]!!)
-                    .addModifiers(KModifier.ACTUAL)
-                    .returns(returnType.kotlinType)
-                    .apply {
-                        params.forEach { (name, typeInfo) ->
-                            addParameter(ParameterSpec.builder(
-                                name = name,
-                                type = typeInfo.kotlinType
-                            ).build())
-                        }
+                    val externalMember = funNames[f]!!.let {
+                        MemberName(f.packageName.asString(), f.simpleName.asString() + "External")
                     }
-                    .apply {
-                        val paramPacking = params.map { (name, typeInfo) ->
-                            typeInfo.packCodeJvm(CodeBlock.of("%N", name))
+                    val params = f.parameters.map {
+                        it.name!!.asString() to mapper.mapType(it.type)
+                    }
+                    val returnType = mapper.mapType(f.returnType!!)
+
+                    val funSpec = FunSpec.builder(funNames[f]!!)
+                        .addModifiers(KModifier.ACTUAL)
+                        .returns(returnType.kotlinType)
+                        .apply {
+                            params.forEach { (name, typeInfo) ->
+                                addParameter(ParameterSpec.builder(
+                                    name = name,
+                                    type = typeInfo.kotlinType
+                                ).build())
+                            }
                         }
-                        val paramsCode = paramPacking.joinToString()
-                        val callExternalCode = CodeBlock.of("%M(%L)", externalMember, paramsCode)
-                        addCode(
-                            CodeBlock.builder()
-                                .addStatement("return %L", returnType.unpackCodeJvm(callExternalCode))
-                                .build()
-                        )
-                    }.build()
+                        .apply {
+                            val paramPacking = params.map { (name, typeInfo) ->
+                                typeInfo.packCodeJvm(CodeBlock.of("%N", name))
+                            }
+                            val paramsCode = paramPacking.joinToString()
+                            val callExternalCode = CodeBlock.of("%M(%L)", externalMember, paramsCode)
+                            addCode(
+                                CodeBlock.builder()
+                                    .addStatement("return %L", returnType.unpackCodeJvm(callExternalCode))
+                                    .build()
+                            )
+                        }.build()
 
 
-                val externalSpec = FunSpec.builder(externalMember)
-                    .addModifiers(KModifier.EXTERNAL)
-                    .returns(returnType.jniType.jvmType)
-                    .apply {
-                        params.forEach { (name, typeInfo) ->
-                            addParameter(ParameterSpec.builder(
-                                name = name,
-                                type = typeInfo.jniType.jvmType,
-                            ).build())
-                        }
-                    }.build()
-                listOf(funSpec, externalSpec)
+                    val externalSpec = FunSpec.builder(externalMember)
+                        .addModifiers(KModifier.EXTERNAL)
+                        .returns(returnType.jniType.jvmType)
+                        .apply {
+                            params.forEach { (name, typeInfo) ->
+                                addParameter(ParameterSpec.builder(
+                                    name = name,
+                                    type = typeInfo.jniType.jvmType,
+                                ).build())
+                            }
+                        }.build()
+                    listOf(funSpec, externalSpec)
+                }
             }
 
-            val classSpec = TypeSpec.objectBuilder(cls)
-                .addModifiers(KModifier.ACTUAL)
-                .addFunctions(funSpecs)
+            val topLevel = funSpecs.get(true) ?: emptyList()
+            val classLevel = funSpecs.get(false) ?: emptyList()
+            FileSpec.builder(parent)
+                .addFunctions(topLevel)
+                .apply {
+                    if (classLevel.isNotEmpty()) {
+                        addType(TypeSpec.objectBuilder(parent)
+                            .addModifiers(KModifier.ACTUAL)
+                            .addFunctions(classLevel)
+                            .build()
+                        )
+                    }
+                }
                 .build()
 
-            FileSpec.builder(cls)
-                .addType(classSpec)
-                .build()
         }
     }
 

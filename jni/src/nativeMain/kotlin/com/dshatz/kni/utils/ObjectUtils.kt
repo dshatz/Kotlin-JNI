@@ -34,7 +34,7 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
  */
 @OptIn(ExperimentalForeignApi::class)
 fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
-    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, address, capacity)
+    val jvmBuffer = toJNioByteBuffer(env)
     val cls = env.FindClass(ByteBuffer::class.qualifiedName!!.replace('.', '/'))!!
     val constructor = env.GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;)V")!!
     return memScoped {
@@ -42,6 +42,17 @@ fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
         args[0].l = jvmBuffer
         env.pointed.pointedCommon!!.NewObjectA!!(env, cls, constructor, args)
     }
+}
+
+/**
+ * Convert a native wrapper [ByteBuffer] to a jobject representing the same [ByteBuffer].
+ *
+ * @return a jobject representing a java.nio.ByteBuffer or null if operation failed.
+ */
+@OptIn(ExperimentalForeignApi::class)
+fun ByteBuffer.toJNioByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
+    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, address, capacity)
+    return jvmBuffer
 }
 
 /**

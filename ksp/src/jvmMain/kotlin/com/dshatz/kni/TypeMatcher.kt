@@ -78,6 +78,7 @@ internal object TypeMatcher {
         val ToJString = MemberName("com.dshatz.kni.utils", "toJString")
 
         val ToJByteBuffer = MemberName("com.dshatz.kni.utils", "toJByteBuffer")
+        val ToJNioByteBuffer = MemberName("com.dshatz.kni.utils", "toJNioByteBuffer")
 
         val ToKBoolean = MemberName("com.dshatz.kni.utils", "toKBoolean")
         val ToKBooleanArray = MemberName("com.dshatz.kni.utils", "toKBooleanArray")

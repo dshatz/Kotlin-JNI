@@ -18,11 +18,10 @@ object SerializerProcessor {
     ): MutableMap<TypeName, ClassName> {
         val serializerRegistry: MutableMap<TypeName, ClassName> = mutableMapOf()
         serializers.forEach {
-            env.logger.warn("Processing serializer for ${it.simpleName.asString()}")
+            env.logger.info("Processing serializer for ${it.simpleName.asString()}")
             if (it.classKind != ClassKind.OBJECT) {
                 env.logger.error("@AddJniSerializer can only be applied to objects.", it)
             } else {
-                env.logger.warn("supertypes: ${it.superTypes.map { it.resolve().toTypeName() }.toList()}")
                 val superclass = it.superTypes
                     .find { (it.resolve().toTypeName() as ParameterizedTypeName).rawType == TypeMatcher.JniSerializer }
                 if (superclass == null) {

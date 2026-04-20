@@ -2,6 +2,7 @@ package kni.test
 
 import com.dshatz.kni.annotations.Callable
 import com.dshatz.kni.buffers.ByteBuffer
+import com.dshatz.kni.buffers.allocateBuffer
 import kotlin.random.Random
 
 actual object CommonCallable {
@@ -16,4 +17,10 @@ actual object CommonCallable {
         buffer.put(bytes)
         return bytes.toHexString()
     }
+}
+
+@Callable
+actual fun topLevelFun(): ByteBuffer {
+    val buffer = allocateBuffer(1024)
+    return buffer
 }

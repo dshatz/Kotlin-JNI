@@ -19,6 +19,10 @@ plugins {
     signing
 }
 
+kni {
+    autoWire {}
+}
+
 val libGroup = VersionCatalog.artifactName()
 val libName = "jni"
 group = libGroup
@@ -114,10 +118,6 @@ kotlin {
                     withAndroidNative()
                 }
             }
-            group("androidJvm") {
-                withAndroidTarget()
-                withJvm()
-            }
         }
     }
 
@@ -125,10 +125,6 @@ kotlin {
         commonMain.dependencies {
             api(libs.io)
         }
-        val androidMain by getting
-
-        val androidJvmMain by getting
-        androidMain.dependsOn(androidJvmMain)
         commonTest.dependencies {
             implementation(libs.test)
         }

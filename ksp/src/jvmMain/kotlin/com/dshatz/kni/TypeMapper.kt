@@ -47,12 +47,10 @@ internal class TypeMapper(
         } else if (kotlinType == TypeMatcher.KByteBuffer) {
             TypeInfo.ByteBuffer()
         } else {
-            // TODO
             TypeInfo.Simple(
                 kotlinType = kotlinType,
                 jniType = JNIType(kotlinType, kotlinType)
             )
-//            error("Could not map type $kotlinType")
         }
     }
 }
@@ -132,11 +130,12 @@ sealed class TypeInfo {
         override val jniType: JNIType = JNIType(TypeMatcher.KNioBuffer, TypeMatcher.JObject),
     ): TypeInfo() {
         override fun packCode(unpackedCode: CodeBlock): CodeBlock {
-            return CodeBlock.of("%L.%M(env)", unpackedCode, TypeMatcher.Method.ToJByteBuffer)
+            // Create a jobject for common bytebuffer
+            return CodeBlock.of("%L.%M(env)!!", unpackedCode, TypeMatcher.Method.ToJNioByteBuffer)
         }
 
         override fun unpackCode(packedCode: CodeBlock): CodeBlock {
-            return CodeBlock.of("%L.%M(env)", packedCode, TypeMatcher.Method.ToKDirectByteBuffer)
+            return CodeBlock.of("%L.%M(env)!!", packedCode, TypeMatcher.Method.ToKDirectByteBuffer)
         }
 
         override fun packCodeJvm(unpackedCode: CodeBlock): CodeBlock {

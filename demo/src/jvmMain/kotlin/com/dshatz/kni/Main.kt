@@ -4,7 +4,6 @@ import com.dshatz.kni.buffers.allocateBuffer
 import com.dshatz.kni.load.BundledLibLoader
 import com.dshatz.kni.sample.Demo
 import com.dshatz.kni.sample.JvmService
-import java.io.File
 import kotlin.random.Random
 
 fun main() {

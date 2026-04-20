@@ -2,6 +2,7 @@ package kni.test
 
 import com.dshatz.kni.annotations.Callable
 import com.dshatz.kni.buffers.ByteBuffer
+import com.dshatz.kni.buffers.allocateBuffer
 
 expect object CommonCallable {
 
@@ -12,3 +13,6 @@ expect object CommonCallable {
     fun fillBuffer(buffer: ByteBuffer): String
 
 }
+
+@Callable
+expect fun topLevelFun(): ByteBuffer

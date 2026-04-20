@@ -40,4 +40,13 @@ fun TestSuiteScope.bridgeTests() {
         val contents = buffer.readToByteArray(0, 1024)
         contents.toHexString() shouldBe filledHex
     }
+    test("top-level") {
+        topLevelFun().capacity shouldBe 1024
+    }
+    test("zero copy buffer") {
+        val buffer = topLevelFun() // allocated in native
+        val filledHex = CommonCallable.fillBuffer(buffer) // pass it back to native and fill there
+        val contents = buffer.readToByteArray(0, 1024)
+        contents.toHexString() shouldBe filledHex // it's all the same underlying native memory!
+    }
 }
