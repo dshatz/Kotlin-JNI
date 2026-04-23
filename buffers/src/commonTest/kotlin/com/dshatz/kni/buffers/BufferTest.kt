@@ -1,9 +1,6 @@
 package com.dshatz.kni.buffers
 
-import de.infix.testBalloon.framework.core.TestConfig
 import de.infix.testBalloon.framework.core.testSuite
-import de.infix.testBalloon.framework.shared.TestDisplayName
-import de.infix.testBalloon.framework.shared.TestElementName
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.random.Random
@@ -14,7 +11,7 @@ val BufferTest by testSuite("BufferTest") {
         val bytes = Random.nextBytes(100)
         val buffer = allocateBuffer(bytes.size.toLong())
         buffer.capacity shouldBe bytes.size
-        buffer.put(bytes)
+        buffer.write(bytes)
 
         buffer.readToByteArray(0, 100).toHexString() shouldBe bytes.toHexString()
     }
@@ -30,7 +27,7 @@ val BufferTest by testSuite("BufferTest") {
         }
 
         shouldThrow<BufferReleasedException> {
-            b.put(ByteArray(10), 0, 10)
+            b.write(ByteArray(10), 0, 10)
         }
     }
 
@@ -64,14 +61,14 @@ val BufferTest by testSuite("BufferTest") {
     test("write negative offset") {
         val buffer = allocateBuffer(999999)
         shouldThrow<IllegalArgumentException> {
-            buffer.put(Random.nextBytes(buffer.capacity.toInt()), -1)
+            buffer.write(Random.nextBytes(buffer.capacity.toInt()), -1)
         }
     }
 
     test("write past end") {
         val buffer = allocateBuffer(999999)
         shouldThrow<IllegalArgumentException> {
-            buffer.put(Random.nextBytes(buffer.capacity.toInt()), 1)
+            buffer.write(Random.nextBytes(buffer.capacity.toInt()), 1)
         }
     }
 }

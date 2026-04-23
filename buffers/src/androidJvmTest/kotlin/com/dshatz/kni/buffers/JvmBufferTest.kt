@@ -20,7 +20,7 @@ val JvmBufferTest by testSuite {
         val buffer = jvmBuffer.toCommonByteBuffer()
         val bytes = Random.nextBytes(jvmBuffer.capacity())
 
-        buffer.put(bytes)
+        buffer.write(bytes)
 
         val read = ByteArray(1024)
         jvmBuffer.get(read, 0, 1024)

@@ -8,14 +8,14 @@ Calling back is easy too!
 
 { src="callable/common.kt" }
 
-The `@CallableFromNative` annotation will tell KSP to generate relevant bindings on the native side.
+The `@JniCallback` annotation will tell KSP to generate relevant bindings on the native side.
 
 ```kotlin
 ```
 
 {collapsible="true" collapsed-title="Generated _JvmCallbackNativeImpl.kt" src="callable/generated.kt"}
 
-> **_NOTE:_**  If you want to be passing ByteBuffers, use `dev.datlag.nkommons.ByteBuffer`. 
+> **_NOTE:_**  If you want to be passing ByteBuffers, use <a href="Buffers.md">the Buffers module</a>". 
 {style="note"}
 > 
 ### 2. Create the JVM implementation
@@ -27,23 +27,14 @@ The `@CallableFromNative` annotation will tell KSP to generate relevant bindings
 ### 3. Pass your JVM object to Native
 
 > **_NOTE:_**  The Native side needs the callback object to be able to call its functions.
-> You can pass a `JvmCallbackImpl` object to native via the [@JNIConnect mechanism](CallingNative.md). Example below.
+> You can pass a `JvmCallbackImpl` object to native via the [@JniCall mechanism](CallingNative.md). Example below.
 {style="note"}
 
-```kotlin
-```
-{ src="callable/initExternal.kt" }
 
 ```kotlin
 ```
 { src="callable/init.kt" }
 
-```kotlin
-```
-{collapsible="true" collapsed-title="Generated _initJNI.kt" src="callable/initGenerated.kt"}
-
-```kotlin
-```
 {collapsible="true" collapsed-title="Generated _disposeJNI.kt" src="callable/disposeGenerated.kt"}
 
 > **Critical:** Do not forget to call `callback.dispose()` when you no longer need it.
@@ -52,7 +43,7 @@ The `@CallableFromNative` annotation will tell KSP to generate relevant bindings
 > Therefore, it's essential to free it later by using `dispose()` to avoid memory leaks and other nasty problems. 
 {style="warning"}
 
-> **Note:** Calling `dispose()` in Native will also call `dispose()` on the JVM object. No need to call it manually.
+> **Note:** Calling `dispose()` in Native will also call `dispose()` on the JVM object. You can clean up anything you need inside `dispose()` on JVM.
 > 
 > If you attempt to use the native object after calling `dispose()`, you will get an error.
 {style="note"}

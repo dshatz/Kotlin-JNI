@@ -1,8 +1,8 @@
 package kni.test
 
-import com.dshatz.kni.annotations.CallableFromNative
+import com.dshatz.kni.annotations.JniCallback
 
-@CallableFromNative
+@JniCallback
 interface Callback: AutoCloseable {
     fun onComplete(result: Boolean)
 }

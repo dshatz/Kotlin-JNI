@@ -23,6 +23,14 @@ fun jchar.toKChar(): Char {
     return Char(this)
 }
 
+/**
+ * To match signature of all other toK* methods for easier generation.
+ */
+@OptIn(ExperimentalForeignApi::class)
+fun jchar.toKChar(env: CPointer<JNIEnvVar>): Char {
+    return toKChar()
+}
+
 fun Char.toJChar(): jchar {
     return this.code.toUShort()
 }

@@ -20,7 +20,7 @@ actual class ByteBuffer internal constructor(
     /**
      * Release underlying native memory.
      *
-     * Calling [read] or [put] after [release] will throw [BufferReleasedException].
+     * Calling [read] or [write] after [release] will throw [BufferReleasedException].
      *
      * @see [IByteBuffer.release]
      */
@@ -37,7 +37,7 @@ actual class ByteBuffer internal constructor(
         get() = _released
 
     @OptIn(UnsafeNumber::class)
-    actual override fun putInternal(src: ByteArray, dstOffset: Int, length: Int) {
+    actual override fun writeInternal(src: ByteArray, dstOffset: Int, length: Int) {
         src.usePinned { pinned ->
             memcpy(address + dstOffset, pinned.addressOf(0), length.convert())
         }

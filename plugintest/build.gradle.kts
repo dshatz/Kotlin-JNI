@@ -1,6 +1,5 @@
 import com.dshatz.kni.bundlesNatives
 import com.dshatz.kni.bundlesPrebuiltNatives
-import com.dshatz.kni.addKspForNative
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -8,6 +7,12 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.test)
     id("com.dshatz.kni")
+}
+
+kni {
+    autoWire {
+        kspDependency = project(":ksp")
+    }
 }
 
 kotlin {
@@ -103,10 +108,10 @@ kotlin {
             }
         }
     }
-}
 
-dependencies {
-    addKspForNative(project(":ksp"))
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 }
 
 tasks.named<Jar>("jvmJar") {

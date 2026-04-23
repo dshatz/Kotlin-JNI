@@ -14,6 +14,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.publish)
     alias(libs.plugins.test)
+    alias(libs.plugins.dokka)
     id("com.dshatz.kni")
     `maven-publish`
     signing

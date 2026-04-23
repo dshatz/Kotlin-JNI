@@ -1,6 +1,5 @@
 package com.dshatz.kni
 
-import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.internal.extensions.stdlib.capitalized
@@ -13,7 +12,6 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithSimulatorTes
 import org.jetbrains.kotlin.gradle.targets.js.dsl.KotlinJsTargetDsl
 import org.jetbrains.kotlin.gradle.targets.js.dsl.KotlinWasmJsTargetDsl
 import org.jetbrains.kotlin.gradle.targets.js.dsl.KotlinWasmWasiTargetDsl
-import java.util.*
 
 
 open class OptionalTargetsExtension(
@@ -129,46 +127,24 @@ open class OptionalTargetsExtension(
 
 }
 
-fun Project.addKspForAll(dependencyNotation: Any) {
-    enabledTargets.forEach {
-        if (it.name != "metadata") {
-            val config = "ksp${it.name.capitalized()}"
-            logger.lifecycle("($name) Adding $config dependency $dependencyNotation")
-            dependencies.add(config, dependencyNotation)
-        }
-    }
-}
-
-fun Project.addKspForNative(dependencyNotation: Any) {
-    addKsp<KotlinNativeTarget>(dependencyNotation)
-}
-
-inline fun <reified T: KotlinTarget> Project.addKsp(dependencyNotation: Any) {
-    enabledTargets.filterIsInstance<T>().forEach {
-        val config = "ksp${it.name.capitalized()}"
-        logger.lifecycle("($name) Adding $config dependency $dependencyNotation")
-        dependencies.add(config, dependencyNotation)
-    }
-}
-
 val Project.enabledTargets: List<KotlinTarget>
     get() {
     return extensions.getByType(KotlinMultiplatformExtension::class.java).targets.filterNotNull().toList()
 }
 
-private val androidTargets = listOf(
+internal val androidNativeTargets = listOf(
     "androidNativeX86",
     "androidNativeX64",
     "androidNativeArm32",
     "androidNativeArm64"
 )
 
-private val linuxTargets = listOf(
+internal val linuxTargets = listOf(
     "linuxX64",
     "linuxArm64"
 )
 
-private val macOsTargets = listOf(
+internal val macOsTargets = listOf(
     "macosX64",
     "macosArm64"
 )
@@ -187,7 +163,7 @@ private val appleTargets = macOsTargets + listOf(
     "watchosDeviceArm64"
 )
 
-private val windowsTargets = listOf(
+internal val windowsTargets = listOf(
     "mingwX64"
 )
 
@@ -199,5 +175,5 @@ private val webTargets = listOf(
 
 val Project.allowedTargets get() = run {
     getKniProperty(Config.ARG_ALLOWED_TARGETS)?.split(',')
-        ?: (linuxTargets + appleTargets + windowsTargets + androidTargets + webTargets)
+        ?: (linuxTargets + appleTargets + windowsTargets + androidNativeTargets + webTargets)
 }

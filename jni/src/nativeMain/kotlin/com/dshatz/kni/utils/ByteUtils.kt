@@ -36,10 +36,8 @@ fun jbyteArray.toKByteArray(env: CPointer<JNIEnvVar>): ByteArray? {
     val length = this.getLength(env) ?: return null
     val elements = this.getByteElements(env) ?: return null
 
-    val result = memScoped {
-        ByteArray(length) {
-            elements[it]
-        }
+    val result = ByteArray(length) {
+        elements[it]
     }
 
     this.releaseElements(env, elements)

@@ -1,28 +1,17 @@
 package com.dshatz.kni.utils
 
 import com.dshatz.kni.JNIEnvVar
-import com.dshatz.kni.binding.jboolean
-import com.dshatz.kni.binding.jbyte
-import com.dshatz.kni.binding.jchar
-import com.dshatz.kni.binding.jclass
-import com.dshatz.kni.binding.jdouble
-import com.dshatz.kni.binding.jfloat
-import com.dshatz.kni.binding.jint
-import com.dshatz.kni.binding.jlong
-import com.dshatz.kni.binding.jmethodID
-import com.dshatz.kni.binding.jobject
+import com.dshatz.kni.binding.*
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.DelicateBufferAPI
 import com.dshatz.kni.jvalue
 import com.dshatz.kni.l
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.*
-import kotlinx.cinterop.get
-import kotlinx.cinterop.invoke
 
 
 /**
- * Convert jobject representing a java.nio.ByteBuffer to a native [binding.ByteBuffer] wrapper.
+ * Convert jobject representing a java.nio.ByteBuffer to a native [ByteBuffer] wrapper.
  *
  * @receiver a java.nio.ByteBuffer as received into a native function.
  */
@@ -45,7 +34,7 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
  */
 @OptIn(ExperimentalForeignApi::class)
 fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
-    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, address, capacity)
+    val jvmBuffer = toJNioByteBuffer(env)
     val cls = env.FindClass(ByteBuffer::class.qualifiedName!!.replace('.', '/'))!!
     val constructor = env.GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;)V")!!
     return memScoped {
@@ -53,6 +42,17 @@ fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
         args[0].l = jvmBuffer
         env.pointed.pointedCommon!!.NewObjectA!!(env, cls, constructor, args)
     }
+}
+
+/**
+ * Convert a native wrapper [ByteBuffer] to a jobject representing the same [ByteBuffer].
+ *
+ * @return a jobject representing a java.nio.ByteBuffer or null if operation failed.
+ */
+@OptIn(ExperimentalForeignApi::class)
+fun ByteBuffer.toJNioByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
+    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, address, capacity)
+    return jvmBuffer
 }
 
 /**

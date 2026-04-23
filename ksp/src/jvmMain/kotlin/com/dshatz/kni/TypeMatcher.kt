@@ -1,8 +1,11 @@
 package com.dshatz.kni
 
+import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.plusParameter
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.asTypeName
@@ -34,6 +37,7 @@ internal object TypeMatcher {
     private const val TYPE_BINDING_PACKAGE = "com.dshatz.kni.binding"
 
     val KByteBuffer = ClassName("com.dshatz.kni.buffers", "ByteBuffer")
+    val KNioBuffer = ClassName("java.nio", "ByteBuffer")
     val JBoolean = ClassName(TYPE_BINDING_PACKAGE, "jboolean")
     val JBooleanArray = ClassName(TYPE_BINDING_PACKAGE, "jbooleanArray")
     val JByte = ClassName(TYPE_BINDING_PACKAGE, "jbyte")
@@ -57,6 +61,8 @@ internal object TypeMatcher {
     val BaseCallback = ClassName("com.dshatz.kni", "BaseCallback")
     val AutoCloseable = ClassName("kotlin", "AutoCloseable")
 
+    val JniSerializer = ClassName("com.dshatz.kni.serialization", "JniSerializer")
+
     object Method {
 
         val ToJBoolean = MemberName("com.dshatz.kni.utils", "toJBoolean")
@@ -72,6 +78,7 @@ internal object TypeMatcher {
         val ToJString = MemberName("com.dshatz.kni.utils", "toJString")
 
         val ToJByteBuffer = MemberName("com.dshatz.kni.utils", "toJByteBuffer")
+        val ToJNioByteBuffer = MemberName("com.dshatz.kni.utils", "toJNioByteBuffer")
 
         val ToKBoolean = MemberName("com.dshatz.kni.utils", "toKBoolean")
         val ToKBooleanArray = MemberName("com.dshatz.kni.utils", "toKBooleanArray")
@@ -85,9 +92,58 @@ internal object TypeMatcher {
         val ToKShortArray = MemberName("com.dshatz.kni.utils", "toKShortArray")
         val ToKString = MemberName("com.dshatz.kni.utils", "toKString")
         val ToKDirectByteBuffer = MemberName("com.dshatz.kni.utils", "toKDirectByteBuffer")
-        val ToKByteBuffer = MemberName("com.dshatz.kni.utils", "toKByteBuffer")
         val GetAndAttach = MemberName("com.dshatz.kni.utils", "GetAndAttach")
+        val Pack = MemberName("com.dshatz.kni.serialization", "pack")
+        val Unpack = MemberName("com.dshatz.kni.serialization", "unpack")
     }
+
+    val jTypes = mapOf(
+        KBoolean to JBoolean,
+        KBooleanArray to JBooleanArray,
+        KByte to JByte,
+        KByteArray to JByteArray,
+        KChar to JChar,
+        KCharArray to JCharArray,
+        KDouble to JDouble,
+        KDoubleArray to JDoubleArray,
+        KFloat to JFloat,
+        KFloatArray to JFloatArray,
+        KInt to JInt,
+        KIntArray to JIntArray,
+        KLong to JLong,
+        KLongArray to JLongArray,
+        KShort to JShort,
+        KShortArray to JShortArray,
+        KString to JString,
+    )
+
+    val toJTypes = mapOf(
+        KBoolean to Method.ToJBoolean,
+        KBooleanArray to Method.ToJBooleanArray,
+        KByteArray to Method.ToJByteArray,
+        KChar to Method.ToJChar,
+        KCharArray to Method.ToJCharArray,
+        KDoubleArray to Method.ToJDoubleArray,
+        KFloatArray to Method.ToJFloatArray,
+        KIntArray to Method.ToJIntArray,
+        KLongArray to Method.ToJLongArray,
+        KShortArray to Method.ToJShortArray,
+        KString to Method.ToJString
+    )
+
+    val toKTypes = mapOf(
+        JBoolean to Method.ToKBoolean,
+        JBooleanArray to Method.ToKBooleanArray,
+        JByteArray to Method.ToKByteArray,
+        JChar to Method.ToKChar,
+        JCharArray to Method.ToKCharArray,
+        JDoubleArray to Method.ToKDoubleArray,
+        JFloatArray to Method.ToKFloatArray,
+        JIntArray to Method.ToKIntArray,
+        JLongArray to Method.ToKLongArray,
+        JShortArray to Method.ToKShortArray,
+        JString to Method.ToKString
+    )
 
     fun jniTypeFor(param: TypeName, forReturn: Boolean): TypeName? {
         return when (param) {

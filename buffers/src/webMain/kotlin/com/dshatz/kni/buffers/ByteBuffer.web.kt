@@ -25,7 +25,7 @@ actual class ByteBuffer(
     actual override val isReleased: Boolean
         get() = _released
 
-    actual override fun putInternal(src: ByteArray, dstOffset: Int, length: Int) {
+    actual override fun writeInternal(src: ByteArray, dstOffset: Int, length: Int) {
         src.copyInto(
             destination = byteArray,
             destinationOffset = dstOffset,

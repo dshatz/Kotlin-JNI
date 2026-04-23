@@ -24,6 +24,14 @@ fun jboolean.toKBoolean(): Boolean {
     return this.toByte().toBoolean()
 }
 
+/**
+ * To match signature of all other toK* methods for easier generation.
+ */
+@OptIn(ExperimentalForeignApi::class)
+fun jboolean.toKBoolean(env: CPointer<JNIEnvVar>): Boolean {
+    return toKBoolean()
+}
+
 @OptIn(ExperimentalForeignApi::class)
 fun Boolean.toJBoolean(): jboolean {
     return this.toByte().toUByte()

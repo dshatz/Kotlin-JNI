@@ -8,6 +8,10 @@
 
     <toc-element topic="About.md"/>
     <toc-element topic="Setup.md"/>
+    <toc-element topic="Types.md">
+        <toc-element topic="Buffers.md"/>
+        <toc-element topic="CustomData.md"/>
+    </toc-element>
     <toc-element toc-title="Usage">
         <toc-element topic="Extensions.md"/>
         <toc-element topic="CallingNative.md"/>

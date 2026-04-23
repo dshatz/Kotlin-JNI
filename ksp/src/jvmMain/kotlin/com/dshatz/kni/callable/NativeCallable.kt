@@ -36,11 +36,11 @@ object NativeCallable {
     fun generateNativeBridge(cls: KSClassDeclaration, logger: KSPLogger): CallableBridge? {
         val implCls = cls.toClassName().getNativeImplClass()
         if (cls.classKind != ClassKind.INTERFACE) {
-            logger.error("@CallableFromNative can only be applied to an interface.")
+            logger.error("@JniCallback can only be applied to an interface.")
             return null
         }
         if (cls.superTypes.none { it.resolve().toClassName() typeOf TypeMatcher.AutoCloseable }) {
-            logger.error("@CallableFromNative annotated interface should extend kotlin.AutoCloseable.", cls)
+            logger.error("@JniCallback annotated interface should extend kotlin.AutoCloseable.", cls)
             return null
         }
 
@@ -58,7 +58,7 @@ object NativeCallable {
             val returnType = f.returnType?.dereferenceTypeAlias()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
             val call = Def.callHelper(returnType)
             if (Modifier.SUSPEND in f.modifiers) {
-                logger.error("suspend functions are not supported in @CallableFromNative.", f)
+                logger.error("suspend functions are not supported in @JniCallback.", f)
             }
             val returnConverter = Def.returnTypeConverters[returnType.copy(nullable = false)] ?: CodeBlock.of("")
             val nullCheck = if (returnType.isNullable) "" else CodeBlock.of("!!")

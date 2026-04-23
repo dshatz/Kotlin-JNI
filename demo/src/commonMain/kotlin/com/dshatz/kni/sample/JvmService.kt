@@ -1,9 +1,9 @@
 package com.dshatz.kni.sample
 
-import com.dshatz.kni.annotations.CallableFromNative
+import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.buffers.ByteBuffer
 
-@CallableFromNative
+@JniCallback
 interface JvmService: AutoCloseable {
 
     fun sum(a: Int, b: Int): Int
