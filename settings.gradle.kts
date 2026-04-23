@@ -5,11 +5,11 @@ if (!settings.extra.has("onlyDocs")) {
     include(":demo")
     include(":e2e")
     include(":ksp")
+    include(":plugintest")
 }
 include(":jni")
 include(":buffers")
 includeBuild("plugin")
-include(":plugintest")
 
 pluginManagement {
     repositories {
