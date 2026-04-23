@@ -10,7 +10,7 @@ val JsBufferTest by testSuite("JsBufferTest") {
         val buffer = allocateBuffer(100)
 
         val bytes = Random.nextBytes(100)
-        buffer.put(bytes)
+        buffer.write(bytes)
         buffer.readToByteArray(0, 100).toHexString() shouldBe bytes.toHexString()
     }
 
@@ -19,7 +19,7 @@ val JsBufferTest by testSuite("JsBufferTest") {
         val blob = buffer.toBlob()
 
         val bytes = Random.nextBytes(100)
-        buffer.put(bytes)
+        buffer.write(bytes)
 
         // Blob is a snapshot, it will not reflect changes to original buffer.
         blob.size shouldBe 100
@@ -34,7 +34,7 @@ val JsBufferTest by testSuite("JsBufferTest") {
         val buffer = allocateBuffer(100)
         val array = buffer.asInt8Array()
         val bytes = Random.nextBytes(100)
-        buffer.put(bytes)
+        buffer.write(bytes)
 
         array.buffer.byteLength shouldBe 100
         (array.asDynamic() as ByteArray).toHexString() shouldBe bytes.toHexString()
