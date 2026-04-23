@@ -49,7 +49,7 @@ class JvmServiceImpl: JvmService {
 
     override fun readBytesTo(buffer: com.dshatz.kni.buffers.ByteBuffer): Int {
         val random = Random.nextBytes(4)
-        buffer.put(random)
+        buffer.write(random)
         println("Writing to buffer (call from native): ${random.toHexString()}")
         return random.size
     }

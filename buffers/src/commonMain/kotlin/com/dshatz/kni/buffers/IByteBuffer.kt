@@ -9,15 +9,15 @@ abstract class IByteBuffer internal constructor() {
      * @throws BufferReleasedException if buffer had been released using [release].
      * @throws IllegalArgumentException in case of data size inconsistencies.
      */
-    fun put(src: ByteArray, dstOffset: Int = 0, length: Int = src.size) {
+    fun write(src: ByteArray, dstOffset: Int = 0, length: Int = src.size) {
         if (isReleased) throw BufferReleasedException()
         if (dstOffset < 0) throw IllegalArgumentException("Offset cannot be negative, got: $dstOffset")
         if (dstOffset + length > capacity) throw IllegalArgumentException("Buffer overflow: offset ($dstOffset) + length ($length) > capacity ($capacity)")
         if (length > src.size) throw IllegalArgumentException("Source underflow: attempted reading $length, src size: ${src.size}")
-        putInternal(src, dstOffset, length)
+        writeInternal(src, dstOffset, length)
     }
 
-    protected abstract fun putInternal(src: ByteArray, dstOffset: Int = 0, length: Int = src.size)
+    protected abstract fun writeInternal(src: ByteArray, dstOffset: Int = 0, length: Int = src.size)
 
     /**
      * Read [length] bytes from this buffer starting at [offset] to [dst].
@@ -37,7 +37,7 @@ abstract class IByteBuffer internal constructor() {
     /**
      * Release underlying platform-dependant buffer.
      *
-     * Calling [read] or [put] after [release] will throw [BufferReleasedException].
+     * Calling [read] or [write] after [release] will throw [BufferReleasedException].
      */
     abstract fun release()
 

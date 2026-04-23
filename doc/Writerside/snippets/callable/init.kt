@@ -1,18 +1,14 @@
 lateinit var jvmCallback: JvmCallback
+// commonMain
+@JniCall expect fun init(callback: JvmCallback)
+@JniCall expect fun dispose()
+
 // Native
-@JNIConnect(
-    packageName = "com.example",
-    className = "MainKt"
-)
-fun init(callback: JvmCallback) {
+actual fun init(callback: JvmCallback) {
     // Save the object for later.
     jvmCallback = callback
 }
 
-@JNIConnect(
-    packageName = "com.example",
-    className = "MainKt"
-)
-fun dispose() {
+actual fun dispose() {
     jvmCallback.dispose()
 }

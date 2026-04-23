@@ -49,7 +49,7 @@ jobs:
           key: ${{ runner.os }}-kotlin-konan
 
       - name: Build Dokka (API Reference)
-        run: ./gradlew jni:dokkaGenerateHtml -PprojectVersion=${{ steps.vars.outputs.tag }} -PonlyDocs
+        run: ./gradlew dokkaGenerateHtml -PprojectVersion=${{ steps.vars.outputs.tag }} -PonlyDocs
 
       - name: Inject Environment Variables
         run: |
@@ -83,7 +83,8 @@ jobs:
           INDEX_DIR=$(dirname "$INDEX_PATH")
           cp -r "$INDEX_DIR"/* staging/
           
-          cp -r jni/build/dokka/html/* staging/api/
+          cp -r jni/build/dokka/html/* staging/api/jni/
+          cp -r buffers/build/dokka/html/* staging/api/buffers/
           
           echo "Final Staging Structure:"
           ls -F staging

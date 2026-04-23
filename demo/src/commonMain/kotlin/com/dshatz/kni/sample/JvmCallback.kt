@@ -1,8 +1,8 @@
 package com.dshatz.kni.sample
 
-import com.dshatz.kni.annotations.CallableFromNative
+import com.dshatz.kni.annotations.JniCallback
 
-@CallableFromNative
+@JniCallback
 interface JvmCallback: AutoCloseable {
     fun sayHello(): String
 }

@@ -1,6 +1,6 @@
 package kni.test
 
-import com.dshatz.kni.annotations.Callable
+import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -13,34 +13,34 @@ actual object CallerBridge {
 
     lateinit var callerRef: JvmCaller
 
-    @Callable
+    @JniCall
     actual fun init(caller: JvmCaller) {
         callerRef = caller
     }
 
-    @Callable
+    @JniCall
     actual fun dispose() {
         callerRef.close()
     }
 
-    @Callable
+    @JniCall
     actual fun askJvmForANumber(): Int {
         return callerRef.giveANumber()
     }
 
-    @Callable
+    @JniCall
     actual fun askJvmToFillBuffer(buffer: ByteBuffer): String {
         return callerRef.fillBuffer(buffer)
     }
 
-    @Callable
+    @JniCall
     actual fun sendTypeAlias(alias: TestAlias): TestAlias {
         return callerRef.withTypeAlias(alias)
     }
 
     val bridgeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    @Callable
+    @JniCall
     actual fun callbackFromCoroutine(callback: Callback, coroutineName: String) {
         bridgeScope.launch(CoroutineName(coroutineName)) {
             callback.onComplete(true)

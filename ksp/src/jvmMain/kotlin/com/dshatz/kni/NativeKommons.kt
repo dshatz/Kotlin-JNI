@@ -1,8 +1,8 @@
 package com.dshatz.kni
 
 import com.dshatz.kni.annotations.AddJniSerializer
-import com.dshatz.kni.annotations.Callable
-import com.dshatz.kni.annotations.CallableFromNative
+import com.dshatz.kni.annotations.JniCall
+import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.callable.NativeCallable
 import com.dshatz.kni.serialization.SerializerProcessor
@@ -76,7 +76,7 @@ class NativeKommons : SymbolProcessorProvider {
         @OptIn(KspExperimental::class)
         private fun getAnnotatedCallables(resolver: Resolver): List<KSFunctionDeclaration> {
             val allowedClassKinds = setOf(ClassKind.OBJECT, ClassKind.CLASS)
-            return resolver.getSymbolsWithAnnotation(Callable::class.java.name).toList()
+            return resolver.getSymbolsWithAnnotation(JniCall::class.java.name).toList()
                 .filterIsInstance<KSFunctionDeclaration>()
                 .filter {
                     val parentClass = it.parent as? KSClassDeclaration
@@ -86,7 +86,7 @@ class NativeKommons : SymbolProcessorProvider {
                     } else {
                         if (parentClass?.classKind !in allowedClassKinds) {
                             println("Loc: ${it.location}, parent: ${it.parent}")
-                            env.logger.error("@Callable is only supported inside classes/objects or on top-level functions.", it)
+                            env.logger.error("@JniCall is only supported inside classes/objects or on top-level functions.", it)
                             false
                         } else true
                     }
@@ -95,7 +95,7 @@ class NativeKommons : SymbolProcessorProvider {
         }
 
         private fun getAnnotatedBridges(resolver: Resolver): List<KSClassDeclaration> {
-            val nativeCallableAnnotated = resolver.getSymbolsWithAnnotation(CallableFromNative::class.java.name).toList()
+            val nativeCallableAnnotated = resolver.getSymbolsWithAnnotation(JniCallback::class.java.name).toList()
             return nativeCallableAnnotated.filterIsInstance<KSClassDeclaration>().distinct()
         }
 

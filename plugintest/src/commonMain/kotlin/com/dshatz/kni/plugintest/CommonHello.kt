@@ -1,7 +1,7 @@
 package com.dshatz.kni.plugintest
 
-import com.dshatz.kni.annotations.Callable
+import com.dshatz.kni.annotations.JniCall
 
 expect object CommonHello {
-    @Callable fun nativeHello(): String
+    @JniCall fun nativeHello(): String
 }

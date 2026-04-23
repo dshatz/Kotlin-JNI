@@ -16,12 +16,12 @@ fun TestSuiteScope.bridgeTests() {
 
     test("mixed") {
         Bridge.apply {
-            mixed(Long.MAX_VALUE, " - max value".toCharArray(), false, 'x').decodeToString() shouldBe
+            mixed(Long.MAX_VALUE, " - max value".toCharArray(), false, 'x') shouldBe
                     "${Long.MAX_VALUE}x - max value"
         }
     }
     test("negative long") {
-        Bridge.mixed(Long.MIN_VALUE, " - negative value".toCharArray(), true, 'x').decodeToString() shouldBe
+        Bridge.mixed(Long.MIN_VALUE, " - negative value".toCharArray(), true, 'x') shouldBe
                 "${Long.MIN_VALUE}x - negative value".uppercase()
     }
     test("Alias type") {

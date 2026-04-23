@@ -1,9 +1,9 @@
 package com.dshatz.kni.plugintest
 
-import com.dshatz.kni.annotations.Callable
+import com.dshatz.kni.annotations.JniCall
 
 actual object CommonHello {
-    @Callable
+    @JniCall
     actual fun nativeHello(): String {
         return "Hello from Native"
     }

@@ -1,18 +1,17 @@
 package kni.test
 
-import com.dshatz.kni.annotations.Callable
+import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
-import com.dshatz.kni.buffers.allocateBuffer
 
 expect object CommonCallable {
 
-    @Callable
+    @JniCall
     fun makeOrange(value: ColorfulObject): ColorfulObject
 
-    @Callable
+    @JniCall
     fun fillBuffer(buffer: ByteBuffer): String
 
 }
 
-@Callable
+@JniCall
 expect fun topLevelFun(): ByteBuffer

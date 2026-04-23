@@ -1,12 +1,9 @@
-import com.dshatz.kni.JNIConnect
+// commonMain
 
-@JNIConnect(
-    packageName = "your.package.name",
-    className = "YourClass",
+@JniCall
+expect fun mixed(number: Long, value: CharArray, upper: Boolean, char: Char): String
 
-    // optional, defaults to function name (example).
-    functionName = "customFunction"
-)
-fun example(a: String, b: Boolean, c: CharArray, d: Double): String {
+// nativeMain or jniNativeMain
+actual fun mixed(number: Long, value: CharArray, upper: Boolean, char: Char): String
     return "$a, $b, $c, $d"
 }

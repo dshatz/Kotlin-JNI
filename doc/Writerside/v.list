@@ -6,5 +6,6 @@
     <var name="package" value="com.dshatz.kni"/>
     <var name="jniArtifact" value="jni"/>
     <var name="kspArtifact" value="ksp"/>
+    <var name="buffersArtifact" value="buffers"/>
     <var name="annotationsArtifact" value="annotations"/>
 </vars>

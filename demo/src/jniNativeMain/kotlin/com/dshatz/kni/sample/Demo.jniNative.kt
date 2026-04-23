@@ -7,12 +7,12 @@ import kotlinx.cinterop.usePinned
 import kotlin.random.Random
 
 actual object Demo {
-    @com.dshatz.kni.annotations.Callable
+    @com.dshatz.kni.annotations.JniCall
     actual fun stringExample(): String {
         return "Hello Native!"
     }
 
-    @com.dshatz.kni.annotations.Callable
+    @com.dshatz.kni.annotations.JniCall
     actual fun mixed(
         a: String,
         b: Int,
@@ -24,7 +24,7 @@ actual object Demo {
     }
 
     @OptIn(ExperimentalForeignApi::class)
-    @com.dshatz.kni.annotations.Callable
+    @com.dshatz.kni.annotations.JniCall
     actual fun byteBuffer(buffer: com.dshatz.kni.buffers.ByteBuffer, size: Long): ByteArray {
         val bytes = Random.nextBytes(size.toInt())
         bytes.usePinned {
@@ -33,7 +33,7 @@ actual object Demo {
         return bytes
     }
 
-    @com.dshatz.kni.annotations.Callable
+    @com.dshatz.kni.annotations.JniCall
     actual fun callJvmFromNative(obj: JvmService): String {
         val sum = obj.sum(100, 200).toString()
         val greeting = obj.concat("Hello", "Jni")
@@ -42,7 +42,7 @@ actual object Demo {
         return obj.concat(sum, greeting)
     }
 
-    @com.dshatz.kni.annotations.Callable
+    @com.dshatz.kni.annotations.JniCall
     actual fun writeToJvmBuffer(
         bridge: JvmService,
         buffer: com.dshatz.kni.buffers.ByteBuffer

@@ -85,7 +85,7 @@ private class JvmCallerImpl : JvmCaller {
 
     override fun fillBuffer(buffer: com.dshatz.kni.buffers.ByteBuffer): String {
         val bytes = Random.nextBytes(buffer.capacity.toInt())
-        buffer.put(bytes)
+        buffer.write(bytes)
         return bytes.toHexString()
     }
 

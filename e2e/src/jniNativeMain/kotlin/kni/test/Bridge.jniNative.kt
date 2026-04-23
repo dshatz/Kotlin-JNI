@@ -1,6 +1,5 @@
 package kni.test
 
-import com.dshatz.kni.annotations.Callable
 import kotlin.random.Random
 
 actual object Bridge {
@@ -12,11 +11,11 @@ actual object Bridge {
         return Random.nextBytes(length)
     }
 
-    actual fun mixed(number: Long, value: CharArray, upper: Boolean, char: Char): ByteArray {
+    actual fun mixed(number: Long, value: CharArray, upper: Boolean, char: Char): String {
         return "$number$char${value.concatToString()}".let {
             if (upper) it.uppercase()
             else it
-        }.encodeToByteArray()
+        }
     }
 
     actual fun withTypeAlias(long: TestAlias): TestAlias {
