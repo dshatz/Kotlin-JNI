@@ -68,7 +68,8 @@ jobs:
       - name: Setup Staging Area
         shell: bash
         run: |
-          mkdir -p staging/api
+          mkdir -p staging/api/jni
+          mkdir -p staging/api/buffers
           mkdir -p temp_extract
           touch staging/.nojekyll
           
