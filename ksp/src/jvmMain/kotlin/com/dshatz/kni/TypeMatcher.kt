@@ -95,6 +95,9 @@ internal object TypeMatcher {
         val GetAndAttach = MemberName("com.dshatz.kni.utils", "GetAndAttach")
         val Pack = MemberName("com.dshatz.kni.serialization", "pack")
         val Unpack = MemberName("com.dshatz.kni.serialization", "unpack")
+        val AsLongPointer = MemberName("com.dshatz.kni.utils", "asLongPointer")
+        val FromLongPointer = MemberName("com.dshatz.kni.utils", "fromLongPointer")
+        val ReleaseStableRef = MemberName("com.dshatz.kni.utils", "releaseStableRef")
     }
 
     val jTypes = mapOf(

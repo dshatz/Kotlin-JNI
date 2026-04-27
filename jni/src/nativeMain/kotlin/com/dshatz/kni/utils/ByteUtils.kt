@@ -33,8 +33,8 @@ fun jbyteArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jbyt
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
 fun jbyteArray.toKByteArray(env: CPointer<JNIEnvVar>): ByteArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getByteElements(env) ?: return null
+    val length = this.getLength(env) ?: error("getLength is null")
+    val elements = this.getByteElements(env) ?: error("getByteElements is null")
 
     val result = ByteArray(length) {
         elements[it]

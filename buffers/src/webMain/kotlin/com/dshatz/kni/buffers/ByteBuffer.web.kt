@@ -12,7 +12,7 @@ actual class ByteBuffer(
      *
      * The underlying [ByteArray] storage will get garbage-collected.
      *
-     * Calling [read] or [put] after [release] will throw [BufferReleasedException].
+     * Calling [read] or [write] after [release] will throw [BufferReleasedException].
      *
      * @see [IByteBuffer.release]
      */

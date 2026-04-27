@@ -19,7 +19,7 @@
     </toc-element>
     <toc-element toc-title="📋 API Reference"
                  accepts-web-file-names="reference"
-                 target-for-accept-web-file-names="https://dshatz.github.io/Kotlin-JNI/api/"/>
+                 target-for-accept-web-file-names="https://dshatz.github.io/Kotlin-JNI/api/jni"/>
 
     <toc-element hidden="true"
                  accepts-web-file-names="class"
