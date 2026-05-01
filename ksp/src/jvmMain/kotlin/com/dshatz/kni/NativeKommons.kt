@@ -7,6 +7,7 @@ import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.callable.NativeCallable
 import com.dshatz.kni.serialization.SerializerProcessor
 import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
@@ -14,6 +15,8 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 
 class NativeKommons : SymbolProcessorProvider {
@@ -42,6 +45,10 @@ class NativeKommons : SymbolProcessorProvider {
 
             SerializerProcessor.processSerializers(env, getAnnotatedSerializers(resolver)).also {
                 registry.serializers.putAll(it)
+            }
+
+            getNativeInstances(resolver).also {
+                registry.nativeInstances.addAll(it.map { it.toClassName() })
             }
 
             if (!isJvm) {
@@ -84,9 +91,11 @@ class NativeKommons : SymbolProcessorProvider {
                         // top level function
                         true
                     } else {
-                        if (parentClass?.classKind !in allowedClassKinds) {
-                            println("Loc: ${it.location}, parent: ${it.parent}")
+                        if (parentClass.classKind !in allowedClassKinds) {
                             env.logger.error("@JniCall is only supported inside classes/objects or on top-level functions.", it)
+                            false
+                        } else if (parentClass.classKind == ClassKind.CLASS && parentClass.superTypes.none { it.toTypeName() == TypeMatcher.AutoCloseable }) {
+                            env.logger.error("Classes with @JniCall methods must implement ${TypeMatcher.AutoCloseable.canonicalName}", it)
                             false
                         } else true
                     }
@@ -97,6 +106,11 @@ class NativeKommons : SymbolProcessorProvider {
         private fun getAnnotatedBridges(resolver: Resolver): List<KSClassDeclaration> {
             val nativeCallableAnnotated = resolver.getSymbolsWithAnnotation(JniCallback::class.java.name).toList()
             return nativeCallableAnnotated.filterIsInstance<KSClassDeclaration>().distinct()
+        }
+
+        private fun getNativeInstances(resolver: Resolver): List<KSClassDeclaration> {
+            val jniCallFunctions = resolver.getSymbolsWithAnnotation(JniCall::class.java.name).toList()
+            return jniCallFunctions.filterIsInstance<KSFunctionDeclaration>().mapNotNull { it.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS } }
         }
 
         private fun getAnnotatedSerializers(resolver: Resolver): List<KSClassDeclaration> {

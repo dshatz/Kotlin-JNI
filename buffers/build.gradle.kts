@@ -216,3 +216,12 @@ tasks.withType<KotlinNativeTest>().configureEach {
 tasks.withType<KotlinTest>().configureEach {
     outputs.upToDateWhen { false }
 }
+
+dokka {
+    dokkaSourceSets.configureEach {
+        externalDocumentationLinks.register("kotlinx-io") {
+            url("https://kotlinlang.org/api/kotlinx-io/kotlinx-io-core/")
+            packageListUrl("https://kotlinlang.org/api/kotlinx-io/package-list")
+        }
+    }
+}

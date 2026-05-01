@@ -33,10 +33,21 @@ class Plugin: Plugin<Project> {
 
 internal fun autoWire(target: Project, config: AutoWireExtension) {
     val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
+    config.kspDependency.convention("")
+
+    val jniCommonMain = kotlin.sourceSets.register("jniCommonMain") {
+        it.dependsOn(kotlin.sourceSets.getByName("commonMain"))
+    }
+    val jniCommonTest = kotlin.sourceSets.register("jniCommonTest") {
+        it.dependsOn(kotlin.sourceSets.getByName("commonTest"))
+    }
+
     target.pluginManager.withPlugin("com.google.devtools.ksp") {
         kotlin.targets.withType(KotlinMultiplatformAndroidLibraryTarget::class.java).all { androidTarget ->
             kotlin.addJniSourceSets(androidTarget, "jniJvm", "common")
-            target.dependencies.add("ksp${androidTarget.name.capitalized()}", config.kspDependency)
+            if (config.kspDependency.get().toString().isNotEmpty()) {
+                target.dependencies.add("ksp${androidTarget.name.capitalized()}", config.kspDependency)
+            }
         }
     }
 
@@ -57,8 +68,15 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
         }
         if (groupName == null || dependOn == null) return@all
         kotlin.addJniSourceSets(it, groupName, dependOn)
-        target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
+        if (config.kspDependency.get().toString().isNotEmpty()) {
+            target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
+        }
     }
+
+    /*jniCommonMain.configure {
+        kotlin.sourceSets.getByName("jniJvmMain").dependsOn(it)
+        kotlin.sourceSets.getByName("jniNativeMain").dependsOn(it)
+    }*/
 }
 
 private fun KotlinMultiplatformExtension.addJniSourceSets(target: KotlinTarget, groupSourceSet: String, dependOn: String) {
@@ -71,6 +89,7 @@ private fun KotlinMultiplatformExtension.addJniSourceSets(target: KotlinTarget, 
         when (compilation.name) {
             "main" -> {
                 val s = sourceSets.maybeCreate("${groupSourceSet}Main")
+                s.dependsOn(sourceSets.getByName("jniCommonMain"))
                 main.configure {
                     s.dependsOn(it)
                 }
@@ -80,6 +99,7 @@ private fun KotlinMultiplatformExtension.addJniSourceSets(target: KotlinTarget, 
 
             "deviceTest", "test" -> {
                 val s = sourceSets.maybeCreate("${groupSourceSet}Test")
+                s.dependsOn(sourceSets.getByName("jniCommonTest"))
                 test.configure {
                     s.dependsOn(it)
                 }

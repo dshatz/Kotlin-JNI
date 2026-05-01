@@ -51,7 +51,7 @@ jobs:
           key: ${{ runner.os }}-kotlin-konan
 
       - name: Build Dokka (API Reference)
-        run: ./gradlew dokkaGenerateHtml -PprojectVersion=${{ steps.vars.outputs.tag }} -PonlyDocs
+        run: ./gradlew dokkaGenerateHtml -Pversion=${{ steps.vars.outputs.tag }} -PonlyDocs
 
       - name: Inject Environment Variables
         run: |

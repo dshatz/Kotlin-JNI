@@ -6,5 +6,10 @@ plugins {
 
     alias(libs.plugins.test) apply false
     alias(libs.plugins.ksp) apply false
-    alias(libs.plugins.dokka) apply false
+    alias(libs.plugins.dokka)
+}
+
+dependencies {
+    dokka(project(":jni"))
+    dokka(project(":buffers"))
 }

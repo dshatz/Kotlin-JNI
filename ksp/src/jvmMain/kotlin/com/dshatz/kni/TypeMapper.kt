@@ -2,9 +2,11 @@ package com.dshatz.kni
 
 import com.dshatz.kni.callable.getNativeImplClass
 import com.dshatz.kni.utils.dereferenceTypeAlias
+import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -12,10 +14,23 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 internal class TypeMapper(
     private val registry: Registry
 ) {
+
     fun mapType(
-        type: KSTypeReference,
+        typeRef: KSTypeReference
     ): TypeInfo {
-        val kotlinType = type.dereferenceTypeAlias().toTypeName()
+        val type = typeRef.dereferenceTypeAlias()
+        return mapType(type)
+    }
+
+    fun mapType(
+        type: KSType
+    ): TypeInfo {
+        return mapType(type.toTypeName())
+    }
+
+    fun mapType(
+        kotlinType: TypeName,
+    ): TypeInfo {
         return if (kotlinType in TypeMatcher.jTypes) {
             // has an existing j type
             val jType = TypeMatcher.jTypes[kotlinType]!!
@@ -44,6 +59,8 @@ internal class TypeMapper(
             )
         } else if (kotlinType in registry.callables) {
             TypeInfo.Callback(kotlinType)
+        } else if (kotlinType in registry.nativeInstances) {
+            TypeInfo.NativeInstance(kotlinType)
         } else if (kotlinType == TypeMatcher.KByteBuffer) {
             TypeInfo.ByteBuffer()
         } else {
@@ -144,6 +161,28 @@ sealed class TypeInfo {
 
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock {
             return CodeBlock.of("%T(%L)", TypeMatcher.KByteBuffer, packedCode)
+        }
+    }
+
+    data class NativeInstance(
+        override val kotlinType: TypeName
+    ): TypeInfo() {
+        override val jniType: JNIType = JNIType(LONG, TypeMatcher.JLong)
+
+        override fun packCode(unpackedCode: CodeBlock): CodeBlock {
+            return CodeBlock.of("%L.%M()", unpackedCode, TypeMatcher.Method.AsLongPointer)
+        }
+
+        override fun unpackCode(packedCode: CodeBlock): CodeBlock {
+            return CodeBlock.of("%L.%M<%T>()", packedCode, TypeMatcher.Method.FromLongPointer, kotlinType)
+        }
+
+        override fun packCodeJvm(unpackedCode: CodeBlock): CodeBlock {
+            return CodeBlock.of("%L", unpackedCode)
+        }
+
+        override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock {
+            return CodeBlock.of("%L", packedCode)
         }
     }
 

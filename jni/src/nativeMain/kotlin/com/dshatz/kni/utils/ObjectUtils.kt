@@ -8,6 +8,8 @@ import com.dshatz.kni.jvalue
 import com.dshatz.kni.l
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.*
+import kotlinx.cinterop.toCPointer
+import platform.posix.close
 
 
 /**
@@ -297,4 +299,22 @@ fun CPointer<JNIEnvVar>.CallVoidMethodA(
         method,
         args
     )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun Any.asLongPointer(): Long {
+    val stableRef = StableRef.create(this)
+    return stableRef.asCPointer().toLong()
+}
+
+@OptIn(ExperimentalForeignApi::class)
+inline fun <reified T: Any> Long.fromLongPointer(): T {
+    val rendererRef = toCPointer<COpaque>()!!.asStableRef<T>()
+    return rendererRef.get()
+}
+
+@OptIn(ExperimentalForeignApi::class)
+inline fun <reified T: AutoCloseable> Long.releaseStableRef() {
+    val pointer = toCPointer<CPointed>()
+    pointer?.asStableRef<T>()?.dispose()
 }
