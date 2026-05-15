@@ -1,11 +1,12 @@
 package com.dshatz.kni
 
-import com.dshatz.kni.annotations.AddJniSerializer
 import com.dshatz.kni.annotations.JniCall
-import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.callable.CallableProcessor
-import com.dshatz.kni.callable.NativeCallable
+import com.dshatz.kni.callable.CallbackProcessor
+import com.dshatz.kni.callable.CallbackProcessor.getAnnotatedCallbacks
+import com.dshatz.kni.callable.CallbackProcessor.getCallbackDeclarations
 import com.dshatz.kni.serialization.SerializerProcessor
+import com.dshatz.kni.serialization.serializerClass
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.processing.*
@@ -13,11 +14,10 @@ import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
+import kotlin.jvm.java
 
 class NativeKommons : SymbolProcessorProvider {
     var called: Boolean = false
@@ -40,42 +40,75 @@ class NativeKommons : SymbolProcessorProvider {
 
         private val generator = CallableProcessor(registry, env.logger)
 
-        override fun process(resolver: Resolver): List<KSAnnotated> {
-            val isJvm = env.platforms.any { it.platformName == "JVM" }
+        private var generated = false
+        val serializableProcessor = SerializerProcessor(registry, env.logger)
 
-            SerializerProcessor.processSerializers(env, getAnnotatedSerializers(resolver)).also {
-                registry.serializers.putAll(it)
+        override fun process(resolver: Resolver): List<KSAnnotated> {
+            val isJvm = env.platforms.singleOrNull()?.platformName == "JVM"
+            val isCommon = env.platforms.size > 1
+
+            env.logger.warn("Platforms: ${env.platforms.joinToString { it.platformName }}")
+
+            val serializables = serializableProcessor.findSerializables(env, resolver).also {
+                registry.serializers.putAll(it.mapValues {
+                    it.key.serializerClass()
+                })
+            }
+
+            val externalSerializers = serializableProcessor.findSerializers(resolver, env)
+            registry.serializers.putAll(externalSerializers)
+
+            if (isCommon) {
+                serializableProcessor.generateSerializers(serializables).forEach {
+                    it.writeTo(codeGenerator, Dependencies(false))
+                }
+            }
+
+            val callbacks = getAnnotatedCallbacks(resolver)
+            val callables = getAnnotatedCallables(resolver)
+
+            val callbackDeclarations = getCallbackDeclarations(callbacks)
+            registry.callbacks.addAll(callbackDeclarations.map { it.cls })
+
+            generator.analyzeDeclarations(callables).also {
+                registry.declarations.addAll(it)
+            }
+
+            if (isCommon && !generated) {
+                serializableProcessor.generateGenericSerializers()
+                    .writeTo(codeGenerator, Dependencies(false))
             }
 
             getNativeInstances(resolver).also {
                 registry.nativeInstances.addAll(it.map { it.toClassName() })
             }
 
-            if (!isJvm) {
-                val bridges = getAnnotatedBridges(resolver).map { NativeCallable.generateNativeBridge(it, env.logger) }
+            if (!isJvm && !isCommon) {
+                val bridges = callbackDeclarations.map { CallbackProcessor.generateNativeCallback(it, env.logger) }
+                // native
                 if (bridges.any { it == null }) {
-                    env.logger.error("Callable processing failed")
+                    env.logger.error("Callback processing failed")
+                    error("Callback processing failed")
                     return emptyList()
                 }
 
                 bridges.filterNotNull().forEach {
                     it.fileSpec.writeTo(codeGenerator, it.deps)
-                    registry.callables.add(it.cls)
                 }
             }
 
-
-            if (isJvm) {
-                val funs = getAnnotatedCallables(resolver)
-                generator.generateJvmActuals(funs).forEach {
-                    it.writeTo(codeGenerator, Dependencies(false, sources = funs.mapNotNull { it.containingFile }.toTypedArray()))
+            val sources = callables.mapNotNull { it.containingFile }.distinct().toTypedArray()
+            if (!generated) {
+                if (isJvm) {
+                    generator.generateJvmActuals().forEach {
+                        it.writeTo(codeGenerator, Dependencies(false, sources = sources))
+                    }
+                } else if (!isCommon) {
+                    generator.generateNativeFuns().forEach {
+                        it.writeTo(codeGenerator, Dependencies(false, sources = sources))
+                    }
                 }
-                return emptyList()
-            } else {
-                val funs = getAnnotatedCallables(resolver)
-                generator.generateNativeFuns(funs).forEach {
-                    it.writeTo(codeGenerator, Dependencies(false, sources = funs.mapNotNull { it.containingFile }.toTypedArray()))
-                }
+                generated = true
             }
             return emptyList()
         }
@@ -103,24 +136,9 @@ class NativeKommons : SymbolProcessorProvider {
                 .distinctBy { it.qualifiedName?.asString() }
         }
 
-        private fun getAnnotatedBridges(resolver: Resolver): List<KSClassDeclaration> {
-            val nativeCallableAnnotated = resolver.getSymbolsWithAnnotation(JniCallback::class.java.name).toList()
-            return nativeCallableAnnotated.filterIsInstance<KSClassDeclaration>().distinct()
-        }
-
         private fun getNativeInstances(resolver: Resolver): List<KSClassDeclaration> {
             val jniCallFunctions = resolver.getSymbolsWithAnnotation(JniCall::class.java.name).toList()
             return jniCallFunctions.filterIsInstance<KSFunctionDeclaration>().mapNotNull { it.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS } }
         }
-
-        private fun getAnnotatedSerializers(resolver: Resolver): List<KSClassDeclaration> {
-            val serializers = resolver.getSymbolsWithAnnotation(AddJniSerializer::class.java.name).toList()
-            return serializers.filterIsInstance<KSClassDeclaration>()
-        }
-
-        data class ParamInfo(
-            val code: CodeBlock,
-            val spec: ParameterSpec
-        )
     }
 }

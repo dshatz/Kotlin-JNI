@@ -1,19 +1,25 @@
 package com.dshatz.kni
 
 import com.dshatz.kni.callable.getNativeImplClass
+import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.dereferenceTypeAlias
+import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toTypeName
 
-internal class TypeMapper(
-    private val registry: Registry
+class TypeMapper(
+    private val registry: Registry,
+    logger: KSPLogger
 ) {
+
+    private val included = IncludedSerializers(registry, logger)
 
     fun mapType(
         typeRef: KSTypeReference
@@ -31,12 +37,14 @@ internal class TypeMapper(
     fun mapType(
         kotlinType: TypeName,
     ): TypeInfo {
+        val rawType = (kotlinType as? ParameterizedTypeName)?.rawType ?: kotlinType
+
         return if (kotlinType in TypeMatcher.jTypes) {
             // has an existing j type
             val jType = TypeMatcher.jTypes[kotlinType]!!
             if (kotlinType in TypeMatcher.toJTypes && jType in TypeMatcher.toKTypes) {
                 // We have converters to and from
-                TypeInfo.Convertable(
+                TypeInfo.Convertible(
                     kotlinType = kotlinType,
                     jniType = JNIType(kotlinType, jType),
                     toJni = TypeMatcher.toJTypes[kotlinType]!!,
@@ -49,25 +57,35 @@ internal class TypeMapper(
                     jniType = JNIType(jvmType = kotlinType, jType)
                 )
             }
-        } else if (kotlinType in registry.serializers) {
+        } else if (rawType in registry.serializers) {
             // custom serializer defined
-            val serializer = registry.serializers[kotlinType]!!
+            val serializer = included.serializer(kotlinType)
+//            val serializer = registry.serializers[rawType]!!
+            /*val typeParams = (kotlinType as? ParameterizedTypeName)?.typeArguments?.map {
+                registry.serializers[it] ?: error("No serializer defined for $it in $serializer")
+            }.orEmpty()*/
             TypeInfo.Serializable(
                 kotlinType = kotlinType,
                 jniType = JNIType(TypeMatcher.KByteArray, TypeMatcher.JByteArray),
-                serializer = serializer
+                serializer = serializer,
             )
-        } else if (kotlinType in registry.callables) {
+        } else if (kotlinType in registry.callbacks) {
             TypeInfo.Callback(kotlinType)
         } else if (kotlinType in registry.nativeInstances) {
             TypeInfo.NativeInstance(kotlinType)
         } else if (kotlinType == TypeMatcher.KByteBuffer) {
             TypeInfo.ByteBuffer()
-        } else {
+        } else if (kotlinType == UNIT) {
             TypeInfo.Simple(
                 kotlinType = kotlinType,
                 jniType = JNIType(kotlinType, kotlinType)
             )
+        } else {
+            error("Unknown type: $kotlinType, don't know how to pass to JNI. ${registry.serializersToString()}")
+            /*TypeInfo.Simple(
+                kotlinType = kotlinType,
+                jniType = JNIType(kotlinType, kotlinType)
+            )*/
         }
     }
 }
@@ -84,6 +102,8 @@ sealed class TypeInfo {
     abstract fun packCodeJvm(unpackedCode: CodeBlock): CodeBlock
     abstract fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock
 
+    abstract fun describe(): String
+
     data class Simple(
         override val kotlinType: TypeName,
         override val jniType: JNIType = JNIType(kotlinType, kotlinType)
@@ -96,9 +116,12 @@ sealed class TypeInfo {
         }
         override fun packCodeJvm(unpackedCode: CodeBlock): CodeBlock = unpackedCode
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock = packedCode
+        override fun describe(): String {
+            return ""
+        }
     }
 
-    data class Convertable(
+    data class Convertible(
         override val kotlinType: TypeName,
         override val jniType: JNIType,
         val toJni: MemberName,
@@ -112,14 +135,16 @@ sealed class TypeInfo {
         }
         override fun packCodeJvm(unpackedCode: CodeBlock): CodeBlock = unpackedCode
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock = packedCode
+        override fun describe(): String {
+            return ""
+        }
     }
 
     data class Serializable(
         override val kotlinType: TypeName,
         override val jniType: JNIType = JNIType(TypeMatcher.KByteArray, TypeMatcher.JByteArray),
-        val serializer: ClassName
+        val serializer: IncludedSerializers.Serializer,
     ): TypeInfo() {
-
         override fun packCode(unpackedCode: CodeBlock): CodeBlock {
             return CodeBlock.of(
                 "%L.%M(env)!!",
@@ -135,10 +160,15 @@ sealed class TypeInfo {
             ))
         }
         override fun packCodeJvm(unpackedCode: CodeBlock): CodeBlock {
-            return CodeBlock.of("%T.%M(%L)", serializer, TypeMatcher.Method.Pack, unpackedCode)
+            return serializer.writeCode(buffer = CodeBlock.of(""), unpackedCode)
         }
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock {
-            return CodeBlock.of("%T.%M(%L)", serializer, TypeMatcher.Method.Unpack, packedCode)
+            return serializer.readCode(packedCode)
+//            return CodeBlock.of("%L.%M(%L)", initSerializer, TypeMatcher.Method.Unpack, packedCode)
+        }
+
+        override fun describe(): String {
+            return kotlinType.toString()
         }
     }
 
@@ -162,6 +192,10 @@ sealed class TypeInfo {
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock {
             return CodeBlock.of("%T(%L)", TypeMatcher.KByteBuffer, packedCode)
         }
+
+        override fun describe(): String {
+            return ""
+        }
     }
 
     data class NativeInstance(
@@ -183,6 +217,10 @@ sealed class TypeInfo {
 
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock {
             return CodeBlock.of("%L", packedCode)
+        }
+
+        override fun describe(): String {
+            return "jobject instance"
         }
     }
 
@@ -209,6 +247,10 @@ sealed class TypeInfo {
 
         override fun unpackCodeJvm(packedCode: CodeBlock): CodeBlock {
             return packedCode
+        }
+
+        override fun describe(): String {
+            return "@JniCallback annotated jobject"
         }
     }
 }

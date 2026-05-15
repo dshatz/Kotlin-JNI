@@ -46,4 +46,12 @@ actual object CallerBridge {
             callback.onComplete(true)
         }
     }
+
+    @JniCall
+    actual fun giveResult(code: Int, error: Boolean): Result<Int> {
+        return runCatching {
+            if (error) error("Native error")
+            else code
+        }
+    }
 }

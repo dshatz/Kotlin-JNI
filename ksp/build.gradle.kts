@@ -28,6 +28,9 @@ kotlin {
             implementation(libs.kotlinpoet.ksp)
         }
     }
+    compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
+    }
 }
 
 mavenPublishing {

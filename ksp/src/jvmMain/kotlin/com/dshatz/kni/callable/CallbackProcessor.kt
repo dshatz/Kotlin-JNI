@@ -2,10 +2,12 @@ package com.dshatz.kni.callable
 
 import com.dshatz.kni.TypeMatcher
 import com.dshatz.kni.TypeMatcher.typeOf
+import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
@@ -25,7 +27,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toClassName
 
-object NativeCallable {
+object CallbackProcessor {
 
     data class CallableBridge(
         val fileSpec: FileSpec,
@@ -33,14 +35,30 @@ object NativeCallable {
         val cls: ClassName
     )
 
-    fun generateNativeBridge(cls: KSClassDeclaration, logger: KSPLogger): CallableBridge? {
-        val implCls = cls.toClassName().getNativeImplClass()
-        if (cls.classKind != ClassKind.INTERFACE) {
+    data class CallbackDeclaration(
+        val declaration: KSClassDeclaration,
+        val cls: ClassName
+    )
+
+    fun getCallbackDeclarations(declarations: List<KSClassDeclaration>): List<CallbackDeclaration> {
+        return declarations.map { CallbackDeclaration(it, it.toClassName()) }
+    }
+    
+    fun getAnnotatedCallbacks(resolver: Resolver): List<KSClassDeclaration> {
+        return resolver.getSymbolsWithAnnotation(JniCallback::class.java.name).toList()
+            .filterIsInstance<KSClassDeclaration>().distinct()
+    }
+
+    fun generateNativeCallback(decl: CallbackDeclaration, logger: KSPLogger): CallableBridge? {
+        val declaration = decl.declaration
+        val cls = decl.cls
+        val implCls = cls.getNativeImplClass()
+        if (declaration.classKind != ClassKind.INTERFACE) {
             logger.error("@JniCallback can only be applied to an interface.")
             return null
         }
-        if (cls.superTypes.none { it.resolve().toClassName() typeOf TypeMatcher.AutoCloseable }) {
-            logger.error("@JniCallback annotated interface should extend kotlin.AutoCloseable.", cls)
+        if (declaration.superTypes.none { it.resolve().toClassName() typeOf TypeMatcher.AutoCloseable }) {
+            logger.error("@JniCallback annotated interface should extend kotlin.AutoCloseable.", declaration)
             return null
         }
 
@@ -53,8 +71,7 @@ object NativeCallable {
             return this
         }
 
-        val funs = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
-            val originalReturnType = f.returnType?.resolve()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
+        val funs = declaration.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
             val returnType = f.returnType?.dereferenceTypeAlias()?.toClassName() ?: error("Failed to resolve return type: ${f.returnType}")
             val call = Def.callHelper(returnType)
             if (Modifier.SUSPEND in f.modifiers) {
@@ -81,7 +98,7 @@ object NativeCallable {
                 .build()
         }
 
-        val methodIds = cls.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
+        val methodIds = declaration.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
             PropertySpec.builder("${f.simpleName.asString()}ID", TypeMatcher.JMethodID)
                 .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.simpleName.asString(), f.getSignature()))
                 .build()
@@ -97,22 +114,22 @@ object NativeCallable {
             .addProperties(methodIds.toList())
             .superclass(TypeMatcher.BaseCallback)
             .primaryConstructor(constructor)
-            .addSuperclassConstructorParameter("%S", cls.jniClassName())
+            .addSuperclassConstructorParameter("%S", declaration.jniClassName())
             .addSuperclassConstructorParameter("env")
             .addSuperclassConstructorParameter("instance")
-            .addSuperinterface(cls.toClassName())
+            .addSuperinterface(cls)
             .build()
 
         val deps = Dependencies(false, *listOfNotNull(
-            cls.containingFile,
-            cls.parentDeclaration?.containingFile
+            declaration.containingFile,
+            declaration.parentDeclaration?.containingFile
         ).toTypedArray())
         val fileSpec = FileSpec.builder(implCls)
             .addType(bridgeClass)
             .addImport("kotlinx.cinterop", "get")
             .addAnnotation(optin())
             .build()
-        return CallableBridge(fileSpec, deps, cls.toClassName())
+        return CallableBridge(fileSpec, deps, cls)
     }
 
     private fun KSClassDeclaration.jniClassName(): String {
@@ -154,8 +171,6 @@ private fun optin(): AnnotationSpec {
 }
 
 internal object Def {
-    val FindClass = MemberName("com.dshatz.kni.utils", "FindClass")
-    val GetMethodID = MemberName("com.dshatz.kni.utils", "GetMethodID")
     val CallObjMethodA = MemberName("com.dshatz.kni.utils", "CallObjectMethodA")
     val CallVoidMethodA = MemberName("com.dshatz.kni.utils", "CallVoidMethodA")
     val memScoped = MemberName("kotlinx.cinterop", "memScoped")

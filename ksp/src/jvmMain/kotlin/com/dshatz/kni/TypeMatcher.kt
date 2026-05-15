@@ -60,6 +60,7 @@ internal object TypeMatcher {
     val JMethodID = ClassName("com.dshatz.kni.binding", "jmethodID")
     val BaseCallback = ClassName("com.dshatz.kni", "BaseCallback")
     val AutoCloseable = ClassName("kotlin", "AutoCloseable")
+    val IoBuffer = ClassName("kotlinx.io", "Buffer")
 
     val JniSerializer = ClassName("com.dshatz.kni.serialization", "JniSerializer")
 

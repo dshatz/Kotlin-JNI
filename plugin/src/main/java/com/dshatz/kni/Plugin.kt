@@ -2,6 +2,7 @@ package com.dshatz.kni
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.android.build.gradle.internal.tasks.MergeNativeLibsTask
+import com.google.devtools.ksp.gradle.KspAATask
 import org.gradle.api.Action
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
 import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 import javax.inject.Inject
+import kotlin.jvm.java
 
 class Plugin: Plugin<Project> {
 
@@ -35,11 +37,15 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
     val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
     config.kspDependency.convention("")
 
-    val jniCommonMain = kotlin.sourceSets.register("jniCommonMain") {
+    kotlin.sourceSets.register("jniCommonMain") {
         it.dependsOn(kotlin.sourceSets.getByName("commonMain"))
     }
-    val jniCommonTest = kotlin.sourceSets.register("jniCommonTest") {
+    kotlin.sourceSets.register("jniCommonTest") {
         it.dependsOn(kotlin.sourceSets.getByName("commonTest"))
+    }
+
+    kotlin.sourceSets.named("commonMain") {
+        it.kotlin.srcDir(target.layout.buildDirectory.dir("generated/ksp/metadata/commonMain/kotlin"))
     }
 
     target.pluginManager.withPlugin("com.google.devtools.ksp") {
@@ -48,6 +54,10 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
             if (config.kspDependency.get().toString().isNotEmpty()) {
                 target.dependencies.add("ksp${androidTarget.name.capitalized()}", config.kspDependency)
             }
+        }
+        if (config.kspDependency.get().toString().isNotEmpty()) {
+            println("Adding kspCommonMainMetadata")
+            target.dependencies.add("kspCommonMainMetadata", config.kspDependency)
         }
     }
 
@@ -72,11 +82,11 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
             target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
         }
     }
-
-    /*jniCommonMain.configure {
-        kotlin.sourceSets.getByName("jniJvmMain").dependsOn(it)
-        kotlin.sourceSets.getByName("jniNativeMain").dependsOn(it)
-    }*/
+    target.tasks.withType(KspAATask::class.java).configureEach {
+        if(it.name != "kspCommonMainKotlinMetadata") {
+            it.dependsOn("kspCommonMainKotlinMetadata")
+        }
+    }
 }
 
 private fun KotlinMultiplatformExtension.addJniSourceSets(target: KotlinTarget, groupSourceSet: String, dependOn: String) {
@@ -134,7 +144,7 @@ private fun Project.registerBundleLibsTask(
     target: String,
     config: BundledLibs,
     configure: Action<Copy>
-): TaskProvider<Copy?> {
+): TaskProvider<Copy> {
     val taskName = when (config) {
         is BundledLibs.KotlinNative -> "bundle${target.capitalized()}NativeLibs${config}"
         is BundledLibs.Prebuilt -> "bundle${target.capitalized()}PrebuiltNativeLibs"
