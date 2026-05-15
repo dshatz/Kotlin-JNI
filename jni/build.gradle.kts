@@ -101,7 +101,7 @@ kotlin {
     }
 
     jvm()
-    androidLibrary {
+    android {
         namespace = "$libGroup.$libName"
         compileSdk = 36
     }

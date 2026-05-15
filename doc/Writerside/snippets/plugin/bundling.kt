@@ -14,7 +14,7 @@ kotlin {
     // be added to lib/ directory inside the JAR.
     jvm() bundlesNatives listOf(linux64)
 
-    androidLibrary {
+    android {
         // androidNativeArm64 .so artifact will
         // be added to jniLibs inside the AAR.
         bundlesNatives(listOf(androidNative))
