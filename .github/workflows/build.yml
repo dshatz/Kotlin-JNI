@@ -33,7 +33,7 @@ jobs:
 
       - name: Build and Test
         run: |
-          ./gradlew allTests assembleAndroidDeviceTest assembleAndroidDeviceTest \
+          ./gradlew allTests assembleAndroidDeviceTest \
             -PkniNativeBuildType=debug \
             -PkniAllowedTargets=linuxX64,androidNativeArm64,wasmJs,js,wasmWasi
         env:

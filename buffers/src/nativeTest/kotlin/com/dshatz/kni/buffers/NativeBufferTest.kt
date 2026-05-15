@@ -19,7 +19,7 @@ import kotlinx.cinterop.set
 import kotlin.random.Random
 
 @OptIn(ExperimentalForeignApi::class)
-val NativeBufferTest by testSuite("NativeBufferTest") {
+val NativeBufferTest by testSuite() {
     test("release native heap") {
         val buffer = allocateBuffer(100)
 

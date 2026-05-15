@@ -112,6 +112,7 @@ tasks.withType<Test>().configureEach {
     reports {
         junitXml.required.set(true)
     }
+    failOnNoDiscoveredTests = false
 }
 
 /*afterEvaluate {

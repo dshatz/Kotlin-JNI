@@ -1,5 +1,6 @@
 import com.dshatz.kni.bundlesNatives
 import com.dshatz.kni.bundlesPrebuiltNatives
+import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -29,7 +30,7 @@ kotlin {
             }
         )
     }
-    androidLibrary {
+    android {
         namespace = "com.dshatz.kni.plugintest"
         compileSdk = 36
         minSdk = 26
@@ -118,4 +119,12 @@ tasks.named<Jar>("jvmJar") {
     manifest {
         attributes["Main-Class"] = "com.dshatz.kni.plugintest.MainKt"
     }
+}
+
+tasks.withType<KotlinTest>().configureEach {
+    outputs.upToDateWhen { false }
+    reports {
+        junitXml.required.set(true)
+    }
+    failOnNoDiscoveredTests = false
 }

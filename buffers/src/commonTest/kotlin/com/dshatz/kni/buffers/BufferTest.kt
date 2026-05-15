@@ -5,7 +5,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlin.random.Random
 
-val BufferTest by testSuite("BufferTest") {
+val BufferTest by testSuite() {
 
     test("write read") {
         val bytes = Random.nextBytes(100)

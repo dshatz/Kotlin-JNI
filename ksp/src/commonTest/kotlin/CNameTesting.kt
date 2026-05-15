@@ -1,55 +1,55 @@
 import com.dshatz.kni.CNameUtils
+import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.should
+import io.kotest.matchers.shouldBe
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class CNameTesting {
-
-    @Test
-    fun `ascii name not escaped`() {
+val cNameTesting = testSuite {
+    test("ascii name not escaped") {
         val name = "helloWorld"
         val escaped = CNameUtils.escapePart(name)
 
-        assertEquals(name, escaped)
+        escaped shouldBe name
     }
 
-    @Test
-    fun `underscore escaped`() {
+    test("underscore escaped") {
         val name = "hello_world"
         val escaped = CNameUtils.escapePart(name)
-        val expected = "hello_1world"
 
-        assertEquals(expected, escaped)
+        escaped shouldBe "hello_1world"
     }
 
-    @Test
-    fun `semicolon escaped`() {
+    test("underscore escaped") {
+        val name = "hello_world"
+        val escaped = CNameUtils.escapePart(name)
+
+        escaped shouldBe "hello_1world"
+    }
+
+    test("semicolon escaped") {
         val name = "hello;world"
         val escaped = CNameUtils.escapePart(name)
-        val expected = "hello_2world"
 
-        assertEquals(expected, escaped)
+        escaped shouldBe "hello_2world"
     }
-
-    @Test
-    fun `bracket escaped`() {
+    
+    test("bracket escaped") {
         val name = "hello[world]"
         val escaped = CNameUtils.escapePart(name)
-        val expected = "hello_3world]"
 
-        assertEquals(expected, escaped)
+        escaped shouldBe "hello_3world]"
     }
 
-    @Test
-    fun `unicode character escaped`() {
+    test("unicode character escaped") {
         val name = "ヘlloWorld"
         val escaped = CNameUtils.escapePart(name)
         val expected = "_030d8lloWorld"
 
-        assertEquals(expected, escaped)
+        escaped shouldBe "_030d8lloWorld"
     }
 
-    @Test
-    fun `ascii jni cname without class name`() {
+    test("ascii jni cname without class name") {
         val packageName = "test.example"
         val functionName = "helloWorld"
         val cname = CNameUtils.jniFunctionCName(
@@ -57,13 +57,11 @@ class CNameTesting {
             className = null,
             functionName = functionName
         )
-        val expected = "Java_test_example_helloWorld"
 
-        assertEquals(expected, cname)
+        cname shouldBe "Java_test_example_helloWorld"
     }
 
-    @Test
-    fun `ascii jni cname with class name`() {
+    test("ascii jni cname with class name") {
         val packageName = "test.example"
         val className = "JNI"
         val functionName = "helloWorld"
@@ -72,8 +70,7 @@ class CNameTesting {
             className = className,
             functionName = functionName
         )
-        val expected = "Java_test_example_JNI_helloWorld"
 
-        assertEquals(expected, cname)
+        cname shouldBe "Java_test_example_JNI_helloWorld"
     }
 }

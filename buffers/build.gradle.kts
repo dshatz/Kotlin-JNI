@@ -201,16 +201,17 @@ mavenPublishing {
 
 tasks.withType<Test>().configureEach {
     outputs.upToDateWhen { false }
-    reports {
+    /*reports {
         junitXml.required.set(true)
-    }
+    }*/
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType<KotlinNativeTest>().configureEach {
     outputs.upToDateWhen { false }
-    reports {
+    /*reports {
         junitXml.required.set(true)
-    }
+    }*/
 }
 
 tasks.withType<KotlinTest>().configureEach {

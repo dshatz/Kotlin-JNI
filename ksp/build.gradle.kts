@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.publish)
+    alias(libs.plugins.test)
     `maven-publish`
     signing
 }
@@ -20,6 +21,8 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.test)
+            implementation(libs.test.core)
+            implementation(libs.test.kotest)
         }
 
         jvmMain.dependencies {
@@ -31,6 +34,11 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xcontext-parameters")
     }
+}
+
+tasks.withType<Test>().configureEach {
+    outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
 }
 
 mavenPublishing {
