@@ -2,8 +2,10 @@ package kni.test
 
 import com.dshatz.kni.buffers.allocateBuffer
 import com.dshatz.kni.load.BundledLibLoader
+import com.dshatz.kni.serialization.JniWrappedException
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.*
 import kotlin.coroutines.resume
 import kotlin.random.Random
@@ -73,6 +75,15 @@ fun TestSuiteScope.callTests() {
                     }.awaitAll()
                 }
             }
+        }
+
+        test("result") {
+            CallerBridge.giveResult(10, false) shouldBe Result.success(10)
+            val error = CallerBridge.giveResult(10, true)
+            error.isFailure shouldBe true
+            error.exceptionOrNull()?.message shouldContain "Native error"
+            println(error.exceptionOrNull()?.printStackTrace())
+            error.exceptionOrNull()?.stackTraceToString() shouldContain "com.dshatz.kni.serialization.JniWrappedException: Native error"
         }
     }
 }

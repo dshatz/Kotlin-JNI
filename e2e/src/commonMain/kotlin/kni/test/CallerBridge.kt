@@ -11,4 +11,5 @@ expect object CallerBridge {
     @JniCall fun askJvmToFillBuffer(buffer: ByteBuffer): String
     @JniCall fun sendTypeAlias(alias: TestAlias): TestAlias
     @JniCall fun callbackFromCoroutine(callback: Callback, coroutineName: String)
+    @JniCall fun giveResult(code: Int, error: Boolean): Result<Int>
 }

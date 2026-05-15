@@ -1,7 +1,9 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import com.dshatz.kni.bundlesNatives
+import com.google.devtools.ksp.gradle.KspAATask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -49,7 +51,7 @@ kotlin {
         bundlesNatives(desktopNativeTargets)
     }
 
-    androidLibrary {
+    android {
         namespace = "com.dshatz.kni.e2e"
         compileSdk = 36
         withDeviceTestBuilder {
@@ -76,7 +78,7 @@ kotlin {
             implementation(libs.test.kotest)
         }
 
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(project(":annotations"))
                 implementation(project(":jni"))
@@ -111,3 +113,14 @@ tasks.withType<Test>().configureEach {
         junitXml.required.set(true)
     }
 }
+
+/*afterEvaluate {
+    dependencies {
+        kspCommonMainMetadata(project(":ksp"))
+    }
+}*/
+
+/*
+tasks.getByName("compileKotlinLinuxX64").dependsOn("kspCommonMainKotlinMetadata")
+tasks.getByName("compileKotlinLinuxArm64").dependsOn("kspCommonMainKotlinMetadata")
+tasks.getByName("compileKotlinJvm").dependsOn("kspCommonMainKotlinMetadata")*/

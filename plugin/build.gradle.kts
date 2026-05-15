@@ -21,6 +21,7 @@ gradlePlugin {
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
     implementation("com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin:8.13.2")
+    implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.3.6")
 }
 
 mavenPublishing {

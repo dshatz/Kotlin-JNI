@@ -6,18 +6,18 @@ import kotlinx.io.readByteArray
 interface JniSerializer<T> {
     fun packTo(value: T, buffer: Buffer)
     fun unpackFrom(buffer: Buffer): T
-}
 
-fun <T> JniSerializer<T>.pack(value: T): ByteArray {
-    val b = Buffer()
-    packTo(value, b)
-    return b.readByteArray()
-}
+    fun unpackFrom(byteArray: ByteArray): T {
+        val buffer = Buffer()
+        buffer.write(byteArray)
+        return unpackFrom(buffer)
+    }
 
-fun <T> JniSerializer<T>.unpack(byteArray: ByteArray): T {
-    val b = Buffer()
-    b.write(byteArray)
-    return unpackFrom(b)
+    fun pack(value: T): ByteArray {
+        val buffer = Buffer()
+        packTo(value, buffer)
+        return buffer.readByteArray()
+    }
 }
 
 fun Buffer.writeLenString(value: String) {

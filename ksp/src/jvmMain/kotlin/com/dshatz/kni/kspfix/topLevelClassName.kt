@@ -1,5 +1,7 @@
 package com.dshatz.kni.kspfix
 
+import com.dshatz.kni.TypeInfo
+import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.kspfix.FunLocation.LocationType
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
@@ -8,6 +10,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 
 private fun KSFunctionDeclaration.topLevelFunLocation(): FunLocation? {
@@ -63,13 +66,26 @@ data class FunLocation(
 }
 
 data class KSFun(
-    val f: KSFunctionDeclaration,
+    val simpleName: String,
+    val returnType: TypeInfo,
+    val parameters: List<CallableProcessor.ParamInfo>,
     val location: FunLocation,
-    val classDeclaration: KSClassDeclaration?
+    val classDeclaration: KSClass?,
 )
 
+data class KSClass(
+    val constructorParams: List<CallableProcessor.ParamInfo>,
+    val type: ClassName
+)
+
+/*
 fun List<KSFunctionDeclaration>.withLocations(): List<KSFun> {
     return map {
-        KSFun(it, it.functionLocation(), it.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS })
+        KSFun(
+            it.simpleName.asString(),
+            it,
+            it.functionLocation(),
+            it.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS }
+        )
     }
-}
+}*/

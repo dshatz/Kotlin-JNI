@@ -2,12 +2,11 @@ package kni.test
 
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
+import com.dshatz.kni.load.BundledLibLoader
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
-import com.dshatz.kni.load.BundledLibLoader
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 fun TestSuiteScope.bridgeTests() {
     BundledLibLoader.loadBundledLibrary("e2e")
@@ -34,7 +33,7 @@ fun TestSuiteScope.bridgeTests() {
     }
 
     test("custom serializer") {
-        val obj = ColorfulObject("green", 0.25)
+        val obj = ColorfulObject("green", 0.25, 0..100)
         CommonCallable.makeOrange(obj).color shouldBe "orange"
     }
 
