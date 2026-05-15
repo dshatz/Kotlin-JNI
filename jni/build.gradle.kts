@@ -126,6 +126,7 @@ kotlin {
             api(libs.io)
         }
         commonTest.dependencies {
+            implementation(libs.test.core)
             implementation(libs.test)
         }
         nativeTest.dependencies {
@@ -189,8 +190,10 @@ tasks.withType<Test>().configureEach {
     reports {
         junitXml.required.set(true)
     }
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType<KotlinNativeTest>().configureEach {
     outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
 }

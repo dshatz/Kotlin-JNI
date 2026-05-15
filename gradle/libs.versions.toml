@@ -7,7 +7,7 @@ kotest = "6.1.2"
 kotlinpoet = "2.3.0"
 ksp = "2.3.6"
 publish = "0.36.0"
-testBalloon = "0.8.4-K2.3.0"
+testBalloon = "1.0.0-K2.3.0"
 
 [libraries]
 kotest = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
