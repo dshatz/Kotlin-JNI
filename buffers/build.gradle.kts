@@ -40,7 +40,7 @@ fun KotlinNativeTargetWithHostTests.setupTestLib() {
 
 kotlin {
     jvmToolchain(21)
-    androidLibrary {
+    android {
         compileSdk = Configuration.compileSdk
         minSdk = Configuration.minSdk
 
