@@ -4,6 +4,8 @@ import com.dshatz.kni.callable.getNativeImplClass
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.CodeBlock
@@ -13,10 +15,11 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toTypeName
+import kotlin.math.log
 
 class TypeMapper(
     private val registry: Registry,
-    logger: KSPLogger
+    private val logger: KSPLogger
 ) {
 
     private val included = IncludedSerializers(registry, logger)
@@ -25,15 +28,19 @@ class TypeMapper(
         typeRef: KSTypeReference
     ): TypeInfo {
         val type = typeRef.dereferenceTypeAlias()
-        return mapType(type)
+        context(typeRef) {
+            return mapType(type)
+        }
     }
 
+    context(decl: KSNode)
     fun mapType(
         type: KSType
     ): TypeInfo {
         return mapType(type.toTypeName())
     }
 
+    context(decl: KSNode)
     fun mapType(
         kotlinType: TypeName,
     ): TypeInfo {
@@ -82,7 +89,8 @@ class TypeMapper(
                 jniType = JNIType(kotlinType, kotlinType, jniType)
             )
         } else {
-            error("Unknown type: $kotlinType, don't know how to pass to JNI. ${registry.serializersToString()}")
+            logger.error("Unknown type: $kotlinType, don't know how to pass to JNI. ${registry.serializersToString()}", decl)
+            error("JNI type mapping failed - see above for errors.")
             /*TypeInfo.Simple(
                 kotlinType = kotlinType,
                 jniType = JNIType(kotlinType, kotlinType)
