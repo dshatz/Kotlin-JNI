@@ -2,15 +2,17 @@ package com.dshatz.kni.kspfix
 
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.callable.CallableProcessor
-import com.dshatz.kni.kspfix.FunLocation.LocationType
+import com.dshatz.kni.kspfix.FunLocation.FunctionParent
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSDeclaration
+import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 
 private fun KSFunctionDeclaration.topLevelFunLocation(): FunLocation? {
@@ -20,7 +22,7 @@ private fun KSFunctionDeclaration.topLevelFunLocation(): FunLocation? {
         val pkg = packageName.asString()
         val classname = ClassName(pkg, cls)
         FunLocation(
-            LocationType.TOPLEVEL,
+            FunctionParent.TopLevel(containingFile!!),
             classNameKt = ClassName(pkg,clsKt),
             className = classname,
         )
@@ -36,8 +38,8 @@ fun KSFunctionDeclaration.functionLocation(): FunLocation {
 
 fun KSClassDeclaration.innerFunLocation(): FunLocation {
     val type = when (classKind) {
-        ClassKind.CLASS -> FunLocation.LocationType.CLASS
-        ClassKind.OBJECT -> FunLocation.LocationType.OBJECT
+        ClassKind.CLASS -> FunctionParent.Class(this)
+        ClassKind.OBJECT -> FunctionParent.Object(this)
         else -> error("Unsupported ClassKind: ${classKind}")
     }
     val className = toClassName()
@@ -49,18 +51,19 @@ fun KSClassDeclaration.innerFunLocation(): FunLocation {
 }
 
 data class FunLocation(
-    val locationType: LocationType,
+    val parent: FunctionParent,
     val classNameKt: ClassName,
     val className: ClassName,
 ) {
 
-    enum class LocationType {
-        CLASS,
-        OBJECT,
-        TOPLEVEL
+    sealed class FunctionParent {
+        abstract val declaration: KSNode
+        data class Class(override val declaration: KSClassDeclaration): FunctionParent()
+        data class Object(override val declaration: KSDeclaration): FunctionParent()
+        data class TopLevel(override val declaration: KSFile): FunctionParent()
     }
     fun toMemberName(funName: String): MemberName {
-        return if (locationType == LocationType.TOPLEVEL) MemberName(className.packageName, funName)
+        return if (parent is FunctionParent.TopLevel) MemberName(className.packageName, funName)
         else MemberName(className, funName)
     }
 }
@@ -70,12 +73,14 @@ data class KSFun(
     val returnType: TypeInfo,
     val parameters: List<CallableProcessor.ParamInfo>,
     val location: FunLocation,
-    val classDeclaration: KSClass?,
+    val cls: KSClass?,
+    val declaration: KSFunctionDeclaration
 )
 
 data class KSClass(
     val constructorParams: List<CallableProcessor.ParamInfo>,
-    val type: ClassName
+    val type: ClassName,
+    val declaration: KSClassDeclaration
 )
 
 /*

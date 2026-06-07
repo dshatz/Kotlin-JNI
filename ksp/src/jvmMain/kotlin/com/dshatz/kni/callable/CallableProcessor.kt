@@ -51,11 +51,13 @@ class CallableProcessor(
                 returnType = ret,
                 parameters = arguments,
                 location = f.functionLocation(),
-                classDeclaration = f.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS }
+                cls = f.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS }
                     ?.let { KSClass(
                         it.primaryConstructor?.parameters?.toTypeInfos().orEmpty(),
-                        type = it.toClassName()
-                    ) }
+                        type = it.toClassName(),
+                        declaration = it
+                    ) },
+                declaration = f
             )
         }
     }
@@ -63,17 +65,18 @@ class CallableProcessor(
     fun generateNativeFuns(
     ): List<FileSpec> {
         return registry.declarations.groupBy { it.location.className }.map { (parent, functions) ->
-
             val funSpecs = functions.map { f ->
-                generateCnameFunction(
-                    f.location.toMemberName(f.simpleName),
-                    f.location,
-                    f.parameters,
-                    f.returnType
-                )
+                context(f.declaration) {
+                    generateCnameFunction(
+                        f.location.toMemberName(f.simpleName),
+                        f.location,
+                        f.parameters,
+                        f.returnType
+                    )
+                }
             }
-
-            val cl = functions.firstOrNull()?.classDeclaration
+            
+            val cl = functions.firstOrNull()?.cls
             val constructor = cl?.let(::generateNativeConstructor)
             val dispose = cl?.let(::generateNativeDispose)
 
@@ -105,7 +108,9 @@ class CallableProcessor(
             it.typeInfo.unpackCode(CodeBlock.of("%N", it.name))
         }.joinToString()
 
-        val returnTypeInfo = mapper.mapType(cl.type)
+        val returnTypeInfo = context(cl.declaration) {
+            mapper.mapType(cl.type)
+        }
 
         val initNativeCode = CodeBlock.builder()
             .addStatement("%T(%L)", returnTypeInfo.kotlinType, paramConversion)
@@ -127,7 +132,7 @@ class CallableProcessor(
 
     private fun generateNativeDispose(
         cl: KSClass
-    ): FunSpec {
+    ): FunSpec = context(cl.declaration) {
         val jniCname = CNameUtils.jniFunctionCName(
             packageName = cl.type.packageName,
             className = cl.type.simpleName,
@@ -163,6 +168,7 @@ class CallableProcessor(
             .addKdoc("Calling user function [$callFun]")
     }
 
+    context(decl: KSFunctionDeclaration)
     private fun generateCnameFunction(
         callFun: MemberName,
         funLocation: FunLocation,
@@ -188,7 +194,7 @@ class CallableProcessor(
             CodeBlock.builder().addStatement("val %N = %L", it.first, it.second).build()
         }.joinToString("")
         val paramConversionCode = params.joinToString(", ") { it.name }
-        val callUserCode = if (funLocation.locationType == FunLocation.LocationType.CLASS) {
+        val callUserCode = if (funLocation.parent is FunLocation.FunctionParent.Class) {
             val instanceType = mapper.mapType(funLocation.className)
             val unpackInstance = instanceType.unpackCode(CodeBlock.of("%N", "instance"))
             CodeBlock.of("%L.%L(%L)", unpackInstance, callFun.simpleName, paramConversionCode)
@@ -196,7 +202,7 @@ class CallableProcessor(
             CodeBlock.of("%M(%L)", callFun, paramConversionCode)
         }
         val packResult = returnType.packCode(callUserCode)
-        val instanceParameters = if (funLocation.locationType == FunLocation.LocationType.CLASS) {
+        val instanceParameters = if (funLocation.parent is FunLocation.FunctionParent.Class) {
             val pointerParam = ParameterSpec.builder(
                 "instance",
                 mapper.mapType(funLocation.className).jniType.nativeType
@@ -242,7 +248,7 @@ class CallableProcessor(
             .build()
     }
 
-    private fun generateJvmExternalConstructor(cl: KSClass): FunSpec {
+    private fun generateJvmExternalConstructor(cl: KSClass): FunSpec = context(cl.declaration) {
         val params = cl.constructorParams.map {
             ParameterSpec.builder(it.name, it.typeInfo.jniType.jvmType).build()
         }
@@ -255,7 +261,7 @@ class CallableProcessor(
             .build()
     }
 
-    private fun generateJvmExternalDispose(cl: KSClass): FunSpec {
+    private fun generateJvmExternalDispose(cl: KSClass): FunSpec = context(cl.declaration) {
         val type = mapper.mapType(cl.type)
         return FunSpec.builder("disposeNative")
             .addParameter(ParameterSpec.builder("instance", type.jniType.jvmType).defaultValue("nativeInstance").build())
@@ -341,67 +347,73 @@ class CallableProcessor(
     fun generateJvmActuals(): List<FileSpec> {
         val funs = registry.declarations
         val constructors = funs.mapNotNull {
-            it.classDeclaration?.let { cls ->
+            it.cls?.let { cls ->
                  it.location.className to generateJvmActualConstructor(cls)
             }
         }.toMap()
 
         val externalConstructors = funs.mapNotNull {
-            it.classDeclaration?.let { cls ->
-                it.location.className to generateJvmExternalConstructor(cls)
+            it.cls?.let { cls ->
+                context(cls.declaration) {
+                    it.location.className to generateJvmExternalConstructor(cls)
+                }
             }
         }.toMap()
 
         val externalDispose = funs.mapNotNull {
-            it.classDeclaration?.let { cls ->
-                it.location.className to generateJvmExternalDispose(cls)
+            it.cls?.let { cls ->
+                context(cls.declaration) {
+                    it.location.className to generateJvmExternalDispose(cls)
+                }
             }
         }.toMap()
 
         return funs.groupBy { it.location.className }.map { (parent, functions) ->
-            val byLocationType: Map<FunLocation.LocationType, List<KSFun>> = functions.groupBy { it.location.locationType }
+            val byFunctionParent: Map<FunLocation.FunctionParent, List<KSFun>> = functions.groupBy { it.location.parent }
 
             val fileSpec = FileSpec.builder(parent)
-            byLocationType.forEach { (type, funs) ->
-                when (type) {
-                    FunLocation.LocationType.CLASS -> {
-                        val nativeType = mapper.mapType(parent)
-                        val specs = generateJvmFunctions(funs, nativeType)
-                        val nativeProp = PropertySpec.builder("nativeInstance", nativeType.jniType.jvmType).build()
-                        val constructor = constructors[parent]
-                        val type = TypeSpec.classBuilder(parent)
-                            .addModifiers(KModifier.ACTUAL)
-                            .addSuperinterface(TypeMatcher.AutoCloseable)
-                            .addProperty(nativeProp)
-                            .apply { constructor?.let(::primaryConstructor) }
-                            .apply {
-                                externalDispose[parent]?.let { externalDispose ->
-                                    addFunction(externalDispose)
-                                    addFunction(
-                                        FunSpec.builder("close")
-                                            .addModifiers(KModifier.OVERRIDE, KModifier.ACTUAL)
-                                            .addCode(CodeBlock.of("%L", "disposeNative()"))
-                                            .build()
-                                    )
+            byFunctionParent.forEach { (type, funs) ->
+                context(type.declaration) {
+                    when (type) {
+                        is FunLocation.FunctionParent.Class -> {
+                            val nativeType = mapper.mapType(parent)
+                            val specs = generateJvmFunctions(funs, nativeType)
+                            val nativeProp = PropertySpec.builder("nativeInstance", nativeType.jniType.jvmType).build()
+                            val constructor = constructors[parent]
+                            val type = TypeSpec.classBuilder(parent)
+                                .addModifiers(KModifier.ACTUAL)
+                                .addSuperinterface(TypeMatcher.AutoCloseable)
+                                .addProperty(nativeProp)
+                                .apply { constructor?.let(::primaryConstructor) }
+                                .apply {
+                                    externalDispose[parent]?.let { externalDispose ->
+                                        addFunction(externalDispose)
+                                        addFunction(
+                                            FunSpec.builder("close")
+                                                .addModifiers(KModifier.OVERRIDE, KModifier.ACTUAL)
+                                                .addCode(CodeBlock.of("%L", "disposeNative()"))
+                                                .build()
+                                        )
+                                    }
                                 }
-                            }
-                            .addFunctions(listOfNotNull(externalConstructors[parent]))
-                            .addFunctions(specs)
-                            .build()
+                                .addFunctions(listOfNotNull(externalConstructors[parent]))
+                                .addFunctions(specs)
+                                .build()
 
-                        fileSpec.addType(type)
-                    }
-                    FunLocation.LocationType.OBJECT -> {
-                        val specs = generateJvmFunctions(funs)
-                        val type = TypeSpec.objectBuilder(parent)
-                            .addModifiers(KModifier.ACTUAL)
-                            .addFunctions(specs)
-                            .build()
-                        fileSpec.addType(type)
-                    }
-                    FunLocation.LocationType.TOPLEVEL -> {
-                        val specs = generateJvmFunctions(funs)
-                        fileSpec.addFunctions(specs)
+                            fileSpec.addType(type)
+                        }
+                        is FunLocation.FunctionParent.Object -> {
+                            val specs = generateJvmFunctions(funs)
+                            val type = TypeSpec.objectBuilder(parent)
+                                .addModifiers(KModifier.ACTUAL)
+                                .addFunctions(specs)
+                                .build()
+                            fileSpec.addType(type)
+                        }
+                        is FunLocation.FunctionParent.TopLevel -> {
+                            val specs = generateJvmFunctions(funs)
+                            fileSpec.addFunctions(specs)
+                        }
                     }
                 }
             }

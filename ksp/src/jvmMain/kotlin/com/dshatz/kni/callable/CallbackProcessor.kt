@@ -201,7 +201,7 @@ private fun buildArgs(
             addStatement("args[0].l = ref.%M()", Def.reinterpret)
             args.forEachIndexed { idx, arg ->
                 val type = arg.type.dereferenceTypeAlias()
-                val info = typeMapper.mapType(type)
+                val info = context(arg) { typeMapper.mapType(type) }
                 val valueCode = info.packCode(CodeBlock.of("%N", arg.name!!.asString()))
                 val reinterpreted = if (info.jniType.jniField == "l") {
                     CodeBlock.of("%L.%M()", valueCode, Def.reinterpret)
