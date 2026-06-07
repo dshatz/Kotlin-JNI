@@ -56,7 +56,6 @@ kotlin {
     jvm()
 
     optionalTargets {
-
         androidNativeX64()
         androidNativeArm64()
         androidNativeX86()

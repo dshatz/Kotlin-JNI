@@ -3,8 +3,6 @@ package com.dshatz.kni
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.callable.CallbackProcessor
-import com.dshatz.kni.callable.CallbackProcessor.getAnnotatedCallbacks
-import com.dshatz.kni.callable.CallbackProcessor.getCallbackDeclarations
 import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
 import com.google.devtools.ksp.KspExperimental
@@ -38,10 +36,14 @@ class NativeKommons : SymbolProcessorProvider {
         private val codeGenerator: CodeGenerator
             get() = env.codeGenerator
 
-        private val generator = CallableProcessor(registry, env.logger)
 
         private var generated = false
+
+        private val mapper: TypeMapper = TypeMapper(registry, env.logger)
+
         val serializableProcessor = SerializerProcessor(registry, env.logger)
+        val callbackProcessor = CallbackProcessor(mapper, env.logger)
+        private val generator = CallableProcessor(registry, env.logger, mapper)
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
             val isJvm = env.platforms.singleOrNull()?.platformName == "JVM"
@@ -64,10 +66,10 @@ class NativeKommons : SymbolProcessorProvider {
                 }
             }
 
-            val callbacks = getAnnotatedCallbacks(resolver)
+            val callbacks = callbackProcessor.getAnnotatedCallbacks(resolver)
             val callables = getAnnotatedCallables(resolver)
 
-            val callbackDeclarations = getCallbackDeclarations(callbacks)
+            val callbackDeclarations = callbackProcessor.getCallbackDeclarations(callbacks)
             registry.callbacks.addAll(callbackDeclarations.map { it.cls })
 
             generator.analyzeDeclarations(callables).also {
@@ -84,7 +86,7 @@ class NativeKommons : SymbolProcessorProvider {
             }
 
             if (!isJvm && !isCommon) {
-                val bridges = callbackDeclarations.map { CallbackProcessor.generateNativeCallback(it, env.logger) }
+                val bridges = callbackDeclarations.map { callbackProcessor.generateNativeCallback(it) }
                 // native
                 if (bridges.any { it == null }) {
                     env.logger.error("Callback processing failed")
@@ -100,6 +102,11 @@ class NativeKommons : SymbolProcessorProvider {
             val sources = callables.mapNotNull { it.containingFile }.distinct().toTypedArray()
             if (!generated) {
                 if (isJvm) {
+                    callbackDeclarations.map {
+                        callbackProcessor.generateJvmAdapter(it)
+                    }.forEach {
+                        it.writeTo(codeGenerator, Dependencies(false, sources = sources))
+                    }
                     generator.generateJvmActuals().forEach {
                         it.writeTo(codeGenerator, Dependencies(false, sources = sources))
                     }

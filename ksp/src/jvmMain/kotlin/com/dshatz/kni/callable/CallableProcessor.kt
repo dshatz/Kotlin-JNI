@@ -29,9 +29,9 @@ import com.squareup.kotlinpoet.ksp.toClassName
 
 class CallableProcessor(
     private val registry: Registry,
-    private val logger: KSPLogger
+    private val logger: KSPLogger,
+    private val mapper: TypeMapper
 ) {
-    private val mapper: TypeMapper = TypeMapper(registry, logger)
 
     private fun List<KSValueParameter>.toTypeInfos(): List<ParamInfo> {
         return map {

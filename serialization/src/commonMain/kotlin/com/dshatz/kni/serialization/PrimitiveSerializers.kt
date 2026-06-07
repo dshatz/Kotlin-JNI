@@ -2,15 +2,6 @@ package com.dshatz.kni.serialization
 
 import kotlinx.io.Buffer
 
-/*object StringSerializer: JniSerializer<String> {
-    override fun packTo(value: String, buffer: Buffer) {
-        buffer.writeLenString(value)
-    }
-    override fun unpackFrom(buffer: Buffer): String {
-        return buffer.readLenString()
-    }
-}*/
-
 fun <T> Buffer.writeList(col: Collection<T>, writeItem: Buffer.(T) -> Unit) {
     writeInt(col.size)
     col.forEach {

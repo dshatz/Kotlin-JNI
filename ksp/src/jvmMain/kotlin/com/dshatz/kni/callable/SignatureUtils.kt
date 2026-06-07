@@ -1,27 +1,27 @@
 package com.dshatz.kni.callable
 
-import com.dshatz.kni.TypeMatcher
-import com.dshatz.kni.utils.dereferenceTypeAlias
+import com.dshatz.kni.TypeMapper
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.TypeName
 
-fun KSFunctionDeclaration.getSignature(): String {
+fun KSFunctionDeclaration.getSignature(typeMapper: TypeMapper): String {
     val parameterDescriptors = parameters.joinToString("") { parameter ->
-        parameter.type.dereferenceTypeAlias().toJniDescriptor()
+        typeMapper.mapType(parameter.type).jniType.jvmType.toJniDescriptor()
     }
 
-    val returnDescriptor = returnType?.dereferenceTypeAlias()?.toJniDescriptor() ?: "V"
+    val returnDescriptor = returnType?.let { typeMapper.mapType(it) }?.jniType?.jvmType?.toJniDescriptor() ?: "V"
 
     return "($parameterDescriptors)$returnDescriptor"
 }
 
-private fun KSType.toJniDescriptor(): String {
-    val declaration = this.declaration
-    val qualifiedName = declaration.qualifiedName?.asString() ?: return "Ljava/lang/Object;"
+private fun TypeName.toJniDescriptor(): String {
+    return (this as ClassName).toJniDescriptor()
+}
 
-    return when (qualifiedName) {
+private fun ClassName.toJniDescriptor(): String {
+
+    return when (canonicalName) {
         "kotlin.Unit" -> "V"
         "kotlin.Boolean" -> "Z"
         "kotlin.Byte" -> "B"
@@ -36,41 +36,7 @@ private fun KSType.toJniDescriptor(): String {
         "kotlin.ByteArray" -> "[B"
         "kotlin.IntArray" -> "[I"
         else -> {
-            "L${qualifiedName.replace('.', '/')};"
-        }
-    }
-}
-
-fun KSType.toJValueField(): Pair<String, CodeBlock> {
-    val cls = this.toClassName()
-    val nullCheck = if (cls.isNullable) "?." else "."
-    return when (this.toClassName().copy(nullable = false)) {
-        TypeMatcher.KString -> {
-            "l" to CodeBlock.of("%L%M(env)?.%M()", nullCheck, TypeMatcher.Method.ToJString, Def.reinterpret)
-        }
-
-        TypeMatcher.KByteArray -> {
-            "l" to CodeBlock.of("%L%M(env)?.%M()", nullCheck, TypeMatcher.Method.ToJByteArray, Def.reinterpret)
-        }
-
-        TypeMatcher.KByteBuffer -> {
-            "l" to CodeBlock.of("%L%M(env)?.%M()", nullCheck, TypeMatcher.Method.ToJByteBuffer, Def.reinterpret)
-        }
-
-        TypeMatcher.KBoolean -> {
-            "z" to CodeBlock.of("%L%M()", nullCheck, TypeMatcher.Method.ToJBoolean)
-        }
-        else -> {
-            when (this.toClassName()) {
-                TypeMatcher.KByte    -> "b"
-                TypeMatcher.KChar    -> "c"
-                TypeMatcher.KShort   -> "s"
-                TypeMatcher.KInt     -> "i"
-                TypeMatcher.KLong    -> "j"
-                TypeMatcher.KFloat   -> "f"
-                TypeMatcher.KDouble  -> "d"
-                else -> "l"
-            } to CodeBlock.of("")
+            "L${canonicalName.replace('.', '/')};"
         }
     }
 }

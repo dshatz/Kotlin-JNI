@@ -11,7 +11,6 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.android.library)
     id("com.dshatz.kni")
-    alias(libs.plugins.osdetector)
 }
 
 kni {
@@ -81,6 +80,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(project(":annotations"))
+                implementation(project(":serialization"))
                 implementation(project(":jni"))
             }
         }
@@ -114,14 +114,3 @@ tasks.withType<Test>().configureEach {
     }
     failOnNoDiscoveredTests = false
 }
-
-/*afterEvaluate {
-    dependencies {
-        kspCommonMainMetadata(project(":ksp"))
-    }
-}*/
-
-/*
-tasks.getByName("compileKotlinLinuxX64").dependsOn("kspCommonMainKotlinMetadata")
-tasks.getByName("compileKotlinLinuxArm64").dependsOn("kspCommonMainKotlinMetadata")
-tasks.getByName("compileKotlinJvm").dependsOn("kspCommonMainKotlinMetadata")*/
