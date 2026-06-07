@@ -1,5 +1,6 @@
 package com.dshatz.kni.callable
 
+import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.TypeMatcher
 import com.dshatz.kni.TypeMatcher.typeOf
 import com.dshatz.kni.annotations.JniCallback
@@ -25,9 +26,13 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 
-object CallbackProcessor {
+class CallbackProcessor(
+    private val typeMapper: TypeMapper,
+    private val logger: KSPLogger
+) {
 
     data class CallableBridge(
         val fileSpec: FileSpec,
@@ -38,7 +43,11 @@ object CallbackProcessor {
     data class CallbackDeclaration(
         val declaration: KSClassDeclaration,
         val cls: ClassName
-    )
+    ) {
+        fun jvmAdapterName(): ClassName {
+            return ClassName(cls.packageName, cls.simpleName + "Adapter")
+        }
+    }
 
     fun getCallbackDeclarations(declarations: List<KSClassDeclaration>): List<CallbackDeclaration> {
         return declarations.map { CallbackDeclaration(it, it.toClassName()) }
@@ -49,7 +58,7 @@ object CallbackProcessor {
             .filterIsInstance<KSClassDeclaration>().distinct()
     }
 
-    fun generateNativeCallback(decl: CallbackDeclaration, logger: KSPLogger): CallableBridge? {
+    fun generateNativeCallback(decl: CallbackDeclaration): CallableBridge? {
         val declaration = decl.declaration
         val cls = decl.cls
         val implCls = cls.getNativeImplClass()
@@ -82,7 +91,7 @@ object CallbackProcessor {
             val callCode = CodeBlock.builder().addStatement(
                 "env.%M(%N, %N, %N)%L$nullCheck",
                 call,
-                "ref",
+                "adapterClassGlobal",
                 f.simpleName.asString() + "ID",
                 "args",
                 returnConverter
@@ -92,7 +101,7 @@ object CallbackProcessor {
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(f.returnType?.resolve()?.toClassName() ?: UNIT)
                 .addCode(CodeBlock.builder()
-                    .add("%L", buildArgs(f.parameters, callCode))
+                    .add("%L", buildArgs(f.parameters, callCode, typeMapper))
                     .build()
                 )
                 .build()
@@ -100,7 +109,7 @@ object CallbackProcessor {
 
         val methodIds = declaration.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
             PropertySpec.builder("${f.simpleName.asString()}ID", TypeMatcher.JMethodID)
-                .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.simpleName.asString(), f.getSignature()))
+                .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.simpleName.asString(), f.getSignature(typeMapper)))
                 .build()
         }
 
@@ -135,6 +144,41 @@ object CallbackProcessor {
     private fun KSClassDeclaration.jniClassName(): String {
         return qualifiedName!!.asString().replace('.', '/')
     }
+
+    fun generateJvmAdapter(decl: CallbackDeclaration): FileSpec {
+        val file = decl.jvmAdapterName()
+        val funs = decl.declaration.declarations.filterIsInstance<KSFunctionDeclaration>().map { f ->
+            val fName = f.simpleName.asString()
+            val params = f.parameters.map { param ->
+                CallableProcessor.ParamInfo(param.name!!.asString(), typeMapper.mapType(param.type))
+            }
+            val paramsSpecs = params.map {
+                ParameterSpec.builder(it.name, it.typeInfo.jniType.jvmType).build()
+            }
+            val convertArgsCode = params.joinToCode {
+                it.typeInfo.unpackCodeJvm(CodeBlock.of("%N", it.name))
+            }
+            val returnType = f.returnType?.let(typeMapper::mapType)
+            val builder = FunSpec.builder(fName)
+                .addParameter(ParameterSpec.builder("instance", decl.cls).build())
+                .addParameters(paramsSpecs)
+                .addAnnotation(JvmStatic::class)
+            val code = CodeBlock.of("%N.%N(%L)", "instance", fName, convertArgsCode)
+
+            if (returnType != null) {
+                builder.addCode("return %L", code)
+                    .returns(returnType.jniType.jvmType)
+            } else builder.addCode(code)
+
+            builder.build()
+        }.toList()
+        return FileSpec.builder(file)
+            .addType(
+                TypeSpec.objectBuilder(file)
+                    .addFunctions(funs).build()
+            )
+            .build()
+    }
 }
 
 internal fun TypeName.getNativeImplClass(): ClassName {
@@ -147,16 +191,22 @@ internal fun TypeName.getNativeImplClass(): ClassName {
 
 private fun buildArgs(
     args: List<KSValueParameter>,
-    innerCode: CodeBlock
+    innerCode: CodeBlock,
+    typeMapper: TypeMapper
 ): CodeBlock {
     return CodeBlock.builder()
         .beginControlFlow("return %M", Def.memScoped)
-        .addStatement("val args = %M<%T>(%L)", Def.allocArray, TypeMatcher.JValue, args.size)
+        .addStatement("val args = %M<%T>(%L)", Def.allocArray, TypeMatcher.JValue, args.size + 1)
         .apply {
+            addStatement("args[0].l = ref.%M()", Def.reinterpret)
             args.forEachIndexed { idx, arg ->
                 val type = arg.type.dereferenceTypeAlias()
-                val (jniField, converter) = type.toJValueField()
-                addStatement("args[%L].%L = %N%L", idx, jniField, arg.name!!.asString(), converter)
+                val info = typeMapper.mapType(type)
+                val valueCode = info.packCode(CodeBlock.of("%N", arg.name!!.asString()))
+                val reinterpreted = if (info.jniType.jniField == "l") {
+                    CodeBlock.of("%L.%M()", valueCode, Def.reinterpret)
+                } else valueCode
+                addStatement("args[%L].%L = %L", idx + 1, info.jniType.jniField, reinterpreted)
             }
         }
         .add(innerCode)
@@ -171,8 +221,8 @@ private fun optin(): AnnotationSpec {
 }
 
 internal object Def {
-    val CallObjMethodA = MemberName("com.dshatz.kni.utils", "CallObjectMethodA")
-    val CallVoidMethodA = MemberName("com.dshatz.kni.utils", "CallVoidMethodA")
+    val CallStaticObjMethodA = MemberName("com.dshatz.kni.utils", "CallStaticObjMethodA")
+    val CallStaticVoidMethodA = MemberName("com.dshatz.kni.utils", "CallStaticVoidMethodA")
     val memScoped = MemberName("kotlinx.cinterop", "memScoped")
     val allocArray = MemberName("kotlinx.cinterop", "allocArray")
     val reinterpret = MemberName("kotlinx.cinterop", "reinterpret")
@@ -180,10 +230,10 @@ internal object Def {
     internal fun callHelper(type: ClassName): MemberName {
         return when (type.copy(nullable = false)) {
             TypeMatcher.KString, TypeMatcher.KByteArray -> {
-                CallObjMethodA
+                CallStaticObjMethodA
             }
-            UNIT -> CallVoidMethodA
-            else -> MemberName("com.dshatz.kni.utils", "Call${type.simpleName}MethodA")
+            UNIT -> CallStaticVoidMethodA
+            else -> MemberName("com.dshatz.kni.utils", "CallStatic${type.simpleName}MethodA")
         }
     }
 

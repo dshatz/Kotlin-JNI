@@ -2,8 +2,6 @@ package com.dshatz.kni.serialization
 
 fun parseNativeStack(nativeLines: List<String>): Array<StackTraceElement> {
     return nativeLines.map { line ->
-        // This logic depends on the specific format of your string
-        // Simple example for: "com.package.Class.method(File.kt:42)"
         val regex = """(.+)\.(.+)\((.+):(\d+)\)""".toRegex()
         val match = regex.find(line)
 

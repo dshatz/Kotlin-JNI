@@ -11,6 +11,7 @@ import com.dshatz.kni.utils.DeleteGlobalRef
 import com.dshatz.kni.utils.DeleteLocalRef
 import com.dshatz.kni.utils.FindClass
 import com.dshatz.kni.utils.GetMethodID
+import com.dshatz.kni.utils.GetStaticMethodID
 import com.dshatz.kni.utils.NewGlobalRef
 import com.dshatz.kni.utils.getJavaVM
 import kotlinx.cinterop.CPointer
@@ -65,13 +66,25 @@ open class BaseCallback(
         globalClass
     }
 
+    protected val adapterClassGlobal: jobject = env.run {
+        val name = "${className}Adapter"
+        val localClass = FindClass(name) ?: error("Class not found: $name")
+        val globalClass = NewGlobalRef(localClass) ?: error("Failed to create GlobalRef for adapter class")
+        DeleteLocalRef(localClass)
+        globalClass
+    }
+
     private var isClosed: Boolean = false
 
     val ref: jobject = env.NewGlobalRef(instance) ?: error("Unable to create new GlobalRef")
 
-    fun lazyMethodId(name: String, signature: String): Lazy<jmethodID> {
+    protected fun lazyMethodId(name: String, signature: String): Lazy<jmethodID> {
         return lazy {
-            env.GetMethodID(jvmClassGlobal, name, signature) ?: error("$name method not found $signature")
+            val params = signature.substringAfter('(').substringBeforeLast(')')
+            val instanceParam = "L${className}"
+            val returnType = signature.substringAfterLast(')')
+            val adapterSignature = "($instanceParam;$params)$returnType"
+            env.GetStaticMethodID(adapterClassGlobal, name, adapterSignature) ?: error("$name method not found $adapterSignature")
         }
     }
 

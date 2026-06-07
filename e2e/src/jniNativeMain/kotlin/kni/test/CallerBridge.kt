@@ -48,6 +48,11 @@ actual object CallerBridge {
     }
 
     @JniCall
+    actual fun callbackWithData(callback: Callback, data: ColorfulObject) {
+        callback.onCompleteWithData(data)
+    }
+
+    @JniCall
     actual fun giveResult(code: Int, error: Boolean): Result<Int> {
         return runCatching {
             if (error) error("Native error")

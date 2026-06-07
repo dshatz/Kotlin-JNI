@@ -122,9 +122,6 @@ kotlin {
     }
 
     sourceSets {
-        commonMain.dependencies {
-            api(libs.io)
-        }
         commonTest.dependencies {
             implementation(libs.test.core)
             implementation(libs.test)

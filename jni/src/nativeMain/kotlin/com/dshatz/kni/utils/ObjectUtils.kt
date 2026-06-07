@@ -47,7 +47,7 @@ fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
 }
 
 /**
- * Convert a native wrapper [ByteBuffer] to a jobject representing the same [ByteBuffer].
+ * Convert a native wrapper [ByteBuffer] to a jobject representing a java.nio.ByteBuffer.
  *
  * @return a jobject representing a java.nio.ByteBuffer or null if operation failed.
  */
@@ -296,6 +296,48 @@ fun CPointer<JNIEnvVar>.CallVoidMethodA(
     return pointed.pointedCommon!!.CallVoidMethodA!!.invoke(
         this,
         obj,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticVoidMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+) {
+    return pointed.pointedCommon!!.CallStaticVoidMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticObjMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jobject? {
+    return pointed.pointedCommon!!.CallStaticObjectMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticIntMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jint {
+    return pointed.pointedCommon!!.CallStaticIntMethodA!!.invoke(
+        this,
+        cls,
         method,
         args
     )

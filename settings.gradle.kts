@@ -1,15 +1,16 @@
 rootProject.name = "Kotlin-JNI"
 
+includeBuild("plugin")
 if (!settings.extra.has("onlyDocs")) {
     include(":annotations")
     include(":demo")
     include(":e2e")
     include(":ksp")
+    include(":serialization")
     include(":plugintest")
 }
 include(":jni")
 include(":buffers")
-includeBuild("plugin")
 
 pluginManagement {
     repositories {

@@ -2,7 +2,6 @@ package kni.test
 
 import com.dshatz.kni.buffers.allocateBuffer
 import com.dshatz.kni.load.BundledLibLoader
-import com.dshatz.kni.serialization.JniWrappedException
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -67,6 +66,10 @@ fun TestSuiteScope.callTests() {
                                         cont.resume(result)
                                     }
 
+                                    override fun onCompleteWithData(data: ColorfulObject) {
+                                        TODO("Not yet implemented")
+                                    }
+
                                     override fun close() {}
 
                                 }, "Coroutine $it")
@@ -77,13 +80,29 @@ fun TestSuiteScope.callTests() {
             }
         }
 
+        test("callback with serializable") {
+            val obj = ColorfulObject("orange", 20.0, 1..2)
+            val result = suspendCancellableCoroutine<ColorfulObject> { cont ->
+                CallerBridge.callbackWithData(object: Callback {
+                    override fun onComplete(result: Boolean) {}
+
+                    override fun onCompleteWithData(data: ColorfulObject) {
+                        cont.resume(data)
+                    }
+
+                    override fun close() {}
+                }, obj)
+            }
+            result shouldBe obj
+        }
+
         test("result") {
             CallerBridge.giveResult(10, false) shouldBe Result.success(10)
             val error = CallerBridge.giveResult(10, true)
             error.isFailure shouldBe true
             error.exceptionOrNull()?.message shouldContain "Native error"
             println(error.exceptionOrNull()?.printStackTrace())
-            error.exceptionOrNull()?.stackTraceToString() shouldContain "com.dshatz.kni.serialization.JniWrappedException: Native error"
+            error.exceptionOrNull()?.stackTraceToString() shouldContain "com.dshatz.kni.serialization.exception.JniWrappedException: Native error"
         }
     }
 }

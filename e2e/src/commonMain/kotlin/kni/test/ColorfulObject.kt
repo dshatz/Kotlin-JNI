@@ -3,7 +3,7 @@ package kni.test
 import com.dshatz.kni.annotations.JniSerializable
 import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.serialization.JniSerializer
-import com.dshatz.kni.serialization.JniWrappedException
+import com.dshatz.kni.serialization.exception.JniWrappedException
 import com.dshatz.kni.serialization.readLenString
 import com.dshatz.kni.serialization.writeLenString
 import kotlinx.io.Buffer

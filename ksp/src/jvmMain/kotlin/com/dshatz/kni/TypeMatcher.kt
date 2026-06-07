@@ -121,6 +121,22 @@ internal object TypeMatcher {
         KString to JString,
     )
 
+    val jniFields = mapOf(
+        KBoolean to "z",
+        KByte to "b",
+        KChar to "c",
+        KShort to "s",
+        KInt to "i",
+        KLong to "j",
+        KFloat to "f",
+        KDouble to "d"
+    )
+
+    val conversionWithoutEnv = listOf(
+        KBoolean,
+        KChar
+    )
+
     val toJTypes = mapOf(
         KBoolean to Method.ToJBoolean,
         KBooleanArray to Method.ToJBooleanArray,
