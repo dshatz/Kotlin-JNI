@@ -1,7 +1,7 @@
 package com.dshatz.kni.serialization
 
 import com.dshatz.kni.Registry
-import com.dshatz.kni.TypeMatcher
+import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniSerializable
 import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.kspfix.findAnnotation
@@ -13,7 +13,6 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
@@ -108,7 +107,7 @@ class SerializerProcessor(
             } else {
                 val serializerCls = type.serializerClass()
                 val serializer = TypeSpec.objectBuilder(serializerCls)
-                    .addSuperinterface(TypeMatcher.JniSerializer.parameterizedBy(type))
+                    .addSuperinterface(Types.JniSerializer.parameterizedBy(type))
                     .addFunction(
                         buildPackFunction(type)
                             .addCode(packCode(info.properties)).build()
@@ -153,7 +152,7 @@ class SerializerProcessor(
                 ParameterSpec("value", type)
             )
             .addParameter(
-                ParameterSpec("buffer", TypeMatcher.IoBuffer)
+                ParameterSpec("buffer", Types.IoBuffer)
             )
     }
 
@@ -162,7 +161,7 @@ class SerializerProcessor(
             .addModifiers(KModifier.OVERRIDE)
             .returns(type)
             .addParameter(
-                ParameterSpec("buffer", TypeMatcher.IoBuffer)
+                ParameterSpec("buffer", Types.IoBuffer)
             )
     }
 
@@ -174,11 +173,11 @@ class SerializerProcessor(
                 val cls = ClassName(pkg, name)
                 registry.serializers[type] = cls
                 TypeSpec.objectBuilder(cls)
-                    .addSuperinterface(TypeMatcher.JniSerializer.parameterizedBy(type))
+                    .addSuperinterface(Types.JniSerializer.parameterizedBy(type))
                     .addFunction(
                         FunSpec.builder("packTo")
                             .addParameter(ParameterSpec.builder("value", type).build())
-                            .addParameter(ParameterSpec.builder("buffer", TypeMatcher.IoBuffer).build())
+                            .addParameter(ParameterSpec.builder("buffer", Types.IoBuffer).build())
                             .addModifiers(KModifier.OVERRIDE)
                             .addCode(
                                 CodeBlock.of("%L", serializer.writeCode(CodeBlock.of("buffer"),
@@ -187,7 +186,7 @@ class SerializerProcessor(
                     )
                     .addFunction(
                         FunSpec.builder("unpackFrom")
-                            .addParameter(ParameterSpec.builder("buffer", TypeMatcher.IoBuffer).build())
+                            .addParameter(ParameterSpec.builder("buffer", Types.IoBuffer).build())
                             .returns(type)
                             .addModifiers(KModifier.OVERRIDE)
                             .addCode(
@@ -200,7 +199,7 @@ class SerializerProcessor(
 
         val generic = serializer.kotlinType
         val name = generic.genericSerializerName()
-        val typed = PropertySpec.builder(name.simpleName, TypeMatcher.JniSerializer.parameterizedBy(generic))
+        val typed = PropertySpec.builder(name.simpleName, Types.JniSerializer.parameterizedBy(generic))
             .initializer(CodeBlock.of(
                 "%T(%L)",
                 (serializer.rawSerializer as IncludedSerializers.Serializer.StaticObject).serializer,

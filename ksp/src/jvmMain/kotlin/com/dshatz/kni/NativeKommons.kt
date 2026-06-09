@@ -134,8 +134,8 @@ class NativeKommons : SymbolProcessorProvider {
                         if (parentClass.classKind !in allowedClassKinds) {
                             env.logger.error("@JniCall is only supported inside classes/objects or on top-level functions.", it)
                             false
-                        } else if (parentClass.classKind == ClassKind.CLASS && parentClass.superTypes.none { it.toTypeName() == TypeMatcher.AutoCloseable }) {
-                            env.logger.error("Classes with @JniCall methods must implement ${TypeMatcher.AutoCloseable.canonicalName}", it)
+                        } else if (parentClass.classKind == ClassKind.CLASS && parentClass.superTypes.none { it.toTypeName() == Types.AutoCloseable }) {
+                            env.logger.error("Classes with @JniCall methods must implement ${Types.AutoCloseable.canonicalName}", it)
                             false
                         } else true
                     }

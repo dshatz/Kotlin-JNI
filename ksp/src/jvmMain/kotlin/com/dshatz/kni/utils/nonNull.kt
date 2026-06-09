@@ -1,7 +1,6 @@
 package com.dshatz.kni.utils
 
-import com.dshatz.kni.TypeInfo
-import com.dshatz.kni.TypeMatcher
+import com.dshatz.kni.Types
 import com.dshatz.kni.needsIsNullParam
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName
@@ -11,7 +10,7 @@ fun TypeName.notNullable() = copy(nullable = false)
 
 fun TypedCode.nonNullOrPlaceholder(): TypedCode {
     return if (type.needsIsNullParam()) {
-        CodeBlock.of("%L ?: %L", this.code, TypeMatcher.boxedWhenNullable[type.notNullable()])
+        CodeBlock.of("%L ?: %L", this.code, Types.boxedWhenNullable[type.notNullable()])
             .returnType(type.notNullable())
     } else this
 }
