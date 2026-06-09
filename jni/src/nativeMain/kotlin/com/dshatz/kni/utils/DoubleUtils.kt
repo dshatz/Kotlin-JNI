@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jdoubleArray
 import com.dshatz.kni.binding.jdoubleVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -19,9 +20,9 @@ import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
-fun jdoubleArray.getDoubleElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jdoubleVar>? {
-    val method = env.pointed.pointedCommon?.GetDoubleArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jdoubleArray.getDoubleElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jdoubleVar> {
+    val method = env.pointed.pointedCommon?.GetDoubleArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetDoubleArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -31,9 +32,9 @@ fun jdoubleArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jd
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jdoubleArray.toKDoubleArray(env: CPointer<JNIEnvVar>): DoubleArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getDoubleElements(env) ?: return null
+fun jdoubleArray.toKDoubleArray(env: CPointer<JNIEnvVar>): DoubleArray {
+    val length = this.getLength(env)
+    val elements = this.getDoubleElements(env)
 
     val result = memScoped {
         DoubleArray(length) {
@@ -46,14 +47,14 @@ fun jdoubleArray.toKDoubleArray(env: CPointer<JNIEnvVar>): DoubleArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newDoubleArray(size: jsize): jdoubleArray? {
-    val method = pointed.pointedCommon?.NewDoubleArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newDoubleArray(size: jsize): jdoubleArray {
+    val method = pointed.pointedCommon?.NewDoubleArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to call NewDoubleArray")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jdoubleArray.fill(env: CPointer<JNIEnvVar>, value: DoubleArray): jdoubleArray? {
-    val method = env.pointed.pointedCommon?.SetDoubleArrayRegion ?: return null
+fun jdoubleArray.fill(env: CPointer<JNIEnvVar>, value: DoubleArray): jdoubleArray {
+    val method = env.pointed.pointedCommon?.SetDoubleArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
         method.invoke(env, this, 0, value.size, pointer)
@@ -63,5 +64,5 @@ fun jdoubleArray.fill(env: CPointer<JNIEnvVar>, value: DoubleArray): jdoubleArra
 
 @OptIn(ExperimentalForeignApi::class)
 fun DoubleArray.toJDoubleArray(env: CPointer<JNIEnvVar>): jdoubleArray? {
-    return env.newDoubleArray(size)?.fill(env, this)
+    return env.newDoubleArray(size).fill(env, this)
 }

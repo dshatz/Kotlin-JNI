@@ -59,4 +59,14 @@ actual object CallerBridge {
             else code
         }
     }
+
+    @JniCall
+    actual fun setError(error: String?) {
+        callerRef.setError(error)
+    }
+
+    @JniCall
+    actual fun getError(): String? {
+        return callerRef.getError()
+    }
 }

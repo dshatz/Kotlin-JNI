@@ -104,10 +104,19 @@ fun TestSuiteScope.callTests() {
             println(error.exceptionOrNull()?.printStackTrace())
             error.exceptionOrNull()?.stackTraceToString() shouldContain "com.dshatz.kni.serialization.exception.JniWrappedException: Native error"
         }
+
+        test("nullable string") {
+            CallerBridge.getError() shouldBe null
+            CallerBridge.setError("error")
+            CallerBridge.getError() shouldBe "error"
+            CallerBridge.setError(null)
+            CallerBridge.getError() shouldBe null
+        }
     }
 }
 
 private class JvmCallerImpl : JvmCaller {
+    private var error: String? = null
     override fun giveANumber(): Int {
         println(Thread.currentThread().name)
         return 11
@@ -121,6 +130,14 @@ private class JvmCallerImpl : JvmCaller {
 
     override fun withTypeAlias(alias: TestAlias): TestAlias {
         return alias
+    }
+
+    override fun setError(error: String?) {
+        this.error = error
+    }
+
+    override fun getError(): String? {
+        return error
     }
 
     override fun close() {

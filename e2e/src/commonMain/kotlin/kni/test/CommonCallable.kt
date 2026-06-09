@@ -2,6 +2,7 @@ package kni.test
 
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
+import com.dshatz.kni.buffers.allocateBuffer
 
 expect object CommonCallable {
 
@@ -11,6 +12,39 @@ expect object CommonCallable {
     @JniCall
     fun fillBuffer(buffer: ByteBuffer): String
 
+    @JniCall
+    fun anyIsNull(
+        str: String? = "",
+        i: Int? = 1,
+        f: Float? = 1f,
+        d: Double? = 1.0,
+        c: Char? = 'c',
+        short: Short? = 1,
+        byte: Byte? = 1,
+        byteArray: ByteArray? = byteArrayOf(1),
+        charArray: CharArray? = charArrayOf('c'),
+        intArray: IntArray? = intArrayOf(1),
+        floatArray: FloatArray? = floatArrayOf(1f),
+        doubleArray: DoubleArray? = doubleArrayOf(1.0),
+        serializable: ColorfulObject? = ColorfulObject("orange", 2.0, 1..2),
+        buffer: ByteBuffer? = allocateBuffer(1024 * 1024),
+        callback: Callback? = NoopCallback()
+    ): Boolean
+
+}
+
+class NoopCallback: Callback {
+    override fun onComplete(result: Boolean) {
+
+    }
+
+    override fun onCompleteWithData(data: ColorfulObject) {
+
+    }
+
+    override fun close() {
+
+    }
 }
 
 @JniCall

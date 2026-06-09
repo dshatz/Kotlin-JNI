@@ -13,4 +13,7 @@ expect object CallerBridge {
     @JniCall fun callbackFromCoroutine(callback: Callback, coroutineName: String)
     @JniCall fun callbackWithData(callback: Callback, data: ColorfulObject)
     @JniCall fun giveResult(code: Int, error: Boolean): Result<Int>
+
+    @JniCall fun setError(error: String?)
+    @JniCall fun getError(): String?
 }

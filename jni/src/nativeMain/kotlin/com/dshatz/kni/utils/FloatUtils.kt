@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jfloatArray
 import com.dshatz.kni.binding.jfloatVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -19,21 +20,21 @@ import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
-fun jfloatArray.getFloatElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jfloatVar>? {
-    val method = env.pointed.pointedCommon?.GetFloatArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jfloatArray.getFloatElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jfloatVar> {
+    val method = env.pointed.pointedCommon?.GetFloatArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetFloatArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
 fun jfloatArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jfloatVar>, mode: jint = 0) {
-    val method = env.pointed.pointedCommon?.ReleaseFloatArrayElements
-    method?.invoke(env, this, elements, mode)
+    val method = env.pointed.pointedCommon?.ReleaseFloatArrayElements ?: throw JniUnavailableError()
+    method.invoke(env, this, elements, mode)
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jfloatArray.toKFloatArray(env: CPointer<JNIEnvVar>): FloatArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getFloatElements(env) ?: return null
+fun jfloatArray.toKFloatArray(env: CPointer<JNIEnvVar>): FloatArray {
+    val length = this.getLength(env)
+    val elements = this.getFloatElements(env)
 
     val result = memScoped {
         FloatArray(length) {
@@ -46,14 +47,14 @@ fun jfloatArray.toKFloatArray(env: CPointer<JNIEnvVar>): FloatArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newFloatArray(size: jsize): jfloatArray? {
-    val method = pointed.pointedCommon?.NewFloatArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newFloatArray(size: jsize): jfloatArray {
+    val method = pointed.pointedCommon?.NewFloatArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to call NewFloatArray")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jfloatArray.fill(env: CPointer<JNIEnvVar>, value: FloatArray): jfloatArray? {
-    val method = env.pointed.pointedCommon?.SetFloatArrayRegion ?: return null
+fun jfloatArray.fill(env: CPointer<JNIEnvVar>, value: FloatArray): jfloatArray {
+    val method = env.pointed.pointedCommon?.SetFloatArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
         method.invoke(env, this, 0, value.size, pointer)
@@ -62,6 +63,6 @@ fun jfloatArray.fill(env: CPointer<JNIEnvVar>, value: FloatArray): jfloatArray? 
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun FloatArray.toJFloatArray(env: CPointer<JNIEnvVar>): jfloatArray? {
-    return env.newFloatArray(size)?.fill(env, this)
+fun FloatArray.toJFloatArray(env: CPointer<JNIEnvVar>): jfloatArray {
+    return env.newFloatArray(size).fill(env, this)
 }

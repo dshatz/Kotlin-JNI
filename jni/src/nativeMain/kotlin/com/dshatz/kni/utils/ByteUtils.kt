@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jbyteArray
 import com.dshatz.kni.binding.jbyteVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
@@ -21,7 +22,7 @@ import kotlinx.cinterop.usePinned
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
 fun jbyteArray.getByteElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<ByteVar>? {
-    val method = env.pointed.pointedCommon?.GetByteArrayElements ?: return null
+    val method = env.pointed.pointedCommon?.GetByteArrayElements ?: throw JniUnavailableError()
     return method.invoke(env, this, isCopy)
 }
 
@@ -32,8 +33,8 @@ fun jbyteArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jbyt
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jbyteArray.toKByteArray(env: CPointer<JNIEnvVar>): ByteArray? {
-    val length = this.getLength(env) ?: error("getLength is null")
+fun jbyteArray.toKByteArray(env: CPointer<JNIEnvVar>): ByteArray {
+    val length = this.getLength(env)
     val elements = this.getByteElements(env) ?: error("getByteElements is null")
 
     val result = ByteArray(length) {
@@ -45,14 +46,14 @@ fun jbyteArray.toKByteArray(env: CPointer<JNIEnvVar>): ByteArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newByteArray(size: jsize): jbyteArray? {
-    val method = pointed.pointedCommon?.NewByteArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newByteArray(size: jsize): jbyteArray {
+    val method = pointed.pointedCommon?.NewByteArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to allocate JVM byte array of size $size")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jbyteArray.fill(env: CPointer<JNIEnvVar>, value: ByteArray): jbyteArray? {
-    val method = env.pointed.pointedCommon?.SetByteArrayRegion ?: return null
+fun jbyteArray.fill(env: CPointer<JNIEnvVar>, value: ByteArray): jbyteArray {
+    val method = env.pointed.pointedCommon?.SetByteArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
         method.invoke(env, this, 0, value.size, pointer)
@@ -61,6 +62,6 @@ fun jbyteArray.fill(env: CPointer<JNIEnvVar>, value: ByteArray): jbyteArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun ByteArray.toJByteArray(env: CPointer<JNIEnvVar>): jbyteArray? {
-    return env.newByteArray(size)?.fill(env, this)
+fun ByteArray.toJByteArray(env: CPointer<JNIEnvVar>): jbyteArray {
+    return env.newByteArray(size).fill(env, this)
 }

@@ -8,6 +8,7 @@ import com.dshatz.kni.binding.jcharArray
 import com.dshatz.kni.binding.jcharVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -37,9 +38,9 @@ fun Char.toJChar(): jchar {
 
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
-fun jcharArray.getCharElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jcharVar>? {
-    val method = env.pointed.pointedCommon?.GetCharArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jcharArray.getCharElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jcharVar> {
+    val method = env.pointed.pointedCommon?.GetCharArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetCharArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -49,9 +50,9 @@ fun jcharArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jcha
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jcharArray.toKCharArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CharArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getCharElements(env, isCopy) ?: return null
+fun jcharArray.toKCharArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CharArray {
+    val length = this.getLength(env)
+    val elements = this.getCharElements(env, isCopy)
 
     val result = memScoped {
         CharArray(length) {
@@ -64,14 +65,14 @@ fun jcharArray.toKCharArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanV
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newCharArray(size: jsize): jcharArray? {
-    val method = pointed.pointedCommon?.NewCharArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newCharArray(size: jsize): jcharArray {
+    val method = pointed.pointedCommon?.NewCharArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to call NewCharArray")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jcharArray.fill(env: CPointer<JNIEnvVar>, value: CharArray): jcharArray? {
-    val method = env.pointed.pointedCommon?.SetCharArrayRegion ?: return null
+fun jcharArray.fill(env: CPointer<JNIEnvVar>, value: CharArray): jcharArray {
+    val method = env.pointed.pointedCommon?.SetCharArrayRegion ?: throw JniUnavailableError()
     val charArray = UShortArray(value.size) {
         value[it].toJChar()
     }
@@ -83,6 +84,6 @@ fun jcharArray.fill(env: CPointer<JNIEnvVar>, value: CharArray): jcharArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CharArray.toJCharArray(env: CPointer<JNIEnvVar>): jcharArray? {
-    return env.newCharArray(size)?.fill(env, this)
+fun CharArray.toJCharArray(env: CPointer<JNIEnvVar>): jcharArray {
+    return env.newCharArray(size).fill(env, this)
 }
