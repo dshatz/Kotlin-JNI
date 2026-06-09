@@ -1,8 +1,8 @@
 package com.dshatz.kni.callable
 
 import com.dshatz.kni.TypeMapper
-import com.dshatz.kni.TypeMatcher
-import com.dshatz.kni.TypeMatcher.typeOf
+import com.dshatz.kni.Types
+import com.dshatz.kni.Types.typeOf
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.nonNullOrPlaceholder
@@ -70,7 +70,7 @@ class CallbackProcessor(
             logger.error("@JniCallback can only be applied to an interface.")
             return null
         }
-        if (declaration.superTypes.none { it.resolve().toClassName() typeOf TypeMatcher.AutoCloseable }) {
+        if (declaration.superTypes.none { it.resolve().toClassName() typeOf Types.AutoCloseable }) {
             logger.error("@JniCallback annotated interface should extend kotlin.AutoCloseable.", declaration)
             return null
         }
@@ -112,20 +112,20 @@ class CallbackProcessor(
         }
 
         val methodIds = declaration.declarations.filterIsInstance<KSFunctionDeclaration>().filterNot { it.isConstructor() }.map { f ->
-            PropertySpec.builder("${f.simpleName.asString()}ID", TypeMatcher.JMethodID)
+            PropertySpec.builder("${f.simpleName.asString()}ID", Types.JMethodID)
                 .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.simpleName.asString(), f.getSignature(typeMapper)))
                 .build()
         }
 
         val constructor = FunSpec.constructorBuilder()
-            .addParameter(ParameterSpec("env", TypeMatcher.Environment))
-            .addParameter(ParameterSpec("instance", TypeMatcher.JObject))
+            .addParameter(ParameterSpec("env", Types.Environment))
+            .addParameter(ParameterSpec("instance", Types.JObject))
             .build()
 
         val bridgeClass = TypeSpec.classBuilder(implCls)
             .addFunctions(funs.toList())
             .addProperties(methodIds.toList())
-            .superclass(TypeMatcher.BaseCallback)
+            .superclass(Types.BaseCallback)
             .primaryConstructor(constructor)
             .addSuperclassConstructorParameter("%S", declaration.jniClassName())
             .addSuperclassConstructorParameter("env")
@@ -200,7 +200,7 @@ private fun buildArgs(
 ): CodeBlock {
     return CodeBlock.builder()
         .beginControlFlow("return %M", Def.memScoped)
-        .addStatement("val args = %M<%T>(%L)", Def.allocArray, TypeMatcher.JValue, args.size + 1)
+        .addStatement("val args = %M<%T>(%L)", Def.allocArray, Types.JValue, args.size + 1)
         .apply {
             addStatement("args[0].l = ref.%M()", Def.reinterpret)
             args.forEachIndexed { idx, arg ->
@@ -233,7 +233,7 @@ internal object Def {
 
     internal fun callHelper(type: ClassName): MemberName {
         return when (type.copy(nullable = false)) {
-            TypeMatcher.KString, TypeMatcher.KByteArray -> {
+            Types.KString, Types.KByteArray -> {
                 CallStaticObjMethodA
             }
             UNIT -> CallStaticVoidMethodA
@@ -242,7 +242,7 @@ internal object Def {
     }
 
     val returnTypeConverters = mapOf(
-        TypeMatcher.KString to CodeBlock.of("?.%M(env)", TypeMatcher.Method.ToKString),
-        TypeMatcher.KByteArray to CodeBlock.of("?.%M(env)", TypeMatcher.Method.ToKByteArray)
+        Types.KString to CodeBlock.of("?.%M(env)", Types.Method.ToKString),
+        Types.KByteArray to CodeBlock.of("?.%M(env)", Types.Method.ToKByteArray)
     )
 }
