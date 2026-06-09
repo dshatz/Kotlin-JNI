@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jintArray
 import com.dshatz.kni.binding.jintVar
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -19,21 +20,21 @@ import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
-fun jintArray.getIntElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jintVar>? {
-    val method = env.pointed.pointedCommon?.GetIntArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jintArray.getIntElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jintVar> {
+    val method = env.pointed.pointedCommon?.GetIntArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetIntArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
 fun jintArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jintVar>, mode: jint = 0) {
-    val method = env.pointed.pointedCommon?.ReleaseIntArrayElements
-    method?.invoke(env, this, elements, mode)
+    val method = env.pointed.pointedCommon?.ReleaseIntArrayElements ?: throw JniUnavailableError()
+    method.invoke(env, this, elements, mode)
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jintArray.toKIntArray(env: CPointer<JNIEnvVar>): IntArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getIntElements(env) ?: return null
+fun jintArray.toKIntArray(env: CPointer<JNIEnvVar>): IntArray {
+    val length = this.getLength(env)
+    val elements = this.getIntElements(env)
 
     val result = memScoped {
         IntArray(length) {

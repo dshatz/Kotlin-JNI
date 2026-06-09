@@ -90,6 +90,25 @@ fun TestSuiteScope.bridgeTests() {
         obj.close()
         closed shouldBe true
     }
+
+    test("nullable primitives") {
+        CommonCallable.anyIsNull() shouldBe false
+        CommonCallable.anyIsNull(str = null) shouldBe true
+        CommonCallable.anyIsNull(i = null) shouldBe true
+        CommonCallable.anyIsNull(f = null) shouldBe true
+        CommonCallable.anyIsNull(d = null) shouldBe true
+        CommonCallable.anyIsNull(c = null) shouldBe true
+        CommonCallable.anyIsNull(short = null) shouldBe true
+        CommonCallable.anyIsNull(byte = null) shouldBe true
+        CommonCallable.anyIsNull(byteArray = null) shouldBe true
+        CommonCallable.anyIsNull(charArray = null) shouldBe true
+        CommonCallable.anyIsNull(floatArray = null) shouldBe true
+        CommonCallable.anyIsNull(doubleArray = null) shouldBe true
+        CommonCallable.anyIsNull(intArray = null) shouldBe true
+        CommonCallable.anyIsNull(serializable = null) shouldBe true
+        CommonCallable.anyIsNull(buffer = null) shouldBe true
+        CommonCallable.anyIsNull(callback = null) shouldBe true
+    }
 }
 
 class NoopCloseListener: CloseListener {

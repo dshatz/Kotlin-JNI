@@ -8,6 +8,7 @@ import com.dshatz.kni.binding.JNI_EDETACHED
 import com.dshatz.kni.binding.JNI_OK
 import com.dshatz.kni.binding.JNI_VERSION_1_6
 import com.dshatz.kni.binding.jarray
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
@@ -26,8 +27,8 @@ val JNINativeInterface.common
     get() = CommonJNINativeInterface.Companion(this)
 
 @OptIn(ExperimentalForeignApi::class)
-fun jarray.getLength(env: CPointer<JNIEnvVar>): Int? {
-    val method = env.pointed.pointedCommon?.GetArrayLength ?: return null
+fun jarray.getLength(env: CPointer<JNIEnvVar>): Int {
+    val method = env.pointed.pointedCommon?.GetArrayLength ?: throw JniUnavailableError()
     return method.invoke(env, this)
 }
 

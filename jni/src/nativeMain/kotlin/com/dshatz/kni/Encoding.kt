@@ -3,6 +3,7 @@ package com.dshatz.kni
 import com.dshatz.kni.binding.jbooleanVar
 import com.dshatz.kni.binding.jcharVar
 import com.dshatz.kni.binding.jstring
+import com.dshatz.kni.error.JniUnavailableError
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -18,7 +19,7 @@ import kotlinx.cinterop.wcstr
 sealed interface Encoding {
 
     fun String.toJString(env: CPointer<JNIEnvVar>): jstring?
-    fun jstring.toKString(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): String?
+    fun jstring.toKString(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): String
 
     data object UTF8 : Encoding {
 
@@ -27,18 +28,18 @@ sealed interface Encoding {
             return method.invoke(this, chars)
         }
 
-        fun jstring.getChars(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<ByteVar>? {
-            val method = env.pointed.pointedCommon?.GetStringUTFChars ?: return null
-            return method.invoke(env, this, isCopy)
+        fun jstring.getChars(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<ByteVar> {
+            val method = env.pointed.pointedCommon?.GetStringUTFChars ?: throw JniUnavailableError()
+            return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetStringUTFChars")
         }
 
         override fun String.toJString(env: CPointer<JNIEnvVar>): jstring? = memScoped {
             env.newString(cstr.ptr)
         }
 
-        override fun jstring.toKString(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>?): String? {
+        override fun jstring.toKString(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>?): String {
             val chars = getChars(env, isCopy)
-            return chars?.toKStringFromUtf8()
+            return chars.toKStringFromUtf8()
         }
     }
 
@@ -49,18 +50,18 @@ sealed interface Encoding {
             return method.invoke(this, chars, length)
         }
 
-        fun jstring.getChars(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jcharVar>? {
-            val method = env.pointed.pointedCommon?.GetStringChars ?: return null
-            return method.invoke(env, this, isCopy)
+        fun jstring.getChars(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jcharVar> {
+            val method = env.pointed.pointedCommon?.GetStringChars ?: throw JniUnavailableError()
+            return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetStringChars")
         }
 
         override fun String.toJString(env: CPointer<JNIEnvVar>): jstring? = memScoped {
             env.newString(wcstr.ptr, length)
         }
 
-        override fun jstring.toKString(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>?): String? {
+        override fun jstring.toKString(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>?): String {
             val chars = getChars(env, isCopy)
-            return chars?.toKStringFromUtf16()
+            return chars.toKStringFromUtf16()
         }
 
     }

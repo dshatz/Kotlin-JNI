@@ -5,6 +5,9 @@ import com.dshatz.kni.TypeMatcher
 import com.dshatz.kni.TypeMatcher.typeOf
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.utils.dereferenceTypeAlias
+import com.dshatz.kni.utils.nonNullOrPlaceholder
+import com.dshatz.kni.utils.nullSafeCall
+import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
@@ -14,6 +17,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
+import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -156,7 +160,7 @@ class CallbackProcessor(
                 ParameterSpec.builder(it.name, it.typeInfo.jniType.jvmType).build()
             }
             val convertArgsCode = params.joinToCode {
-                it.typeInfo.unpackCodeJvm(CodeBlock.of("%N", it.name))
+                it.typeInfo.unpackCodeJvm(it.paramCodeJvm()).code
             }
             val returnType = f.returnType?.let(typeMapper::mapType)
             val builder = FunSpec.builder(fName)
@@ -200,13 +204,13 @@ private fun buildArgs(
         .apply {
             addStatement("args[0].l = ref.%M()", Def.reinterpret)
             args.forEachIndexed { idx, arg ->
-                val type = arg.type.dereferenceTypeAlias()
-                val info = context(arg) { typeMapper.mapType(type) }
-                val valueCode = info.packCode(CodeBlock.of("%N", arg.name!!.asString()))
-                val reinterpreted = if (info.jniType.jniField == "l") {
-                    CodeBlock.of("%L.%M()", valueCode, Def.reinterpret)
+                val type = context(arg) { typeMapper.mapType(arg.type) }
+                val argCode = CodeBlock.of("%N", arg.name!!.asString()).returnType(type.jniType.nativeType).nonNullOrPlaceholder()
+                val valueCode = type.packCode(argCode)
+                val reinterpreted = if (type.jniType.jniField == "l") {
+                    valueCode.nullSafeCall(CodeBlock.of("%M()", Def.reinterpret).returnType(ANY))
                 } else valueCode
-                addStatement("args[%L].%L = %L", idx + 1, info.jniType.jniField, reinterpreted)
+                addStatement("args[%L].%L = %L", idx + 1, type.jniType.jniField, reinterpreted.code)
             }
         }
         .add(innerCode)

@@ -4,6 +4,7 @@ import com.dshatz.kni.JNIEnvVar
 import com.dshatz.kni.binding.*
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.DelicateBufferAPI
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.jvalue
 import com.dshatz.kni.l
 import com.dshatz.kni.pointedCommon
@@ -20,9 +21,13 @@ import platform.posix.close
 @OptIn(ExperimentalForeignApi::class, DelicateBufferAPI::class)
 fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
     val globalRef = env.NewGlobalRef(this)
-    val rawAddress = env.pointed.pointedCommon!!.GetDirectBufferAddress!!.invoke(env, globalRef)
-    val size = env.pointed.pointedCommon!!.GetDirectBufferCapacity!!.invoke(env, globalRef)
-    val address = rawAddress!!.reinterpret<ByteVar>()
+    val getDirectBufferAddress = env.pointed.pointedCommon?.GetDirectBufferAddress ?: throw JniUnavailableError()
+    val getDirectBufferCapacity = env.pointed.pointedCommon?.GetDirectBufferCapacity ?: throw JniUnavailableError()
+
+    val rawAddress = getDirectBufferAddress.invoke(env, globalRef) ?: error("GetDirectBufferAddress returned null")
+    val size = getDirectBufferCapacity.invoke(env, globalRef)
+
+    val address = rawAddress.reinterpret<ByteVar>()
     return ByteBuffer.wrapAddress(address, size, owner = globalRef, finalizer = {
         it?.let(env::DeleteGlobalRef)
     })
@@ -35,14 +40,15 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
  * @return a jobject representing a [ByteBuffer] or null if operation failed.
  */
 @OptIn(ExperimentalForeignApi::class)
-fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
+fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject {
     val jvmBuffer = toJNioByteBuffer(env)
     val cls = env.FindClass(ByteBuffer::class.qualifiedName!!.replace('.', '/'))!!
     val constructor = env.GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;)V")!!
     return memScoped {
         val args = allocArray<jvalue>(1)
         args[0].l = jvmBuffer
-        env.pointed.pointedCommon!!.NewObjectA!!(env, cls, constructor, args)
+        val newObjectA = env.pointed.pointedCommon?.NewObjectA ?: throw JniUnavailableError()
+        newObjectA(env, cls, constructor, args) ?: throw OutOfMemoryError("Could not create ByteBuffer on JVM.")
     }
 }
 
@@ -52,8 +58,9 @@ fun ByteBuffer.toJByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
  * @return a jobject representing a java.nio.ByteBuffer or null if operation failed.
  */
 @OptIn(ExperimentalForeignApi::class)
-fun ByteBuffer.toJNioByteBuffer(env: CPointer<JNIEnvVar>): jobject? {
-    val jvmBuffer = env.pointed.pointedCommon!!.NewDirectByteBuffer!!(env, address, capacity)
+fun ByteBuffer.toJNioByteBuffer(env: CPointer<JNIEnvVar>): jobject {
+    val newDirectByteBuffer = env.pointed.pointedCommon?.NewDirectByteBuffer ?: throw JniUnavailableError()
+    val jvmBuffer = newDirectByteBuffer(env, address, capacity) ?: throw OutOfMemoryError("NewDirectByteBuffer could not wrap memory address ${this.address}.")
     return jvmBuffer
 }
 
@@ -81,7 +88,14 @@ fun CPointer<JNIEnvVar>.FindClass(name: String): jclass? = memScoped {
  */
 @OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.NewGlobalRef(obj: jobject?): jobject? {
-    return pointed.pointedCommon!!.NewGlobalRef!!.invoke(this, obj)
+    return if (obj == null) null
+    else NewGlobalRef(obj)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.NewGlobalRef(obj: jobject): jobject {
+    val newGlobalRef = pointed.pointedCommon?.NewGlobalRef ?: throw JniUnavailableError()
+    return newGlobalRef.invoke(this, obj) ?: throw OutOfMemoryError("Could not create GlobalRef.")
 }
 
 /**

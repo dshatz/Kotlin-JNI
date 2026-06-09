@@ -2,6 +2,7 @@ package com.dshatz.kni
 
 import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -135,6 +136,17 @@ internal object TypeMatcher {
     val conversionWithoutEnv = listOf(
         KBoolean,
         KChar
+    )
+
+    val boxedWhenNullable = mapOf(
+        KInt to CodeBlock.of("0"),
+        KBoolean to CodeBlock.of("false"),
+        KChar to CodeBlock.of("'a'"),
+        KLong to CodeBlock.of("0l"),
+        KFloat to CodeBlock.of("0f"),
+        KDouble to CodeBlock.of("0.0"),
+        KByte to CodeBlock.of("0"),
+        KShort to CodeBlock.of("0")
     )
 
     val toJTypes = mapOf(

@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jbooleanArray
 import com.dshatz.kni.binding.jbooleanVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -31,21 +32,21 @@ fun Boolean.toJBoolean(): jboolean {
 
 @RequiresRelease
 @OptIn(ExperimentalForeignApi::class)
-fun jbooleanArray.getBooleanElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jbooleanVar>? {
-    val method = env.pointed.pointedCommon?.GetBooleanArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jbooleanArray.getBooleanElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jbooleanVar> {
+    val method = env.pointed.pointedCommon?.GetBooleanArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetBooleanArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
 fun jbooleanArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jbooleanVar>, mode: jint = 0) {
-    val method = env.pointed.pointedCommon?.ReleaseBooleanArrayElements
-    method?.invoke(env, this, elements, mode)
+    val method = env.pointed.pointedCommon?.ReleaseBooleanArrayElements ?: throw JniUnavailableError()
+    method.invoke(env, this, elements, mode)
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jbooleanArray.toKBooleanArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): BooleanArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getBooleanElements(env, isCopy) ?: return null
+fun jbooleanArray.toKBooleanArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): BooleanArray {
+    val length = this.getLength(env)
+    val elements = this.getBooleanElements(env, isCopy)
 
     val result = memScoped {
         BooleanArray(length) {
@@ -58,14 +59,14 @@ fun jbooleanArray.toKBooleanArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbo
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newBooleanArray(size: jsize): jbooleanArray? {
-    val method = pointed.pointedCommon?.NewBooleanArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newBooleanArray(size: jsize): jbooleanArray {
+    val method = pointed.pointedCommon?.NewBooleanArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to call NewBooleanArray")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jbooleanArray.fill(env: CPointer<JNIEnvVar>, value: BooleanArray): jbooleanArray? {
-    val method = env.pointed.pointedCommon?.SetBooleanArrayRegion ?: return null
+fun jbooleanArray.fill(env: CPointer<JNIEnvVar>, value: BooleanArray): jbooleanArray {
+    val method = env.pointed.pointedCommon?.SetBooleanArrayRegion ?: throw JniUnavailableError()
     val byteArray = UByteArray(value.size) {
         value[it].toJBoolean()
     }
@@ -77,6 +78,6 @@ fun jbooleanArray.fill(env: CPointer<JNIEnvVar>, value: BooleanArray): jbooleanA
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun BooleanArray.toJBooleanArray(env: CPointer<JNIEnvVar>): jbooleanArray? {
-    return env.newBooleanArray(size)?.fill(env, this)
+fun BooleanArray.toJBooleanArray(env: CPointer<JNIEnvVar>): jbooleanArray {
+    return env.newBooleanArray(size).fill(env, this)
 }

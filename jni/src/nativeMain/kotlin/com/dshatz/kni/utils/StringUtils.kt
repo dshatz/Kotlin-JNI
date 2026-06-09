@@ -8,9 +8,19 @@ import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 
 @OptIn(ExperimentalForeignApi::class)
-fun String.toJString(env: CPointer<JNIEnvVar>, encoding: Encoding = Encoding.UTF8): jstring? {
+fun String?.toJString(env: CPointer<JNIEnvVar>, encoding: Encoding = Encoding.UTF8): jstring? {
+    return if (this == null) null
+    else {
+        with(encoding) {
+            this@toJString.toJString(env)
+        }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun String.toJString(env: CPointer<JNIEnvVar>, encoding: Encoding = Encoding.UTF8): jstring {
     return with(encoding) {
-        this@toJString.toJString(env)
+        this@toJString.toJString(env)!!
     }
 }
 
@@ -19,7 +29,7 @@ fun jstring.toKString(
     env: CPointer<JNIEnvVar>,
     encoding: Encoding = Encoding.UTF8,
     isCopy: CPointer<jbooleanVar>? = null
-): String? {
+): String {
     return with(encoding) {
         this@toKString.toKString(env, isCopy)
     }

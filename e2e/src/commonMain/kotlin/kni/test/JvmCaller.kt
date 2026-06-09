@@ -9,4 +9,10 @@ interface JvmCaller: AutoCloseable {
     fun fillBuffer(buffer: ByteBuffer): String
 
     fun withTypeAlias(alias: TestAlias): TestAlias
+
+    /**
+     * Example with nullable type
+     */
+    fun setError(error: String?)
+    fun getError(): String?
 }
