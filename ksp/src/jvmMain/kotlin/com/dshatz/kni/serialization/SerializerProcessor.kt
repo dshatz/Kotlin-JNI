@@ -27,8 +27,10 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.ksp.originatingKSFiles
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import java.io.Serial
 import kotlin.reflect.KClass
 
 class SerializerProcessor(
@@ -42,9 +44,32 @@ class SerializerProcessor(
     fun findSerializables(
         env: SymbolProcessorEnvironment,
         resolver: Resolver
-    ): Map<ClassName, SerialClass> {
-        val dataClasses = resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name)
+    ): Sequence<SerialClass> {
+        fun collectSerialProps(decl: KSClassDeclaration): SerialClass.DataClass {
+            val props = decl.primaryConstructor!!.parameters.map {
+                SerialProp(
+                    it.name?.asString()!!,
+                    it.type.dereferenceTypeAlias().toTypeName(),
+                    overrideSerializer = it.getOverrideSerializer()
+                )
+            }
+            return SerialClass.DataClass(decl.toClassName(), props)
+        }
+
+        val declarations = resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
+        val sealed = declarations.filter { d ->
+            Modifier.SEALED in d.modifiers
+        }.map { d ->
+            val subclasses = d.getSealedSubclasses().map { subclass ->
+                collectSerialProps(subclass)
+            }.toList()
+            SerialClass.Polymorphic(
+                d.toClassName(),
+                subclasses
+            )
+        }
+        val dataClasses = declarations
             .filter { d ->
                 (d.classKind == ClassKind.CLASS).also {
                     if (!it) env.logger.warn("Ignoring @JniSerializable: not a class", d)
@@ -55,21 +80,9 @@ class SerializerProcessor(
                     if (!it) env.logger.warn("Ignoring @JniSerializable: not a data class", d)
                 }
             }
+            .map(::collectSerialProps)
 
-        val withProperties = dataClasses.associate {
-            val props = it.primaryConstructor!!.parameters.map {
-                SerialProp(
-                    it.name?.asString()!!,
-                    it.type.dereferenceTypeAlias().toTypeName(),
-                    overrideSerializer = it.getOverrideSerializer()
-                )
-            }
-            it.toClassName() to SerialClass(
-                it.toClassName(),
-                properties = props
-            )
-        }
-        return withProperties
+        return dataClasses + sealed
     }
 
     private fun KSValueParameter.getOverrideSerializer(): ClassName? {
@@ -98,31 +111,93 @@ class SerializerProcessor(
     }
 
     fun generateSerializers(
-        serializables: Map<ClassName, SerialClass>
+        serializables: Sequence<SerialClass>
     ): List<FileSpec> {
-        return serializables.mapNotNull { (type, info) ->
-            if (type in IncludedSerializers.kioSupported) {
+        fun SerialClass.DataClass.generateDataClassSerializer(): TypeSpec? {
+            return if (cls in IncludedSerializers.kioSupported) {
                 // noop
                 null
             } else {
-                val serializerCls = type.serializerClass()
+                val serializerCls = cls.serializerClass()
                 val serializer = TypeSpec.objectBuilder(serializerCls)
-                    .addSuperinterface(Types.JniSerializer.parameterizedBy(type))
+                    .addSuperinterface(Types.JniSerializer.parameterizedBy(cls))
                     .addFunction(
-                        buildPackFunction(type)
-                            .addCode(packCode(info.properties)).build()
+                        buildPackFunction(cls)
+                            .addCode(packCode(properties)).build()
                     )
                     .addFunction(
-                        buildUnpackFunction(type)
-                            .addCode(unpackCode(info)).build()
+                        buildUnpackFunction(cls)
+                            .addCode(unpackCode(this)).build()
                     ).build()
 
-                val file = FileSpec.builder(serializerCls)
-                    .addType(serializer)
-                    .build()
-                file
+                serializer
             }
         }
+
+        fun SerialClass.Polymorphic.generatePolymorphicSerializer(): TypeSpec {
+            val serializerCls = cls.serializerClass()
+            val serializer = TypeSpec.objectBuilder(serializerCls)
+                .addSuperinterface(Types.JniSerializer.parameterizedBy(cls))
+                .addFunction(
+                    buildPackFunction(cls)
+                        .addCode(packCodePolymorphic(this))
+                        .build()
+                )
+                .addFunction(
+                    buildUnpackFunction(cls)
+                        .addCode(unpackCodePolymorphic(this))
+                        .build()
+                )
+                .build()
+            return serializer
+        }
+
+
+        val files = serializables.mapNotNull {
+            val spec = when (it) {
+                is SerialClass.DataClass -> it.generateDataClassSerializer()
+                is SerialClass.Polymorphic -> it.generatePolymorphicSerializer()
+            }
+            spec?.let { spec ->
+                FileSpec.builder(it.cls.serializerClass())
+                    .addType(spec)
+                    .build()
+            }
+        }
+        return files.toList()
+    }
+
+    private fun packCodePolymorphic(cls: SerialClass.Polymorphic): CodeBlock {
+        val builder = CodeBlock.builder()
+        builder.beginControlFlow("when (value)")
+        cls.subclasses.forEachIndexed { i, dataClass ->
+            val packProps = packCode(dataClass.properties)
+            val pack = CodeBlock.builder().beginControlFlow("is %T -> ", dataClass.cls)
+                .addStatement("// Write discriminator")
+                .addStatement("buffer.writeInt(%L)", i)
+                .addStatement("// Write props")
+                .add(packProps)
+                .endControlFlow()
+                .build()
+            builder.add(pack)
+        }
+        return builder.endControlFlow().build()
+    }
+
+    private fun unpackCodePolymorphic(cls: SerialClass.Polymorphic): CodeBlock {
+        val builder = CodeBlock.builder()
+        builder.addStatement("val d = buffer.readInt()")
+        builder.beginControlFlow("when (d)")
+        cls.subclasses.forEachIndexed { i, dataClass ->
+            builder.beginControlFlow("%L -> ", i)
+                .addStatement("// %L", dataClass.cls.simpleName)
+                .add(unpackCode(dataClass))
+                .endControlFlow()
+        }
+        builder.beginControlFlow("else ->")
+            .addStatement("error(%S + d)", "Unknown discriminator for type ${cls.cls.simpleName}: ")
+            .endControlFlow()
+        return builder.endControlFlow().build()
     }
 
     private fun packCode(props: List<SerialProp>): CodeBlock {
@@ -136,11 +211,11 @@ class SerializerProcessor(
         return builder.build()
     }
 
-    private fun unpackCode(info: SerialClass): CodeBlock {
+    private fun unpackCode(info: SerialClass.DataClass): CodeBlock {
         val builder = CodeBlock.builder()
         info.properties.forEach {
             val serializer = included.serializer(it.type)
-            builder.add("val %N = %L\n", it.name, serializer.readCode(CodeBlock.of("buffer")))
+            builder.addStatement("val %N = %L", it.name, serializer.readCode(CodeBlock.of("buffer")))
         }
         return builder.addStatement("return %T(%L)", info.cls, info.properties.joinToString { it.name }).build()
     }
@@ -290,10 +365,18 @@ class SerializerProcessor(
         return fileSpec.addTypes(paramSerializers).addProperties(genericSerializers).build()*/
     }
 
-    data class SerialClass(
-        val cls: ClassName,
-        val properties: List<SerialProp>
-    )
+    sealed class SerialClass {
+        abstract val cls: ClassName
+        data class DataClass(
+            override val cls: ClassName,
+            val properties: List<SerialProp>
+        ): SerialClass()
+
+        data class Polymorphic(
+            override val cls: ClassName,
+            val subclasses: List<DataClass>
+        ): SerialClass()
+    }
 
     data class SerialProp(
         val name: String,

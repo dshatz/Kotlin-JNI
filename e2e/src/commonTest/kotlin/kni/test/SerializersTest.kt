@@ -3,6 +3,8 @@ package kni.test
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import kni.test.serializable.Inner
+import kni.test.serializable.PolymorphicFruit
+import kni.test.serializable.PolymorphicFruitSerializer_generated
 import kni.test.serializable.Simple
 import kni.test.serializable.SimpleSerializer_generated
 import kotlin.random.Random
@@ -41,5 +43,17 @@ val SerializersTest by testSuite {
         )
         val packed = SimpleSerializer_generated.pack(obj)
         SimpleSerializer_generated.unpackFrom(packed) shouldBe obj
+    }
+
+    test("polymorphic") {
+        PolymorphicFruitSerializer_generated.apply {
+            val orange = PolymorphicFruit.Orange(true)
+            val orangePacked = pack(orange)
+            unpackFrom(orangePacked) shouldBe orange
+
+            val apple = PolymorphicFruit.Apple(1000)
+            val applePacked = pack(apple)
+            unpackFrom(applePacked) shouldBe apple
+        }
     }
 }

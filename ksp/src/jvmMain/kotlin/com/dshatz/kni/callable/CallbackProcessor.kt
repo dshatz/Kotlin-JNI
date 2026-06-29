@@ -4,6 +4,7 @@ import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.Types.typeOf
 import com.dshatz.kni.annotations.JniCallback
+import com.dshatz.kni.needsIsNullParam
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.nullSafeCall
@@ -76,9 +77,13 @@ class CallbackProcessor(
         }
 
         fun FunSpec.Builder.addParams(params: List<KSValueParameter>): FunSpec.Builder {
-            params.forEach { param ->
+            val typed = params.map { CallableProcessor.ParamInfo(
+                it.name!!.asString(),
+                typeMapper.mapType(it.type)
+            ) }
+            typed.forEach {
                 addParameter(
-                    ParameterSpec(param.name!!.asString(), param.type.resolve().toClassName())
+                    ParameterSpec(it.name, it.typeInfo.kotlinType)
                 )
             }
             return this
@@ -100,12 +105,17 @@ class CallbackProcessor(
                 "args",
                 returnConverter
             ).build()
+            val params = f.parameters.map {
+                context(it) {
+                    CallableProcessor.ParamInfo(it.name!!.asString(), typeMapper.mapType(it.type))
+                }
+            }
             FunSpec.builder(f.simpleName.asString())
                 .addParams(f.parameters)
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(f.returnType?.resolve()?.toClassName() ?: UNIT)
                 .addCode(CodeBlock.builder()
-                    .add("%L", buildArgs(f.parameters, callCode, typeMapper))
+                    .add("%L", buildArgs(params, callCode, typeMapper))
                     .build()
                 )
                 .build()
@@ -157,15 +167,22 @@ class CallbackProcessor(
                 CallableProcessor.ParamInfo(param.name!!.asString(), typeMapper.mapType(param.type))
             }
             val paramsSpecs = params.map {
-                ParameterSpec.builder(it.name, it.typeInfo.jniType.jvmType).build()
+                ParameterSpec(it.name, it.typeInfo.jniType.jvmType)
             }
-            val convertArgsCode = params.joinToCode {
-                it.typeInfo.unpackCodeJvm(it.paramCodeJvm()).code
+            val isNullParamSpecs = params.filter { it.typeInfo.needsIsNullParam() }.map {
+                ParameterSpec("_${it.name}IsNull", Types.KBoolean)
+            }
+            val convertArgsCode = params.joinToCode(",\n") {
+                val unpackCode = it.typeInfo.unpackCodeJvm(it.paramCodeJvm()).code
+                if (it.typeInfo.needsIsNullParam()) {
+                    CodeBlock.of("if (_%NIsNull) null else %L", it.name, unpackCode)
+                } else unpackCode
             }
             val returnType = f.returnType?.let(typeMapper::mapType)
             val builder = FunSpec.builder(fName)
                 .addParameter(ParameterSpec.builder("instance", decl.cls).build())
                 .addParameters(paramsSpecs)
+                .addParameters(isNullParamSpecs)
                 .addAnnotation(JvmStatic::class)
             val code = CodeBlock.of("%N.%N(%L)", "instance", fName, convertArgsCode)
 
@@ -194,7 +211,7 @@ internal fun TypeName.getNativeImplClass(): ClassName {
 }
 
 private fun buildArgs(
-    args: List<KSValueParameter>,
+    args: List<CallableProcessor.ParamInfo>,
     innerCode: CodeBlock,
     typeMapper: TypeMapper
 ): CodeBlock {
@@ -204,13 +221,17 @@ private fun buildArgs(
         .apply {
             addStatement("args[0].l = ref.%M()", Def.reinterpret)
             args.forEachIndexed { idx, arg ->
-                val type = context(arg) { typeMapper.mapType(arg.type) }
-                val argCode = CodeBlock.of("%N", arg.name!!.asString()).returnType(type.jniType.nativeType).nonNullOrPlaceholder()
+                val type = arg.typeInfo
+                val argCode = CodeBlock.of("%N", arg.name).returnType(type.kotlinType).nonNullOrPlaceholder().copy(type = type.jniType.nativeType)
                 val valueCode = type.packCode(argCode)
                 val reinterpreted = if (type.jniType.jniField == "l") {
                     valueCode.nullSafeCall(CodeBlock.of("%M()", Def.reinterpret).returnType(ANY))
                 } else valueCode
                 addStatement("args[%L].%L = %L", idx + 1, type.jniType.jniField, reinterpreted.code)
+            }
+            args.filter { it.typeInfo.needsIsNullParam() }.mapIndexed { idx, arg ->
+                val globalIdx = idx + args.size + 1
+                addStatement("args[%L].z = (%N == null).%M()", globalIdx, arg.name, Types.Method.ToJBoolean)
             }
         }
         .add(innerCode)

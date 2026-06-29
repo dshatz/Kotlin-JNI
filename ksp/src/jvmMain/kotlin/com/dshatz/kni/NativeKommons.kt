@@ -52,9 +52,7 @@ class NativeKommons : SymbolProcessorProvider {
             env.logger.warn("Platforms: ${env.platforms.joinToString { it.platformName }}")
 
             val serializables = serializableProcessor.findSerializables(env, resolver).also {
-                registry.serializers.putAll(it.mapValues {
-                    it.key.serializerClass()
-                })
+                registry.serializers.putAll(it.associate { it.cls to it.cls.serializerClass() })
             }
 
             val externalSerializers = serializableProcessor.findSerializers(resolver, env)

@@ -315,7 +315,7 @@ sealed class TypeInfo {
         )
 
         override fun packCode(unpackedCode: TypedCode): TypedCode {
-            return unpackedCode
+            error("Passing @Callback objects is only allowed in JVM->Native direction, not back.")
         }
 
         override fun unpackCode(packedCode: TypedCode): TypedCode {

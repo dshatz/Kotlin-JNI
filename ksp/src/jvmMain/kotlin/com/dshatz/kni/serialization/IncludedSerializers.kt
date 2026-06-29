@@ -6,6 +6,7 @@ import com.dshatz.kni.serialization.IncludedSerializers.Serializer.Extension.Com
 import com.dshatz.kni.utils.asReceiver
 import com.dshatz.kni.utils.callFunction
 import com.google.devtools.ksp.processing.KSPLogger
+import com.squareup.kotlinpoet.BOOLEAN
 import com.squareup.kotlinpoet.BYTE
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -41,8 +42,6 @@ class IncludedSerializers(
                 } else {
                     val rawSerializer = serializer(rawType)
                     val paramSerializers = type.typeArguments.map { serializer(it) }
-//                    error("Don't know how to serialize parameterized $type $rawSerializer <$paramSerializers>")
-//                    registry.genericSerializers[type] = type.genericSerializerName()
                     Serializer.Generic(
                         rawSerializer,
                         paramSerializers,
@@ -140,7 +139,7 @@ class IncludedSerializers(
             override fun readCode(buffer: CodeBlock): CodeBlock {
                 return CodeBlock.builder().callFunction(buffer.toString(), read) {
                     lambdaParam("readItem") {
-                        inner.readCode(CodeBlock.of(""))
+                        inner.readCode(CodeBlock.of("this"))
                     }
                 }.add(".%M()", toTarget).build()
             }
@@ -221,7 +220,8 @@ class IncludedSerializers(
         )
 
         val defined = mapOf(
-            STRING to kniExtension("lenString")
+            STRING to kniExtension("lenString"),
+            BOOLEAN to kniExtension("bool")
         )
     }
 }
