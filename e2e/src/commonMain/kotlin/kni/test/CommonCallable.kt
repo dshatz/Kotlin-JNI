@@ -42,6 +42,25 @@ class NoopCallback: Callback {
 
     }
 
+    override fun onCompleteWithNullable(
+        str: String?,
+        i: Int?,
+        f: Float?,
+        d: Double?,
+        c: Char?,
+        short: Short?,
+        byte: Byte?,
+        byteArray: ByteArray?,
+        charArray: CharArray?,
+        intArray: IntArray?,
+        floatArray: FloatArray?,
+        doubleArray: DoubleArray?,
+        serializable: ColorfulObject?,
+        buffer: ByteBuffer?
+    ) {
+        TODO("Not yet implemented")
+    }
+
     override fun close() {
 
     }

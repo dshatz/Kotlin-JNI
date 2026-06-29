@@ -358,6 +358,104 @@ fun CPointer<JNIEnvVar>.CallStaticIntMethodA(
 }
 
 @OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticLongMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jlong {
+    return pointed.pointedCommon!!.CallStaticLongMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticFloatMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jfloat {
+    return pointed.pointedCommon!!.CallStaticFloatMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticDoubleMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jdouble {
+    return pointed.pointedCommon!!.CallStaticDoubleMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticBooleanMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jboolean {
+    return pointed.pointedCommon!!.CallStaticBooleanMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticShortMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jshort {
+    return pointed.pointedCommon!!.CallStaticShortMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticByteMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jbyte {
+    return pointed.pointedCommon!!.CallStaticByteMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.CallStaticCharMethodA(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jchar {
+    return pointed.pointedCommon!!.CallStaticCharMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
 fun Any.asLongPointer(): Long {
     val stableRef = StableRef.create(this)
     return stableRef.asCPointer().toLong()

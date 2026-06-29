@@ -1,5 +1,6 @@
 package kni.test
 
+import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
 import com.dshatz.kni.load.BundledLibLoader
 import de.infix.testBalloon.framework.core.TestSuiteScope
@@ -70,6 +71,25 @@ fun TestSuiteScope.callTests() {
                                         TODO("Not yet implemented")
                                     }
 
+                                    override fun onCompleteWithNullable(
+                                        str: String?,
+                                        i: Int?,
+                                        f: Float?,
+                                        d: Double?,
+                                        c: Char?,
+                                        short: Short?,
+                                        byte: Byte?,
+                                        byteArray: ByteArray?,
+                                        charArray: CharArray?,
+                                        intArray: IntArray?,
+                                        floatArray: FloatArray?,
+                                        doubleArray: DoubleArray?,
+                                        serializable: ColorfulObject?,
+                                        buffer: ByteBuffer?,
+                                    ) {
+
+                                    }
+
                                     override fun close() {}
 
                                 }, "Coroutine $it")
@@ -88,6 +108,25 @@ fun TestSuiteScope.callTests() {
 
                     override fun onCompleteWithData(data: ColorfulObject) {
                         cont.resume(data)
+                    }
+
+                    override fun onCompleteWithNullable(
+                        str: String?,
+                        i: Int?,
+                        f: Float?,
+                        d: Double?,
+                        c: Char?,
+                        short: Short?,
+                        byte: Byte?,
+                        byteArray: ByteArray?,
+                        charArray: CharArray?,
+                        intArray: IntArray?,
+                        floatArray: FloatArray?,
+                        doubleArray: DoubleArray?,
+                        serializable: ColorfulObject?,
+                        buffer: ByteBuffer?,
+                    ) {
+                        TODO("Not yet implemented")
                     }
 
                     override fun close() {}

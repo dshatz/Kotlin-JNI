@@ -10,7 +10,7 @@ fun TypeName.notNullable() = copy(nullable = false)
 
 fun TypedCode.nonNullOrPlaceholder(): TypedCode {
     return if (type.needsIsNullParam()) {
-        CodeBlock.of("%L ?: %L", this.code, Types.boxedWhenNullable[type.notNullable()])
+        CodeBlock.of("(%L ?: %L)", this.code, Types.boxedWhenNullable[type.notNullable()])
             .returnType(type.notNullable())
     } else this
 }

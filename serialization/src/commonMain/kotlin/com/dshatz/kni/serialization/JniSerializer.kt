@@ -30,3 +30,11 @@ fun Buffer.readLenString(): String {
     val len = readInt()
     return readByteArray(len).decodeToString()
 }
+
+fun Buffer.writeBool(value: Boolean) {
+    writeByte(if (value) 1 else 0)
+}
+
+fun Buffer.readBool(): Boolean {
+    return readByte() == 1.toByte()
+}

@@ -9,7 +9,7 @@ interface Callback: AutoCloseable {
     fun onComplete(result: Boolean)
     fun onCompleteWithData(data: ColorfulObject)
 
-    /*fun onCompleteWithNullable(
+    fun onCompleteWithNullable(
         str: String? = "",
         i: Int? = 1,
         f: Float? = 1f,
@@ -24,6 +24,5 @@ interface Callback: AutoCloseable {
         doubleArray: DoubleArray? = doubleArrayOf(1.0),
         serializable: ColorfulObject? = ColorfulObject("orange", 2.0, 1..2),
         buffer: ByteBuffer? = allocateBuffer(1024 * 1024),
-        callback: Callback? = NoopCallback()
-    )*/
+    )
 }
