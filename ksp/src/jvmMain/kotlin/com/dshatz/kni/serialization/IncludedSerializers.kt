@@ -8,6 +8,7 @@ import com.dshatz.kni.utils.callFunction
 import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.BOOLEAN
 import com.squareup.kotlinpoet.BYTE
+import com.squareup.kotlinpoet.BYTE_ARRAY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.DOUBLE
@@ -221,7 +222,8 @@ class IncludedSerializers(
 
         val defined = mapOf(
             STRING to kniExtension("lenString"),
-            BOOLEAN to kniExtension("bool")
+            BOOLEAN to kniExtension("bool"),
+            BYTE_ARRAY to kniExtension("lenBytes")
         )
     }
 }

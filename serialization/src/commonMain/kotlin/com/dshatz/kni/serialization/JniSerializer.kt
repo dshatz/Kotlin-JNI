@@ -26,6 +26,16 @@ fun Buffer.writeLenString(value: String) {
     write(bytes)
 }
 
+fun Buffer.writeLenBytes(bytes: ByteArray) {
+    writeInt(bytes.size)
+    write(bytes)
+}
+
+fun Buffer.readLenBytes(): ByteArray {
+    val count = readInt()
+    return readByteArray(count)
+}
+
 fun Buffer.readLenString(): String {
     val len = readInt()
     return readByteArray(len).decodeToString()
