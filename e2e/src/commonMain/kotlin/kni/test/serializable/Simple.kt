@@ -1,6 +1,21 @@
 package kni.test.serializable
 
 import com.dshatz.kni.annotations.JniSerializable
+import com.dshatz.kni.serialization.JniSerializer
+import com.dshatz.kni.serialization.readLenString
+import com.dshatz.kni.serialization.writeLenString
+import kotlinx.io.Buffer
+import kotlinx.io.files.Path
+
+object PathSerializer: JniSerializer<Path> {
+    override fun packTo(value: Path, buffer: Buffer) {
+        buffer.writeLenString(value.toString())
+    }
+
+    override fun unpackFrom(buffer: Buffer): Path {
+        return Path(buffer.readLenString())
+    }
+}
 
 @JniSerializable
 data class Simple(
@@ -17,7 +32,8 @@ data class Simple(
     val alias: LongAlias,
     val inner: Inner,
     val result: Result<String>,
-    val resultOfCustom: Result<Inner>
+    val resultOfCustom: Result<Inner>,
+    @JniSerializable(PathSerializer::class) val path: Path
 )
 
 @JniSerializable

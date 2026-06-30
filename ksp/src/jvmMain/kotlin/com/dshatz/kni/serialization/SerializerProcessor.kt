@@ -13,6 +13,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
@@ -27,10 +28,8 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.originatingKSFiles
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import java.io.Serial
 import kotlin.reflect.KClass
 
 class SerializerProcessor(
@@ -46,13 +45,14 @@ class SerializerProcessor(
         resolver: Resolver
     ): Sequence<SerialClass> {
         fun collectSerialProps(decl: KSClassDeclaration): SerialClass.DataClass {
-            val props = decl.primaryConstructor!!.parameters.map {
+
+            val props = decl.getAllProperties().map {
                 SerialProp(
-                    it.name?.asString()!!,
+                    it.simpleName.asString(),
                     it.type.dereferenceTypeAlias().toTypeName(),
                     overrideSerializer = it.getOverrideSerializer()
                 )
-            }
+            }.toList()
             return SerialClass.DataClass(decl.toClassName(), props)
         }
 
@@ -85,11 +85,10 @@ class SerializerProcessor(
         return dataClasses + sealed
     }
 
-    private fun KSValueParameter.getOverrideSerializer(): ClassName? {
-        val paramValue = findAnnotation<JniSerializable>()?.getArgumentValueByName<KClass<*>>("with")
-        if (paramValue != null) {
-            return (paramValue as KSTypeReference).resolve().toClassName()
-        } else return null
+    private fun KSPropertyDeclaration.getOverrideSerializer(): ClassName? {
+        val annotation = findAnnotation<JniSerializable>()
+        val paramValue = annotation?.getClassArgument("with")
+        return paramValue
     }
 
     fun findSerializers(resolver: Resolver, env: SymbolProcessorEnvironment): Map<ClassName, ClassName> {
@@ -203,7 +202,7 @@ class SerializerProcessor(
     private fun packCode(props: List<SerialProp>): CodeBlock {
         val builder = CodeBlock.builder()
         props.map {
-            val serializer = included.serializer(it.type)
+            val serializer = included.serializer(it.type, it.overrideSerializer)
             if (serializer is IncludedSerializers.Serializer.Generic) registry.genericSerializers.add(serializer)
             val statement = serializer.writeCode(CodeBlock.of("buffer"), CodeBlock.of("value.%N", it.name))
             builder.add("\n%L", statement)
@@ -214,7 +213,7 @@ class SerializerProcessor(
     private fun unpackCode(info: SerialClass.DataClass): CodeBlock {
         val builder = CodeBlock.builder()
         info.properties.forEach {
-            val serializer = included.serializer(it.type)
+            val serializer = included.serializer(it.type, it.overrideSerializer)
             builder.addStatement("val %N = %L", it.name, serializer.readCode(CodeBlock.of("buffer")))
         }
         return builder.addStatement("return %T(%L)", info.cls, info.properties.joinToString { it.name }).build()

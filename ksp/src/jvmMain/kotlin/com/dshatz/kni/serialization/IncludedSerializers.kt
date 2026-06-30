@@ -28,7 +28,10 @@ class IncludedSerializers(
     val registry: Registry,
     val logger: KSPLogger
 ) {
-    fun serializer(type: TypeName): Serializer {
+    fun serializer(type: TypeName, overrideSerializer: ClassName? = null): Serializer {
+        if (overrideSerializer != null) {
+            return Serializer.StaticObject(type, overrideSerializer)
+        }
         return when (type) {
             is ParameterizedTypeName -> {
                 val rawType = type.rawType
