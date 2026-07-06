@@ -5,17 +5,16 @@ import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniSerializable
 import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.kspfix.findAnnotation
-import com.dshatz.kni.kspfix.getArgumentValueByName
 import com.dshatz.kni.kspfix.getClassArgument
 import com.dshatz.kni.utils.dereferenceTypeAlias
+import com.google.devtools.ksp.getDeclaredProperties
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.google.devtools.ksp.symbol.KSTypeReference
-import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -30,7 +29,6 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import kotlin.reflect.KClass
 
 class SerializerProcessor(
     private val registry: Registry,
@@ -46,10 +44,16 @@ class SerializerProcessor(
     ): Sequence<SerialClass> {
         fun collectSerialProps(decl: KSClassDeclaration): SerialClass.DataClass {
 
-            val props = decl.getAllProperties().map {
+            val valParams = decl.primaryConstructor!!.parameters.map {
+                it.name!!.asString()
+            }.toSet()
+            val props = decl.getAllProperties()
+                .filter { it.simpleName.asString() in valParams }
+                .map {
                 SerialProp(
                     it.simpleName.asString(),
                     it.type.dereferenceTypeAlias().toTypeName(),
+                    declaration = it,
                     overrideSerializer = it.getOverrideSerializer()
                 )
             }.toList()
@@ -76,8 +80,8 @@ class SerializerProcessor(
                 }
             }
             .filter { d ->
-                (Modifier.DATA in d.modifiers).also {
-                    if (!it) env.logger.warn("Ignoring @JniSerializable: not a data class", d)
+                (Modifier.DATA in d.modifiers || Modifier.VALUE in d.modifiers).also {
+                    if (!it) env.logger.warn("Ignoring @JniSerializable on a class: must have data or value modifiers.", d)
                 }
             }
             .map(::collectSerialProps)
@@ -202,7 +206,12 @@ class SerializerProcessor(
     private fun packCode(props: List<SerialProp>): CodeBlock {
         val builder = CodeBlock.builder()
         props.map {
-            val serializer = included.serializer(it.type, it.overrideSerializer)
+            val serializer = try {
+                included.serializer(it.type, it.overrideSerializer)
+            } catch (e: NoSerializerException) {
+                logger.error(e.message!!, it.declaration)
+                throw e
+            }
             if (serializer is IncludedSerializers.Serializer.Generic) registry.genericSerializers.add(serializer)
             val statement = serializer.writeCode(CodeBlock.of("buffer"), CodeBlock.of("value.%N", it.name))
             builder.add("\n%L", statement)
@@ -213,7 +222,12 @@ class SerializerProcessor(
     private fun unpackCode(info: SerialClass.DataClass): CodeBlock {
         val builder = CodeBlock.builder()
         info.properties.forEach {
-            val serializer = included.serializer(it.type, it.overrideSerializer)
+            val serializer = try {
+                included.serializer(it.type, it.overrideSerializer)
+            } catch (e: NoSerializerException) {
+                logger.error(e.message!!, it.declaration)
+                throw e
+            }
             builder.addStatement("val %N = %L", it.name, serializer.readCode(CodeBlock.of("buffer")))
         }
         return builder.addStatement("return %T(%L)", info.cls, info.properties.joinToString { it.name }).build()
@@ -380,6 +394,7 @@ class SerializerProcessor(
     data class SerialProp(
         val name: String,
         val type: TypeName,
+        val declaration: KSNode,
         val overrideSerializer: ClassName? = null
     )
 

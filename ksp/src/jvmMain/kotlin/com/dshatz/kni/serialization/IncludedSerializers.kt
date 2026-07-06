@@ -23,11 +23,13 @@ import com.squareup.kotlinpoet.SET
 import com.squareup.kotlinpoet.SHORT
 import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.TypeName
+import kotlin.jvm.Throws
 
 class IncludedSerializers(
     val registry: Registry,
     val logger: KSPLogger
 ) {
+    @Throws(NoSerializerException::class)
     fun serializer(type: TypeName, overrideSerializer: ClassName? = null): Serializer {
         if (overrideSerializer != null) {
             return Serializer.StaticObject(type, overrideSerializer)

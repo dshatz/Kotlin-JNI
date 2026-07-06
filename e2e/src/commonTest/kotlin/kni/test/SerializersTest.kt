@@ -7,6 +7,8 @@ import kni.test.serializable.PolymorphicFruit
 import kni.test.serializable.PolymorphicFruitSerializer_generated
 import kni.test.serializable.Simple
 import kni.test.serializable.SimpleSerializer_generated
+import kni.test.serializable.ValueClass
+import kni.test.serializable.ValueClassSerializer_generated
 import kotlin.random.Random
 
 val SerializersTest by testSuite {
@@ -56,5 +58,11 @@ val SerializersTest by testSuite {
             val applePacked = pack(apple)
             unpackFrom(applePacked) shouldBe apple
         }
+    }
+
+    test("value class") {
+        val valueClass = ValueClass(99)
+        val packed = ValueClassSerializer_generated.pack(valueClass)
+        ValueClassSerializer_generated.unpackFrom(packed) shouldBe valueClass
     }
 }
