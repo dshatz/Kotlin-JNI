@@ -19,6 +19,7 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
+import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -80,7 +81,7 @@ class CallableProcessor(
                     )
                 }
             }
-            
+
             val cl = functions.firstOrNull()?.cls
             val constructor = cl?.let(::generateNativeConstructor)
             val dispose = cl?.let(::generateNativeDispose)
@@ -263,7 +264,7 @@ class CallableProcessor(
         }.joinToCode()
         return FunSpec.constructorBuilder()
             .addParameters(params)
-            .addModifiers(KModifier.ACTUAL)
+            .addModifiers(KModifier.ACTUAL, cl.declaration.primaryConstructor?.modifiers?.visibilityKModifier ?: KModifier.PUBLIC)
             .addCode(CodeBlock.builder().addStatement("nativeInstance = initNative(%L)", convertParamsCode).build())
             .build()
     }
@@ -277,7 +278,7 @@ class CallableProcessor(
         return FunSpec.builder("initNative")
             .addParameters(params)
             .returns(returnType.jniType.jvmType)
-            .addModifiers(KModifier.EXTERNAL)
+            .addModifiers(KModifier.EXTERNAL, KModifier.PRIVATE)
             .build()
     }
 
@@ -302,7 +303,7 @@ class CallableProcessor(
             val externalMember = MemberName(funNames[f]!!.packageName, f.simpleName + "External")
 
             val funSpec = FunSpec.builder(funNames[f]!!)
-                .addModifiers(KModifier.ACTUAL)
+                .addModifiers(KModifier.ACTUAL, f.declaration.modifiers.visibilityKModifier)
                 .returns(f.returnType.kotlinType)
                 .apply {
                     f.parameters.forEach { (name, typeInfo) ->
@@ -331,7 +332,7 @@ class CallableProcessor(
 
 
             val externalSpec = FunSpec.builder(externalMember)
-                .addModifiers(KModifier.EXTERNAL)
+                .addModifiers(KModifier.EXTERNAL, KModifier.PRIVATE)
                 .apply {
                     f.parameters.forEach {
                         addKdoc("@param ${it.name} [${it.typeInfo.kotlinType}] converted to `${it.typeInfo.jniType.nativeType}`.\n")
@@ -408,7 +409,7 @@ class CallableProcessor(
                             val nativeProp = PropertySpec.builder("nativeInstance", nativeType.jniType.jvmType).build()
                             val constructor = constructors[parent]
                             val type = TypeSpec.classBuilder(parent)
-                                .addModifiers(KModifier.ACTUAL)
+                                .addModifiers(KModifier.ACTUAL, type.declaration.modifiers.visibilityKModifier)
                                 .addSuperinterface(Types.AutoCloseable)
                                 .addProperty(nativeProp)
                                 .apply { constructor?.let(::primaryConstructor) }
@@ -432,7 +433,7 @@ class CallableProcessor(
                         is FunLocation.FunctionParent.Object -> {
                             val specs = generateJvmFunctions(funs)
                             val type = TypeSpec.objectBuilder(parent)
-                                .addModifiers(KModifier.ACTUAL)
+                                .addModifiers(KModifier.ACTUAL, type.declaration.modifiers.visibilityKModifier)
                                 .addFunctions(specs)
                                 .build()
                             fileSpec.addType(type)
@@ -472,3 +473,13 @@ fun List<CodeBlock>.joinToString(separator: String = ", "): CodeBlock {
         args = this.toTypedArray()
     )
 }
+
+
+val Set<Modifier>.visibilityKModifier: KModifier
+    get() = if (this.contains(Modifier.PRIVATE))
+        KModifier.PRIVATE
+    else if (this.contains(Modifier.PROTECTED))
+        KModifier.PROTECTED
+    else if (this.contains(Modifier.INTERNAL))
+        KModifier.INTERNAL
+    else KModifier.PUBLIC
