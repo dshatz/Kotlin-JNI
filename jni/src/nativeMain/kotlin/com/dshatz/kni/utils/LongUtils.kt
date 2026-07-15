@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jlongArray
 import com.dshatz.kni.binding.jlongVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -19,9 +20,9 @@ import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
-fun jlongArray.getLongElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jlongVar>? {
-    val method = env.pointed.pointedCommon?.GetLongArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jlongArray.getLongElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jlongVar> {
+    val method = env.pointed.pointedCommon?.GetLongArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetLongArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -31,9 +32,9 @@ fun jlongArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jlon
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jlongArray.toKLongArray(env: CPointer<JNIEnvVar>): LongArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getLongElements(env) ?: return null
+fun jlongArray.toKLongArray(env: CPointer<JNIEnvVar>): LongArray {
+    val length = this.getLength(env)
+    val elements = this.getLongElements(env)
 
     val result = memScoped {
         LongArray(length) {
