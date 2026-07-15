@@ -7,6 +7,7 @@ import com.dshatz.kni.binding.jshortArray
 import com.dshatz.kni.binding.jshortVar
 import com.dshatz.kni.binding.jint
 import com.dshatz.kni.binding.jsize
+import com.dshatz.kni.error.JniUnavailableError
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -19,9 +20,9 @@ import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
 @RequiresRelease
-fun jshortArray.getShortElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jshortVar>? {
-    val method = env.pointed.pointedCommon?.GetShortArrayElements ?: return null
-    return method.invoke(env, this, isCopy)
+fun jshortArray.getShortElements(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbooleanVar>? = null): CPointer<jshortVar> {
+    val method = env.pointed.pointedCommon?.GetShortArrayElements ?: throw JniUnavailableError()
+    return method.invoke(env, this, isCopy) ?: throw OutOfMemoryError("Failed to call GetShortArrayElements")
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -31,9 +32,9 @@ fun jshortArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jsh
 }
 
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
-fun jshortArray.toKShortArray(env: CPointer<JNIEnvVar>): ShortArray? {
-    val length = this.getLength(env) ?: return null
-    val elements = this.getShortElements(env) ?: return null
+fun jshortArray.toKShortArray(env: CPointer<JNIEnvVar>): ShortArray {
+    val length = this.getLength(env)
+    val elements = this.getShortElements(env)
 
     val result = memScoped {
         ShortArray(length) {
