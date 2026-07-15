@@ -47,14 +47,14 @@ fun jshortArray.toKShortArray(env: CPointer<JNIEnvVar>): ShortArray {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newShortArray(size: jsize): jshortArray? {
-    val method = pointed.pointedCommon?.NewShortArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newShortArray(size: jsize): jshortArray {
+    val method = pointed.pointedCommon?.NewShortArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to allocate JVM short array of size $size")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jshortArray.fill(env: CPointer<JNIEnvVar>, value: ShortArray): jshortArray? {
-    val method = env.pointed.pointedCommon?.SetShortArrayRegion ?: return null
+fun jshortArray.fill(env: CPointer<JNIEnvVar>, value: ShortArray): jshortArray {
+    val method = env.pointed.pointedCommon?.SetShortArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
         method.invoke(env, this, 0, value.size, pointer)
@@ -63,6 +63,6 @@ fun jshortArray.fill(env: CPointer<JNIEnvVar>, value: ShortArray): jshortArray? 
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun ShortArray.toJShortArray(env: CPointer<JNIEnvVar>): jshortArray? {
-    return env.newShortArray(size)?.fill(env, this)
+fun ShortArray.toJShortArray(env: CPointer<JNIEnvVar>): jshortArray {
+    return env.newShortArray(size).fill(env, this)
 }

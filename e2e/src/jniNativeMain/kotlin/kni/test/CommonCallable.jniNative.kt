@@ -20,6 +20,46 @@ actual object CommonCallable {
     }
 
     @JniCall
+    actual fun longArray(value: LongArray): LongArray {
+        return value.map { it * 2 }.toLongArray()
+    }
+
+    @JniCall
+    actual fun byteArray(value: ByteArray): ByteArray {
+        return value.reversedArray()
+    }
+
+    @JniCall
+    actual fun shortArray(value: ShortArray): ShortArray {
+        return value.reversedArray()
+    }
+
+    @JniCall
+    actual fun booleanArray(value: BooleanArray): BooleanArray {
+        return value.reversedArray()
+    }
+
+    @JniCall
+    actual fun charArray(value: CharArray): CharArray {
+        return value.reversedArray()
+    }
+
+    @JniCall
+    actual fun doubleArray(value: DoubleArray): DoubleArray {
+        return value.map { it * 2 }.toDoubleArray()
+    }
+
+    @JniCall
+    actual fun floatArray(value: FloatArray): FloatArray {
+        return value.map { it * 2 }.toFloatArray()
+    }
+
+    @JniCall
+    actual fun intArray(value: IntArray): IntArray {
+        return value.map { it * 2 }.toIntArray()
+    }
+
+    @JniCall
     actual fun anyIsNull(
         str: String?,
         i: Int?,

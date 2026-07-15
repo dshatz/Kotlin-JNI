@@ -43,6 +43,46 @@ fun TestSuiteScope.bridgeTests() {
         val contents = buffer.readToByteArray(0, 1024)
         contents.toHexString() shouldBe filledHex
     }
+    test("LongArray parameter and return value") {
+        val value = longArrayOf(-2, 0, 1, 42)
+
+        CommonCallable.longArray(value).contentEquals(longArrayOf(-4, 0, 2, 84)) shouldBe true
+    }
+    test("ByteArray parameter and return value") {
+        val value = byteArrayOf(-128, -1, 0, 1, 127)
+
+        CommonCallable.byteArray(value).contentEquals(byteArrayOf(127, 1, 0, -1, -128)) shouldBe true
+    }
+    test("ShortArray parameter and return value") {
+        val value = shortArrayOf(-128, -1, 0, 1, 127)
+
+        CommonCallable.shortArray(value).contentEquals(shortArrayOf(127, 1, 0, -1, -128)) shouldBe true
+    }
+    test("BooleanArray parameter and return value") {
+        val value = booleanArrayOf(true, false, false, true)
+
+        CommonCallable.booleanArray(value).contentEquals(booleanArrayOf(true, false, false, true)) shouldBe true
+    }
+    test("CharArray parameter and return value") {
+        val value = charArrayOf('a', 'b', 'c', 'd')
+
+        CommonCallable.charArray(value).contentEquals(charArrayOf('d', 'c', 'b', 'a')) shouldBe true
+    }
+    test("DoubleArray parameter and return value") {
+        val value = doubleArrayOf(-2.5, 0.0, 1.25, 42.0)
+
+        CommonCallable.doubleArray(value).contentEquals(doubleArrayOf(-5.0, 0.0, 2.5, 84.0)) shouldBe true
+    }
+    test("FloatArray parameter and return value") {
+        val value = floatArrayOf(-2.5f, 0f, 1.25f, 42f)
+
+        CommonCallable.floatArray(value).contentEquals(floatArrayOf(-5f, 0f, 2.5f, 84f)) shouldBe true
+    }
+    test("IntArray parameter and return value") {
+        val value = intArrayOf(-2, 0, 1, 42)
+
+        CommonCallable.intArray(value).contentEquals(intArrayOf(-4, 0, 2, 84)) shouldBe true
+    }
     test("top-level") {
         topLevelFun().capacity shouldBe 1024
     }

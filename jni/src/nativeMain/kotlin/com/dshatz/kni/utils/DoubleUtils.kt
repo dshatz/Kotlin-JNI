@@ -63,6 +63,6 @@ fun jdoubleArray.fill(env: CPointer<JNIEnvVar>, value: DoubleArray): jdoubleArra
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun DoubleArray.toJDoubleArray(env: CPointer<JNIEnvVar>): jdoubleArray? {
+fun DoubleArray.toJDoubleArray(env: CPointer<JNIEnvVar>): jdoubleArray {
     return env.newDoubleArray(size).fill(env, this)
 }

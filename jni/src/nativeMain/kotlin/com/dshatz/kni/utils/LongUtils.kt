@@ -47,14 +47,14 @@ fun jlongArray.toKLongArray(env: CPointer<JNIEnvVar>): LongArray {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newLongArray(size: jsize): jlongArray? {
-    val method = pointed.pointedCommon?.NewLongArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newLongArray(size: jsize): jlongArray {
+    val method = pointed.pointedCommon?.NewLongArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to allocate JVM long array of size $size")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jlongArray.fill(env: CPointer<JNIEnvVar>, value: LongArray): jlongArray? {
-    val method = env.pointed.pointedCommon?.SetLongArrayRegion ?: return null
+fun jlongArray.fill(env: CPointer<JNIEnvVar>, value: LongArray): jlongArray {
+    val method = env.pointed.pointedCommon?.SetLongArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
         method.invoke(env, this, 0, value.size, pointer)
@@ -63,6 +63,6 @@ fun jlongArray.fill(env: CPointer<JNIEnvVar>, value: LongArray): jlongArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun LongArray.toJLongArray(env: CPointer<JNIEnvVar>): jlongArray? {
-    return env.newLongArray(size)?.fill(env, this)
+fun LongArray.toJLongArray(env: CPointer<JNIEnvVar>): jlongArray {
+    return env.newLongArray(size).fill(env, this)
 }
