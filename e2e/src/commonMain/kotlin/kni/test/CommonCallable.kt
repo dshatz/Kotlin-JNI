@@ -13,6 +13,30 @@ expect object CommonCallable {
     fun fillBuffer(buffer: ByteBuffer): String
 
     @JniCall
+    fun longArray(value: LongArray): LongArray
+
+    @JniCall
+    fun byteArray(value: ByteArray): ByteArray
+
+    @JniCall
+    fun shortArray(value: ShortArray): ShortArray
+
+    @JniCall
+    fun booleanArray(value: BooleanArray): BooleanArray
+
+    @JniCall
+    fun charArray(value: CharArray): CharArray
+
+    @JniCall
+    fun doubleArray(value: DoubleArray): DoubleArray
+
+    @JniCall
+    fun floatArray(value: FloatArray): FloatArray
+
+    @JniCall
+    fun intArray(value: IntArray): IntArray
+
+    @JniCall
     fun anyIsNull(
         str: String? = "",
         i: Int? = 1,

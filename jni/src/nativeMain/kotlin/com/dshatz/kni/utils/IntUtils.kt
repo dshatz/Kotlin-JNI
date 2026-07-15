@@ -47,14 +47,14 @@ fun jintArray.toKIntArray(env: CPointer<JNIEnvVar>): IntArray {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun CPointer<JNIEnvVar>.newIntArray(size: jsize): jintArray? {
-    val method = pointed.pointedCommon?.NewIntArray ?: return null
-    return method.invoke(this, size)
+fun CPointer<JNIEnvVar>.newIntArray(size: jsize): jintArray {
+    val method = pointed.pointedCommon?.NewIntArray ?: throw JniUnavailableError()
+    return method.invoke(this, size) ?: throw OutOfMemoryError("Failed to allocate JVM int array of size $size")
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun jintArray.fill(env: CPointer<JNIEnvVar>, value: IntArray): jintArray? {
-    val method = env.pointed.pointedCommon?.SetIntArrayRegion ?: return null
+fun jintArray.fill(env: CPointer<JNIEnvVar>, value: IntArray): jintArray {
+    val method = env.pointed.pointedCommon?.SetIntArrayRegion ?: throw JniUnavailableError()
     value.usePinned { pinnedArray ->
         val pointer = pinnedArray.addressOf(0)
         method.invoke(env, this, 0, value.size, pointer)
@@ -63,6 +63,6 @@ fun jintArray.fill(env: CPointer<JNIEnvVar>, value: IntArray): jintArray? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun IntArray.toJIntArray(env: CPointer<JNIEnvVar>): jintArray? {
-    return env.newIntArray(size)?.fill(env, this)
+fun IntArray.toJIntArray(env: CPointer<JNIEnvVar>): jintArray {
+    return env.newIntArray(size).fill(env, this)
 }
