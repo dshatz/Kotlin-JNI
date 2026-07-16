@@ -2,6 +2,8 @@ package com.dshatz.kni.serialization
 
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
+import kotlinx.io.readUShort
+import kotlinx.io.writeUShort
 
 interface JniSerializer<T> {
     fun packTo(value: T, buffer: Buffer)
@@ -24,6 +26,24 @@ fun Buffer.writeLenString(value: String) {
     val bytes = value.encodeToByteArray()
     writeInt(bytes.size)
     write(bytes)
+}
+
+fun Buffer.writeLenBytes(bytes: ByteArray) {
+    writeInt(bytes.size)
+    write(bytes)
+}
+
+fun Buffer.readLenBytes(): ByteArray {
+    val count = readInt()
+    return readByteArray(count)
+}
+
+fun Buffer.writeChar(char: Char) {
+    writeUShort(char.code.toUShort())
+}
+
+fun Buffer.readChar(): Char {
+    return readUShort().toInt().toChar()
 }
 
 fun Buffer.readLenString(): String {

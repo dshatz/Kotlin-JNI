@@ -7,27 +7,51 @@ import com.dshatz.kni.utils.asReceiver
 import com.dshatz.kni.utils.callFunction
 import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.BOOLEAN
+import com.squareup.kotlinpoet.BOOLEAN_ARRAY
 import com.squareup.kotlinpoet.BYTE
+import com.squareup.kotlinpoet.BYTE_ARRAY
+import com.squareup.kotlinpoet.CHAR
+import com.squareup.kotlinpoet.CHAR_ARRAY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.DOUBLE
+import com.squareup.kotlinpoet.DOUBLE_ARRAY
 import com.squareup.kotlinpoet.FLOAT
+import com.squareup.kotlinpoet.FLOAT_ARRAY
 import com.squareup.kotlinpoet.INT
+import com.squareup.kotlinpoet.INT_ARRAY
 import com.squareup.kotlinpoet.LIST
 import com.squareup.kotlinpoet.LONG
+import com.squareup.kotlinpoet.LONG_ARRAY
 import com.squareup.kotlinpoet.MAP
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.SET
 import com.squareup.kotlinpoet.SHORT
+import com.squareup.kotlinpoet.SHORT_ARRAY
 import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.U_BYTE
+import com.squareup.kotlinpoet.U_BYTE_ARRAY
+import com.squareup.kotlinpoet.U_INT
+import com.squareup.kotlinpoet.U_INT_ARRAY
+import com.squareup.kotlinpoet.U_LONG
+import com.squareup.kotlinpoet.U_LONG_ARRAY
+import com.squareup.kotlinpoet.U_SHORT
+import com.squareup.kotlinpoet.U_SHORT_ARRAY
+import com.squareup.kotlinpoet.typeNameOf
+import java.io.Serial
+import kotlin.jvm.Throws
 
 class IncludedSerializers(
     val registry: Registry,
     val logger: KSPLogger
 ) {
-    fun serializer(type: TypeName): Serializer {
+    @Throws(NoSerializerException::class)
+    fun serializer(type: TypeName, overrideSerializer: ClassName? = null): Serializer {
+        if (overrideSerializer != null) {
+            return Serializer.StaticObject(type, overrideSerializer)
+        }
         return when (type) {
             is ParameterizedTypeName -> {
                 val rawType = type.rawType
@@ -57,6 +81,9 @@ class IncludedSerializers(
             }
             in defined -> {
                 defined[type]!!
+            }
+            in arrays -> {
+                Serializer.Array(serializer(arrays[type]!!), type)
             }
             in registry.serializers -> {
                 Serializer.StaticObject(type as ClassName, registry.serializers[type]!!)
@@ -130,6 +157,34 @@ class IncludedSerializers(
                 }
             }
         }
+
+        data class Array(val inner: Serializer, val targetType: TypeName): Serializer() {
+            override fun readCode(buffer: CodeBlock): CodeBlock {
+                return CodeBlock.builder().beginControlFlow("%L.run", buffer)
+                    .addStatement("val arr = %T(readInt())", targetType)
+                    .beginControlFlow("for (i in arr.indices)")
+                    .addStatement("arr[i] = %L", inner.readCode(CodeBlock.of("this")))
+                    .endControlFlow()
+                    .addStatement("arr")
+                    .endControlFlow()
+                    .build()
+            }
+
+            override fun writeCode(
+                buffer: CodeBlock,
+                value: CodeBlock
+            ): CodeBlock {
+                return CodeBlock.builder().beginControlFlow("%L.run", buffer)
+                    .addStatement("writeInt(%L.size)", value)
+                    .beginControlFlow("for (v in %L)", value)
+                    .addStatement("%L", inner.writeCode(buffer, CodeBlock.of("v")))
+                    .endControlFlow()
+                    .endControlFlow()
+                    .build()
+            }
+
+        }
+
 
         data class Collection(val inner: Serializer, val toTarget: MemberName): Serializer() {
             companion object {
@@ -221,7 +276,24 @@ class IncludedSerializers(
 
         val defined = mapOf(
             STRING to kniExtension("lenString"),
-            BOOLEAN to kniExtension("bool")
+            BOOLEAN to kniExtension("bool"),
+            BYTE_ARRAY to kniExtension("lenBytes"),
+            CHAR to kniExtension("char")
+        )
+
+        // Do not include ByteArray here, it is written directly.
+        val arrays = mapOf(
+            BOOLEAN_ARRAY to BOOLEAN,
+            CHAR_ARRAY to CHAR,
+            SHORT_ARRAY to SHORT,
+            INT_ARRAY to INT,
+            LONG_ARRAY to LONG,
+            FLOAT_ARRAY to FLOAT,
+            DOUBLE_ARRAY to DOUBLE,
+            U_BYTE_ARRAY to U_BYTE,
+            U_SHORT_ARRAY to U_SHORT,
+            U_INT_ARRAY to U_INT,
+            U_LONG_ARRAY to U_LONG
         )
     }
 }

@@ -54,6 +54,11 @@ val SerializersTest by testSuite {
             val apple = PolymorphicFruit.Apple(1000)
             val applePacked = pack(apple)
             unpackFrom(applePacked) shouldBe apple
+
+            val watermelon = PolymorphicFruit.Watermelon(Random.nextBytes(10), LongArray(10),
+                CharArray(10))
+            val watermelonPacked = pack(watermelon)
+            unpackFrom(watermelonPacked) shouldBe watermelon
         }
     }
 }
