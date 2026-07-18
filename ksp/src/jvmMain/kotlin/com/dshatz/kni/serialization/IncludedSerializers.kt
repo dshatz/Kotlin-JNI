@@ -31,6 +31,7 @@ import com.squareup.kotlinpoet.SHORT
 import com.squareup.kotlinpoet.SHORT_ARRAY
 import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.U_BYTE
 import com.squareup.kotlinpoet.U_BYTE_ARRAY
 import com.squareup.kotlinpoet.U_INT
@@ -278,7 +279,8 @@ class IncludedSerializers(
             STRING to kniExtension("lenString"),
             BOOLEAN to kniExtension("bool"),
             BYTE_ARRAY to kniExtension("lenBytes"),
-            CHAR to kniExtension("char")
+            CHAR to kniExtension("char"),
+            UNIT to kniExtension("unit")
         )
 
         // Do not include ByteArray here, it is written directly.
