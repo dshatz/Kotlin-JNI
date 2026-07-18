@@ -46,6 +46,9 @@ fun Buffer.readChar(): Char {
     return readUShort().toInt().toChar()
 }
 
+fun Buffer.writeUnit(u: Unit) {}
+fun Buffer.readUnit() {}
+
 fun Buffer.readLenString(): String {
     val len = readInt()
     return readByteArray(len).decodeToString()
