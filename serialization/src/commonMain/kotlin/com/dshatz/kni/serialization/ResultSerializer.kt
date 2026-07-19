@@ -3,8 +3,8 @@ package com.dshatz.kni.serialization
 import com.dshatz.kni.serialization.exception.JniWrappedException
 import kotlinx.io.Buffer
 
-class ResultSerializer<T>(private val dataSerializer: JniSerializer<T>): JniSerializer<Result<T>> {
-    override fun packTo(value: Result<T>, buffer: Buffer) {
+class ResultSerializer<T>(private val dataSerializer: JniSerializer<T>): JniSerializer<Result<T>>("kotlin.Result") {
+    override fun packToBuffer(value: Result<T>, buffer: Buffer) {
         value.map {
             buffer.writeByte(1)
             dataSerializer.packTo(it, buffer)
@@ -16,7 +16,7 @@ class ResultSerializer<T>(private val dataSerializer: JniSerializer<T>): JniSeri
         }
     }
 
-    override fun unpackFrom(buffer: Buffer): Result<T> {
+    override fun unpackFromBuffer(buffer: Buffer): Result<T> {
         val success = buffer.readByte() == 1.toByte()
         if (success) {
             return Result.success(dataSerializer.unpackFrom(buffer))

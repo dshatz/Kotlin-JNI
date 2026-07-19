@@ -1,6 +1,7 @@
 package kni.test.serializable
 
 import com.dshatz.kni.annotations.JniSerializable
+import kni.test.ColorfulObject
 
 @JniSerializable
 data class Simple(
@@ -17,7 +18,8 @@ data class Simple(
     val alias: LongAlias,
     val inner: Inner,
     val result: Result<String>,
-    val resultOfCustom: Result<Inner>
+    val resultOfCustom: Result<Inner>,
+    val objs: List<ColorfulObject>
 )
 
 @JniSerializable

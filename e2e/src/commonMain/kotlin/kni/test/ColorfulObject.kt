@@ -16,20 +16,20 @@ data class ColorfulObject(
 )
 
 @JniSerializerFor(IntRange::class)
-object IntRangeSerializer: JniSerializer<IntRange> {
-    override fun packTo(value: IntRange, buffer: Buffer) {
+object IntRangeSerializer: JniSerializer<IntRange>("kotlin.ranges.IntRange") {
+    override fun packToBuffer(value: IntRange, buffer: Buffer) {
         buffer.writeInt(value.first)
         buffer.writeInt(value.last)
     }
 
-    override fun unpackFrom(buffer: Buffer): IntRange {
+    override fun unpackFromBuffer(buffer: Buffer): IntRange {
         return IntRange(buffer.readInt(), buffer.readInt())
     }
 }
 
 @JniSerializerFor(Result::class)
-class SimpleResultSerializer<T>(private val dataSerializer: JniSerializer<T>): JniSerializer<Result<T>> {
-    override fun packTo(value: Result<T>, buffer: Buffer) {
+class SimpleResultSerializer<T>(private val dataSerializer: JniSerializer<T>): JniSerializer<Result<T>>("kotlin.Result") {
+    override fun packToBuffer(value: Result<T>, buffer: Buffer) {
         value.map {
             buffer.writeByte(1)
             dataSerializer.packTo(it, buffer)
@@ -41,7 +41,7 @@ class SimpleResultSerializer<T>(private val dataSerializer: JniSerializer<T>): J
         }
     }
 
-    override fun unpackFrom(buffer: Buffer): Result<T> {
+    override fun unpackFromBuffer(buffer: Buffer): Result<T> {
         val success = buffer.readByte() == 1.toByte()
         if (success) {
             return Result.success(dataSerializer.unpackFrom(buffer))

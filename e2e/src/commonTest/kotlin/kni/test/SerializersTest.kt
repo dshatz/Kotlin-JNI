@@ -39,7 +39,8 @@ val SerializersTest by testSuite {
             alias = 100,
             inner = Inner(0xAA.toByte()),
             result = Result.success("Success"),
-            resultOfCustom = Result.success(Inner(0xff.toByte()))
+            resultOfCustom = Result.success(Inner(0xff.toByte())),
+            objs = listOf(ColorfulObject("black", 2.0, 10..20))
         )
         val packed = SimpleSerializer_generated.pack(obj)
         SimpleSerializer_generated.unpackFrom(packed) shouldBe obj

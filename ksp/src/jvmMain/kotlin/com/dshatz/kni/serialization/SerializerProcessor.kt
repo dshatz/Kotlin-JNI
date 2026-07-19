@@ -123,7 +123,8 @@ class SerializerProcessor(
             } else {
                 val serializerCls = cls.serializerClass()
                 val serializer = TypeSpec.objectBuilder(serializerCls)
-                    .addSuperinterface(Types.JniSerializer.parameterizedBy(cls))
+                    .superclass(Types.JniSerializer.parameterizedBy(cls))
+                    .addSuperclassConstructorParameter("%S", cls.canonicalName)
                     .addFunction(
                         buildPackFunction(cls)
                             .addCode(packCode(properties)).build()
@@ -140,7 +141,8 @@ class SerializerProcessor(
         fun SerialClass.Polymorphic.generatePolymorphicSerializer(): TypeSpec {
             val serializerCls = cls.serializerClass()
             val serializer = TypeSpec.objectBuilder(serializerCls)
-                .addSuperinterface(Types.JniSerializer.parameterizedBy(cls))
+                .superclass(Types.JniSerializer.parameterizedBy(cls))
+                .addSuperclassConstructorParameter("%S", cls.canonicalName)
                 .addFunction(
                     buildPackFunction(cls)
                         .addCode(packCodePolymorphic(this))
@@ -234,7 +236,7 @@ class SerializerProcessor(
     }
 
     private fun buildPackFunction(type: TypeName): FunSpec.Builder {
-        return FunSpec.builder("packTo")
+        return FunSpec.builder("packToBuffer")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter(
                 ParameterSpec("value", type)
@@ -245,7 +247,7 @@ class SerializerProcessor(
     }
 
     private fun buildUnpackFunction(type: TypeName): FunSpec.Builder {
-        return FunSpec.builder("unpackFrom")
+        return FunSpec.builder("unpackFromBuffer")
             .addModifiers(KModifier.OVERRIDE)
             .returns(type)
             .addParameter(
@@ -261,9 +263,10 @@ class SerializerProcessor(
                 val cls = ClassName(pkg, name)
                 registry.serializers[type] = cls
                 TypeSpec.objectBuilder(cls)
-                    .addSuperinterface(Types.JniSerializer.parameterizedBy(type))
+                    .superclass(Types.JniSerializer.parameterizedBy(type))
+                    .addSuperclassConstructorParameter(CodeBlock.of("%S", type.canonicalName))
                     .addFunction(
-                        FunSpec.builder("packTo")
+                        FunSpec.builder("packToBuffer")
                             .addParameter(ParameterSpec.builder("value", type).build())
                             .addParameter(ParameterSpec.builder("buffer", Types.IoBuffer).build())
                             .addModifiers(KModifier.OVERRIDE)
@@ -273,7 +276,7 @@ class SerializerProcessor(
                             ).build()
                     )
                     .addFunction(
-                        FunSpec.builder("unpackFrom")
+                        FunSpec.builder("unpackFromBuffer")
                             .addParameter(ParameterSpec.builder("buffer", Types.IoBuffer).build())
                             .returns(type)
                             .addModifiers(KModifier.OVERRIDE)
