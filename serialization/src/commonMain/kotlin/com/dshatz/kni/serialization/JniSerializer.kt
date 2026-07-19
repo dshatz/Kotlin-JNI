@@ -1,18 +1,50 @@
 package com.dshatz.kni.serialization
 
 import kotlinx.io.Buffer
+import kotlinx.io.EOFException
 import kotlinx.io.readByteArray
 import kotlinx.io.readUShort
 import kotlinx.io.writeUShort
 
-interface JniSerializer<T> {
-    fun packTo(value: T, buffer: Buffer)
-    fun unpackFrom(buffer: Buffer): T
+abstract class JniSerializer<T>(private val descriptor: String) {
+    protected abstract fun packToBuffer(value: T, buffer: Buffer)
+    protected abstract fun unpackFromBuffer(buffer: Buffer): T
+
+    /*fun packSafe(value: T, buffer: Buffer) {
+        try {
+            packTo(value, buffer)
+        } catch (e: Exception) {
+            throw RuntimeException("Could not pack $value: ${e.message}", e)
+        }
+    }
+    fun unpackSafe(buffer: Buffer): T {
+        try {
+            unpackFrom(buffer)
+        } catch (e: Exception) {
+            throw RuntimeException("Could not unpack to ${T::class.simpleName}")
+        }
+    }*/
 
     fun unpackFrom(byteArray: ByteArray): T {
         val buffer = Buffer()
         buffer.write(byteArray)
         return unpackFrom(buffer)
+    }
+
+    fun packTo(value: T, buffer: Buffer) {
+        try {
+            packToBuffer(value, buffer)
+        } catch (e: Exception) {
+            throw RuntimeException("Could not pack $value: ${e.message}", e)
+        }
+    }
+
+    fun unpackFrom(buffer: Buffer): T {
+        return try {
+            unpackFromBuffer(buffer)
+        } catch (e: Exception) {
+            throw RuntimeException("Could not unpack $descriptor: ${e.message}", e)
+        }
     }
 
     fun pack(value: T): ByteArray {

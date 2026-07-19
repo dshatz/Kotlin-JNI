@@ -1,6 +1,7 @@
 package com.dshatz.kni.serialization
 
 import com.dshatz.kni.Registry
+import com.dshatz.kni.Types
 import com.dshatz.kni.Types.typeOf
 import com.dshatz.kni.serialization.IncludedSerializers.Serializer.Extension.Companion.kniExtension
 import com.dshatz.kni.utils.asReceiver
@@ -204,7 +205,7 @@ class IncludedSerializers(
                 return CodeBlock.builder().callFunction("buffer", write) {
                     named("col", value)
                     lambdaParam("writeItem") {
-                        inner.writeCode(CodeBlock.of(""), it)
+                        inner.writeCode(CodeBlock.of("this"), it)
                     }
                 }.build()
             }
