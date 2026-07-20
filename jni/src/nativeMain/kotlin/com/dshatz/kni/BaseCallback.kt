@@ -41,19 +41,14 @@ open class BaseCallback(
 
     val env: CPointer<JNIEnvVar> get() {
         return envCache ?: run {
-            println("Env lazy block")
             val p = envPtr ?: error("Callback already closed")
             val vm = javaVm.pointed.pointed!!
             val result = vm.GetEnv!!.invoke(javaVm, p.reinterpret(), JNI_VERSION_1_6)
 
             if (result == JNI_EDETACHED) {
-                println("JNI_EDETACHED, Attaching")
-
                 if (javaVm.AttachCurrentThread(p.pointed) != JNI_OK) {
-                    println("Attaching failed")
                 }
             }
-            println("env retrieved")
 
             p.pointed.value!!
         }.also { envCache = it }
