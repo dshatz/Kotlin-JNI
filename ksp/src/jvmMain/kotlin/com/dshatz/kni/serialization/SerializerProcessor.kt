@@ -43,7 +43,6 @@ class SerializerProcessor(
         resolver: Resolver
     ): Sequence<SerialClass> {
         fun collectSerialProps(decl: KSClassDeclaration): SerialClass.DataClass {
-
             val valParams = decl.primaryConstructor!!.parameters.map {
                 it.name!!.asString()
             }.toSet()
@@ -75,9 +74,7 @@ class SerializerProcessor(
         }
         val dataClasses = declarations
             .filter { d ->
-                (d.classKind == ClassKind.CLASS).also {
-                    if (!it) env.logger.warn("Ignoring @JniSerializable: not a class", d)
-                }
+                d.classKind == ClassKind.CLASS
             }
             .filter { d ->
                 (Modifier.DATA in d.modifiers || Modifier.VALUE in d.modifiers).also {
@@ -86,7 +83,13 @@ class SerializerProcessor(
             }
             .map(::collectSerialProps)
 
-        return dataClasses + sealed
+        val enums = declarations.filter { d ->
+            d.classKind == ClassKind.ENUM_CLASS
+        }.map {
+            SerialClass.EnumClass(it.toClassName())
+        }
+
+        return dataClasses + sealed + enums
     }
 
     private fun KSPropertyDeclaration.getOverrideSerializer(): ClassName? {
@@ -157,11 +160,30 @@ class SerializerProcessor(
             return serializer
         }
 
+        fun SerialClass.EnumClass.generateEnumSerializer(): TypeSpec {
+            val serializerCls = cls.serializerClass()
+            val serializer = TypeSpec.objectBuilder(serializerCls)
+                .superclass(Types.JniSerializer.parameterizedBy(cls))
+                .addSuperclassConstructorParameter("%S", cls.canonicalName)
+                .addFunction(
+                    buildPackFunction(cls)
+                        .addStatement("buffer.writeInt(value.ordinal)")
+                        .build()
+                )
+                .addFunction(
+                    buildUnpackFunction(cls)
+                        .addStatement("return %T.entries[buffer.readInt()]", cls)
+                        .build()
+                ).build()
+            return serializer
+        }
+
 
         val files = serializables.mapNotNull {
             val spec = when (it) {
                 is SerialClass.DataClass -> it.generateDataClassSerializer()
                 is SerialClass.Polymorphic -> it.generatePolymorphicSerializer()
+                is SerialClass.EnumClass -> it.generateEnumSerializer()
             }
             spec?.let { spec ->
                 FileSpec.builder(it.cls.serializerClass())
@@ -391,6 +413,10 @@ class SerializerProcessor(
         data class Polymorphic(
             override val cls: ClassName,
             val subclasses: List<DataClass>
+        ): SerialClass()
+
+        data class EnumClass(
+            override val cls: ClassName
         ): SerialClass()
     }
 

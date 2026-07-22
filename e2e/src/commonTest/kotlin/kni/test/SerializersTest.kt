@@ -2,6 +2,8 @@ package kni.test
 
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
+import kni.test.serializable.ColorEnum
+import kni.test.serializable.ColorEnumSerializer_generated
 import kni.test.serializable.Inner
 import kni.test.serializable.PolymorphicFruit
 import kni.test.serializable.PolymorphicFruitSerializer_generated
@@ -60,6 +62,14 @@ val SerializersTest by testSuite {
                 CharArray(10))
             val watermelonPacked = pack(watermelon)
             unpackFrom(watermelonPacked) shouldBe watermelon
+        }
+    }
+
+    test("enum") {
+        ColorEnumSerializer_generated.apply {
+            val green = ColorEnum.GREEN
+            val packed = pack(green)
+            unpackFrom(packed) shouldBe green
         }
     }
 }
