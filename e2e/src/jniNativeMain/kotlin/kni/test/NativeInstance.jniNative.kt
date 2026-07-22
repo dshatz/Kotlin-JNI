@@ -6,12 +6,12 @@ import com.dshatz.kni.buffers.ByteBuffer
 actual class NativeInstance actual constructor(
     val input: Long,
     private val closeListener: CloseListener
-): AutoCloseable {
+): AutoCloseable, MyInterface {
     init {
         println("[native] Initialized NativeInstance($input)")
     }
     @JniCall
-    actual fun negate(): Long {
+    actual override fun negate(): Long {
         println("[native] Negating $input")
         return -input
     }

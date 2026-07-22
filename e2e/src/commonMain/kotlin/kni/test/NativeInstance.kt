@@ -9,13 +9,17 @@ import com.dshatz.kni.buffers.ByteBuffer
 expect class NativeInstance(
     input: Long,
     closeListener: CloseListener
-): AutoCloseable {
+): AutoCloseable, MyInterface {
     @JniCall
-    fun negate(): Long
+    override fun negate(): Long
 
     @JniCall
     fun fillBuffer(buffer: ByteBuffer, callback: BufferFillCallback)
     override fun close()
+}
+
+interface MyInterface {
+    fun negate(): Long
 }
 
 @JniCallback
