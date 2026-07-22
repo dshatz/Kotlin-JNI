@@ -15,11 +15,13 @@ import com.dshatz.kni.utils.joinToCode
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.closestClassDeclaration
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
+import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -304,6 +306,9 @@ class CallableProcessor(
 
             val funSpec = FunSpec.builder(funNames[f]!!)
                 .addModifiers(KModifier.ACTUAL, f.declaration.modifiers.visibilityKModifier)
+                .apply {
+                    if (Modifier.OVERRIDE in f.declaration.modifiers) addModifiers(KModifier.OVERRIDE)
+                }
                 .returns(f.returnType.kotlinType)
                 .apply {
                     f.parameters.forEach { (name, typeInfo) ->
@@ -404,13 +409,16 @@ class CallableProcessor(
                 context(type.declaration) {
                     when (type) {
                         is FunLocation.FunctionParent.Class -> {
+                            val supertypes = type.declaration.superTypes.map {
+                                it.resolve().toClassName()
+                            }
                             val nativeType = mapper.mapType(parent)
                             val specs = generateJvmFunctions(funs, nativeType)
                             val nativeProp = PropertySpec.builder("nativeInstance", nativeType.jniType.jvmType).build()
                             val constructor = constructors[parent]
                             val type = TypeSpec.classBuilder(parent)
                                 .addModifiers(KModifier.ACTUAL, type.declaration.modifiers.visibilityKModifier)
-                                .addSuperinterface(Types.AutoCloseable)
+                                .addSuperinterfaces(supertypes.toList())
                                 .addProperty(nativeProp)
                                 .apply { constructor?.let(::primaryConstructor) }
                                 .apply {
