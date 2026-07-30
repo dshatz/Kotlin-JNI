@@ -65,6 +65,10 @@ class NativeKommons : SymbolProcessorProvider {
                 }
             }
 
+            getNativeInstances(resolver).also {
+                registry.nativeInstances.addAll(it.map { it.toClassName() })
+            }
+
             val callbacks = callbackProcessor.getAnnotatedCallbacks(resolver)
             val callables = getAnnotatedCallables(resolver)
 
@@ -78,10 +82,6 @@ class NativeKommons : SymbolProcessorProvider {
             if (isCommon && !generated) {
                 serializableProcessor.generateGenericSerializers()
                     .writeTo(codeGenerator, Dependencies(false))
-            }
-
-            getNativeInstances(resolver).also {
-                registry.nativeInstances.addAll(it.map { it.toClassName() })
             }
 
             if (!isJvm && !isCommon) {
