@@ -14,11 +14,13 @@ import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toClassName
+import java.util.Locale
 
+@Suppress("DefaultLocale")
 private fun KSFunctionDeclaration.topLevelFunLocation(): FunLocation? {
     val fileName = containingFile?.fileName
     return fileName?.replace(".kt", "")?.substringBeforeLast('.')?.let { cls ->
-        val clsKt = cls + "Kt"
+        val clsKt = cls.capitalize() + "Kt"
         val pkg = packageName.asString()
         val classname = ClassName(pkg, cls)
         FunLocation(
