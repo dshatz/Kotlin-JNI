@@ -168,7 +168,7 @@ class CallableProcessor(
         callFun: MemberName,
         jniCname: String,
     ): FunSpec.Builder {
-        val funName = "_${callFun.simpleName}JNI"
+        val funName = "_${callFun.enclosingClassName?.simpleName.orEmpty()}_${callFun.simpleName}JNI"
         return FunSpec.builder(funName)
             .addAnnotation(AnnotationSpec.builder(CNameUtils.CName).addMember(CodeBlock.of("%S", jniCname)).build())
             .addAnnotation(CNameUtils.NativeOptIn)
