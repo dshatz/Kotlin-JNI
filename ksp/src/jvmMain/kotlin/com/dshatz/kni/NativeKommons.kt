@@ -7,6 +7,7 @@ import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
@@ -132,7 +133,7 @@ class NativeKommons : SymbolProcessorProvider {
                         if (parentClass.classKind !in allowedClassKinds) {
                             env.logger.error("@JniCall is only supported inside classes/objects or on top-level functions.", it)
                             false
-                        } else if (parentClass.classKind == ClassKind.CLASS && parentClass.superTypes.none { it.toTypeName() == Types.AutoCloseable }) {
+                        } else if (parentClass.classKind == ClassKind.CLASS && parentClass.getAllSuperTypes().none { it.toTypeName() == Types.AutoCloseable }) {
                             env.logger.error("Classes with @JniCall methods must implement ${Types.AutoCloseable.canonicalName}", it)
                             false
                         } else true
