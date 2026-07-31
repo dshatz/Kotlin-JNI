@@ -28,4 +28,17 @@ actual class NativeInstance actual constructor(
         closeListener.onClose()
         println("[native] close()")
     }
+
+    actual constructor(closeListener: CloseListener, input: Long) : this(input, closeListener)
+}
+
+actual class NativeInstance1 actual constructor(private val input: Long): AutoCloseable {
+    @JniCall
+    actual fun getInput(): Long {
+        return input
+    }
+
+    actual override fun close() {
+    }
+
 }
