@@ -80,9 +80,14 @@ data class KSFun(
 )
 
 data class KSClass(
-    val constructorParams: List<CallableProcessor.ParamInfo>,
+    val constructors: List<KSConstructor>,
     val type: ClassName,
     val declaration: KSClassDeclaration
+)
+
+data class KSConstructor(
+    val id: Int,
+    val params: List<CallableProcessor.ParamInfo>
 )
 
 /*

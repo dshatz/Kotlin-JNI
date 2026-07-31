@@ -92,9 +92,16 @@ fun TestSuiteScope.bridgeTests() {
         val contents = buffer.readToByteArray(0, 1024)
         contents.toHexString() shouldBe filledHex // it's all the same underlying native memory!
     }
+    test("native instance 2 constructors") {
+        val obj1 = NativeInstance(100, NoopCloseListener())
+        obj1.negate() shouldBe -100
+
+        val obj2 = NativeInstance(NoopCloseListener(), 200)
+        obj2.negate() shouldBe -200
+    }
     test("native instance") {
-        val obj = NativeInstance(100, NoopCloseListener())
-        obj.negate() shouldBe -100
+        val obj = NativeInstance1(100)
+        obj.getInput() shouldBe 100
     }
 
     test("native instance with callback") {

@@ -10,11 +10,20 @@ expect class NativeInstance(
     input: Long,
     closeListener: CloseListener
 ): AutoCloseable, MyInterface {
+
+    constructor(closeListener: CloseListener, input: Long)
     @JniCall
     override fun negate(): Long
 
     @JniCall
     fun fillBuffer(buffer: ByteBuffer, callback: BufferFillCallback)
+    override fun close()
+}
+
+expect class NativeInstance1(
+    input: Long
+): AutoCloseable {
+    @JniCall fun getInput(): Long
     override fun close()
 }
 
