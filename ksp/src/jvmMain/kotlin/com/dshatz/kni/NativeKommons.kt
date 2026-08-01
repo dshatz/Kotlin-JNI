@@ -44,20 +44,24 @@ class NativeKommons : SymbolProcessorProvider {
 
         val serializableProcessor = SerializerProcessor(registry, env.logger)
         val callbackProcessor = CallbackProcessor(mapper, env.logger)
-        private val generator = CallableProcessor(registry, env.logger, mapper)
+        private val callableProcessor = CallableProcessor(registry, env.logger, mapper)
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
             val isJvm = env.platforms.singleOrNull()?.platformName == "JVM"
             val isCommon = env.platforms.size > 1
-
             env.logger.warn("Platforms: ${env.platforms.joinToString { it.platformName }}")
 
             val serializables = serializableProcessor.findSerializables(env, resolver).also {
                 registry.serializers.putAll(it.associate { it.cls to it.cls.serializerClass() })
             }
-
             val externalSerializers = serializableProcessor.findSerializers(resolver, env)
             registry.serializers.putAll(externalSerializers)
+
+            val callbacks = callbackProcessor.collectDeclarations(resolver)
+            registry.addCallbacks(callbacks)
+
+            val callables = callableProcessor.collectCallables(resolver)
+            registry.callables.addAll(callables)
 
             if (isCommon) {
                 serializableProcessor.generateSerializers(serializables).forEach {
@@ -69,77 +73,37 @@ class NativeKommons : SymbolProcessorProvider {
                 registry.nativeInstances.addAll(it.map { it.toClassName() })
             }
 
-            val callbacks = callbackProcessor.getAnnotatedCallbacks(resolver)
-            val callables = getAnnotatedCallables(resolver)
-
-            val callbackDeclarations = callbackProcessor.getCallbackDeclarations(callbacks)
-            registry.callbacks.addAll(callbackDeclarations.map { it.cls })
-
-            generator.analyzeDeclarations(callables).also {
-                registry.declarations.addAll(it)
-            }
-
             if (isCommon && !generated) {
                 serializableProcessor.generateGenericSerializers()
                     .writeTo(codeGenerator, Dependencies(false))
             }
 
             if (!isJvm && !isCommon) {
-                val bridges = callbackDeclarations.map { callbackProcessor.generateNativeCallback(it) }
-                // native
-                if (bridges.any { it == null }) {
-                    env.logger.error("Callback processing failed")
-                    error("Callback processing failed")
-                    return emptyList()
-                }
-
-                bridges.filterNotNull().forEach {
+                val bridges = callbacks.map { callbackProcessor.generateNativeCallback(it) }
+                bridges.forEach {
                     it.fileSpec.writeTo(codeGenerator, it.deps)
                 }
             }
 
-            val sources = callables.mapNotNull { it.containingFile }.distinct().toTypedArray()
+            val sources = callables.mapNotNull { it.declaration.containingFile }.distinct().toTypedArray()
             if (!generated) {
                 if (isJvm) {
-                    callbackDeclarations.map {
+                    callbacks.map {
                         callbackProcessor.generateJvmAdapter(it)
                     }.forEach {
                         it.writeTo(codeGenerator, Dependencies(false, sources = sources))
                     }
-                    generator.generateJvmActuals().forEach {
+                    callableProcessor.generateJvmActuals().forEach {
                         it.writeTo(codeGenerator, Dependencies(false, sources = sources))
                     }
                 } else if (!isCommon) {
-                    generator.generateNativeFuns().forEach {
+                    callableProcessor.generateNativeFuns().forEach {
                         it.writeTo(codeGenerator, Dependencies(false, sources = sources))
                     }
                 }
                 generated = true
             }
             return emptyList()
-        }
-
-        @OptIn(KspExperimental::class)
-        private fun getAnnotatedCallables(resolver: Resolver): List<KSFunctionDeclaration> {
-            val allowedClassKinds = setOf(ClassKind.OBJECT, ClassKind.CLASS)
-            return resolver.getSymbolsWithAnnotation(JniCall::class.java.name).toList()
-                .filterIsInstance<KSFunctionDeclaration>()
-                .filter {
-                    val parentClass = it.parent as? KSClassDeclaration
-                    if (parentClass == null) {
-                        // top level function
-                        true
-                    } else {
-                        if (parentClass.classKind !in allowedClassKinds) {
-                            env.logger.error("@JniCall is only supported inside classes/objects or on top-level functions.", it)
-                            false
-                        } else if (parentClass.classKind == ClassKind.CLASS && parentClass.getAllSuperTypes().none { it.toTypeName() == Types.AutoCloseable }) {
-                            env.logger.error("Classes with @JniCall methods must implement ${Types.AutoCloseable.canonicalName}", it)
-                            false
-                        } else true
-                    }
-                }
-                .distinctBy { it.qualifiedName?.asString() }
         }
 
         private fun getNativeInstances(resolver: Resolver): List<KSClassDeclaration> {

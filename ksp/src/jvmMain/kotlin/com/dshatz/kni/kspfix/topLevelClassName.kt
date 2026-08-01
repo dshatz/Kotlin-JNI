@@ -1,7 +1,5 @@
 package com.dshatz.kni.kspfix
 
-import com.dshatz.kni.TypeInfo
-import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.kspfix.FunLocation.FunctionParent
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
@@ -14,7 +12,6 @@ import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ksp.toClassName
-import java.util.Locale
 
 @Suppress("DefaultLocale")
 private fun KSFunctionDeclaration.topLevelFunLocation(): FunLocation? {
@@ -40,7 +37,7 @@ fun KSFunctionDeclaration.functionLocation(): FunLocation {
 
 fun KSClassDeclaration.innerFunLocation(): FunLocation {
     val type = when (classKind) {
-        ClassKind.CLASS -> FunctionParent.Class(this)
+        ClassKind.CLASS, ClassKind.INTERFACE -> FunctionParent.Class(this)
         ClassKind.OBJECT -> FunctionParent.Object(this)
         else -> error("Unsupported ClassKind: ${classKind}")
     }
@@ -55,7 +52,7 @@ fun KSClassDeclaration.innerFunLocation(): FunLocation {
 data class FunLocation(
     val parent: FunctionParent,
     val classNameKt: ClassName,
-    val className: ClassName,
+    val className: ClassName
 ) {
 
     sealed class FunctionParent {
@@ -69,35 +66,3 @@ data class FunLocation(
         else MemberName(className, funName)
     }
 }
-
-data class KSFun(
-    val simpleName: String,
-    val returnType: TypeInfo,
-    val parameters: List<CallableProcessor.ParamInfo>,
-    val location: FunLocation,
-    val cls: KSClass?,
-    val declaration: KSFunctionDeclaration
-)
-
-data class KSClass(
-    val constructors: List<KSConstructor>,
-    val type: ClassName,
-    val declaration: KSClassDeclaration
-)
-
-data class KSConstructor(
-    val id: Int,
-    val params: List<CallableProcessor.ParamInfo>
-)
-
-/*
-fun List<KSFunctionDeclaration>.withLocations(): List<KSFun> {
-    return map {
-        KSFun(
-            it.simpleName.asString(),
-            it,
-            it.functionLocation(),
-            it.closestClassDeclaration()?.takeIf { it.classKind == ClassKind.CLASS }
-        )
-    }
-}*/

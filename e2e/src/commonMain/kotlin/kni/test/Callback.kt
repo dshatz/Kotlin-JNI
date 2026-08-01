@@ -25,4 +25,6 @@ interface Callback: AutoCloseable {
         serializable: ColorfulObject? = ColorfulObject("orange", 2.0, 1..2),
         buffer: ByteBuffer? = allocateBuffer(1024 * 1024),
     )
+
+    fun onCompleteWithGeneric(result: Result<Int>)
 }

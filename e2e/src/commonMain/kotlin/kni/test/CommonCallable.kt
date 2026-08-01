@@ -85,6 +85,10 @@ class NoopCallback: Callback {
         TODO("Not yet implemented")
     }
 
+    override fun onCompleteWithGeneric(result: Result<Int>) {
+
+    }
+
     override fun close() {
 
     }

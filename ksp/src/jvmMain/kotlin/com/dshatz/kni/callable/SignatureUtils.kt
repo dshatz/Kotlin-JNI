@@ -1,16 +1,17 @@
 package com.dshatz.kni.callable
 
 import com.dshatz.kni.TypeMapper
+import com.dshatz.kni.model.KSFun
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 
-fun KSFunctionDeclaration.getSignature(typeMapper: TypeMapper): String {
+fun KSFun.getSignature(): String {
     val parameterDescriptors = parameters.joinToString("") { parameter ->
-        typeMapper.mapType(parameter.type).jniType.jvmType.toJniDescriptor()
+        parameter.typeInfo.jniType.jvmType.toJniDescriptor()
     }
 
-    val returnDescriptor = returnType?.let { typeMapper.mapType(it) }?.jniType?.jvmType?.toJniDescriptor() ?: "V"
+    val returnDescriptor = returnType.jniType.jvmType.toJniDescriptor()
 
     return "($parameterDescriptors)$returnDescriptor"
 }

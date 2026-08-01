@@ -90,6 +90,10 @@ fun TestSuiteScope.callTests() {
 
                                     }
 
+                                    override fun onCompleteWithGeneric(result: Result<Int>) {
+
+                                    }
+
                                     override fun close() {}
 
                                 }, "Coroutine $it")
@@ -127,6 +131,10 @@ fun TestSuiteScope.callTests() {
                         buffer: ByteBuffer?,
                     ) {
                         TODO("Not yet implemented")
+                    }
+
+                    override fun onCompleteWithGeneric(result: Result<Int>) {
+
                     }
 
                     override fun close() {}
