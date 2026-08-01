@@ -7,7 +7,6 @@ import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.kspfix.findAnnotation
 import com.dshatz.kni.kspfix.getClassArgument
 import com.dshatz.kni.utils.dereferenceTypeAlias
-import com.google.devtools.ksp.getDeclaredProperties
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -36,7 +35,6 @@ class SerializerProcessor(
 ) {
 
     private val included = IncludedSerializers(registry, logger)
-
 
     fun findSerializables(
         env: SymbolProcessorEnvironment,
@@ -338,69 +336,6 @@ class SerializerProcessor(
             file.addTypes(it.arg)
         }
         return file.build()
-        /*val genericReturns = registry.declarations
-            .mapNotNull {
-                val genericSerializer = (it.returnType as? TypeInfo.Serializable)?.serializer as? IncludedSerializers.Serializer.Generic
-                genericSerializer?.let { s ->
-                    it.returnType to s
-                }
-            }
-
-        val genericArguments = registry.declarations
-            .flatMap { f ->
-                f.parameters.mapNotNull {
-                    val genericSerializer = (it.typeInfo as? TypeInfo.Serializable)?.serializer as? IncludedSerializers.Serializer.Generic
-                    genericSerializer?.let { s ->
-                        it.typeInfo to s
-                    }
-                }
-            }
-
-        val types = genericReturns + genericArguments
-        val fileSpec = FileSpec.builder(pkg, "genericSerializers")
-        val paramSerializers = types.flatMap { (type, serializer) ->
-            val generic = type.kotlinType as ParameterizedTypeName
-            generic.typeArguments.zip(serializer.argumentSerializer)
-        }.mapNotNull { (type, serializer) ->
-            if (serializer !is IncludedSerializers.Serializer.UserDefined) {
-                val name = "SerializerFor_${(type as ClassName).simpleName}"
-                val cls = ClassName(pkg, name)
-                registry.serializers[type] = cls
-                TypeSpec.objectBuilder(cls)
-                    .addSuperinterface(TypeMatcher.JniSerializer.parameterizedBy(type))
-                    .addFunction(
-                        FunSpec.builder("packTo")
-                            .addParameter(ParameterSpec.builder("value", type).build())
-                            .addParameter(ParameterSpec.builder("buffer", TypeMatcher.IoBuffer).build())
-                            .addModifiers(KModifier.OVERRIDE)
-                            .addCode(
-                                CodeBlock.of("%L", serializer.writeCode(CodeBlock.of("buffer"),
-                                    CodeBlock.of("value")))
-                            ).build()
-                    )
-                    .addFunction(
-                        FunSpec.builder("unpackFrom")
-                            .addParameter(ParameterSpec.builder("buffer", TypeMatcher.IoBuffer).build())
-                            .returns(type)
-                            .addModifiers(KModifier.OVERRIDE)
-                            .addCode(
-                                CodeBlock.of("return %L", serializer.readCode(CodeBlock.of("buffer")))
-                            ).build()
-                    )
-                    .build()
-            } else null
-        }
-        val genericSerializers = types.distinctBy { it.first }.map { (type, serializer) ->
-            val generic = type.kotlinType as ParameterizedTypeName
-            val name = generic.genericSerializerName()
-            PropertySpec.builder(name.simpleName, TypeMatcher.JniSerializer.parameterizedBy(generic))
-                .initializer(CodeBlock.of(
-                    "%T(%L)",
-                    (serializer.rawSerializer as IncludedSerializers.Serializer.UserDefined).serializer,
-                    registry.serializers[generic.typeArguments.first()]
-                )).build()
-        }
-        return fileSpec.addTypes(paramSerializers).addProperties(genericSerializers).build()*/
     }
 
     sealed class SerialClass {

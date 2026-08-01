@@ -1,29 +1,32 @@
 package com.dshatz.kni.callable
 
+import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.CNameUtils
 import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
+import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.kspfix.FunLocation
-import com.dshatz.kni.kspfix.KSClass
-import com.dshatz.kni.kspfix.KSConstructor
-import com.dshatz.kni.kspfix.KSFun
+import com.dshatz.kni.model.KSClass
+import com.dshatz.kni.model.KSConstructor
+import com.dshatz.kni.model.KSFun
 import com.dshatz.kni.kspfix.functionLocation
+import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.needsIsNullParam
-import com.dshatz.kni.utils.TypedCode
 import com.dshatz.kni.utils.joinToCode
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.returnType
+import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
-import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.getAllSuperTypes
+import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -36,23 +39,42 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 
 class CallableProcessor(
     private val registry: Registry,
     private val logger: KSPLogger,
-    private val mapper: TypeMapper
-) {
+    override val mapper: TypeMapper
+): BaseProcessor() {
 
-    private fun List<KSValueParameter>.toTypeInfos(): List<ParamInfo> {
-        return map {
-            ParamInfo(it.name!!.asString(), mapper.mapType(it.type))
-        }
+
+    @OptIn(KspExperimental::class)
+    private fun getAnnotatedCallables(resolver: Resolver): List<KSFunctionDeclaration> {
+        val allowedClassKinds = setOf(ClassKind.OBJECT, ClassKind.CLASS)
+        return resolver.getSymbolsWithAnnotation(JniCall::class.java.name).toList()
+            .filterIsInstance<KSFunctionDeclaration>()
+            .filter {
+                val parentClass = it.parent as? KSClassDeclaration
+                if (parentClass == null) {
+                    // top level function
+                    true
+                } else {
+                    if (parentClass.classKind !in allowedClassKinds) {
+                        logger.error("@JniCall is only supported inside classes/objects or on top-level functions.", it)
+                        false
+                    } else if (parentClass.classKind == ClassKind.CLASS && parentClass.getAllSuperTypes().none { it.toTypeName() == Types.AutoCloseable }) {
+                        logger.error("Classes with @JniCall methods must implement ${Types.AutoCloseable.canonicalName}", it)
+                        false
+                    } else true
+                }
+            }
+            .distinctBy { it.qualifiedName?.asString() }
     }
 
-
-    fun analyzeDeclarations(
-        funs: List<KSFunctionDeclaration>
+    fun collectCallables(
+        resolver: Resolver
     ): List<KSFun> {
+        val funs = getAnnotatedCallables(resolver)
         return funs.map { f ->
             val ret = mapper.mapType(f.returnType!!)
             val arguments = f.parameters.toTypeInfos()
@@ -79,7 +101,7 @@ class CallableProcessor(
 
     fun generateNativeFuns(
     ): List<FileSpec> {
-        return registry.declarations.groupBy { it.location.className }.map { (parent, functions) ->
+        return registry.callables.groupBy { it.location.className }.map { (parent, functions) ->
             val funSpecs = functions.map { f ->
                 context(f.declaration) {
                     generateCnameFunction(
@@ -386,7 +408,7 @@ class CallableProcessor(
     }
 
     fun generateJvmActuals(): List<FileSpec> {
-        val funs = registry.declarations
+        val funs = registry.callables
         val constructors = funs.mapNotNull {
             it.cls?.let { cls ->
                  it.location.className to generateJvmActualConstructor(cls)
@@ -465,22 +487,6 @@ class CallableProcessor(
         }
     }
 
-    data class ParamInfo(
-        val name: String,
-        val typeInfo: TypeInfo,
-    ) {
-        fun paramCodeJvm(): TypedCode {
-            return CodeBlock.of("%N", name).returnType(typeInfo.jniType.jvmType)
-        }
-
-        fun paramCodeNative(): TypedCode {
-            return CodeBlock.of("%N", name).returnType(typeInfo.jniType.nativeType)
-        }
-
-        fun paramCodeKotlin(): TypedCode {
-            return CodeBlock.of("%N", name).returnType(typeInfo.kotlinType)
-        }
-    }
 }
 
 fun List<CodeBlock>.joinToString(separator: String = ", "): CodeBlock {

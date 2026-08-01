@@ -96,7 +96,7 @@ class TypeMapper(
                 ),
                 serializer = serializer,
             )
-        } else if (nonNull in registry.callbacks) {
+        } else if (registry.isCallback(nonNull)) {
             TypeInfo.Callback(kotlinType)
         } else if (nonNull in registry.nativeInstances) {
             TypeInfo.NativeInstance(kotlinType)
