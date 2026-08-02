@@ -356,11 +356,12 @@ class CallableProcessor(
                     val isNullParams = f.parameters.filter { it.typeInfo.needsIsNullParam() }.map {
                         CodeBlock.of("%N == null", it.name).returnType(Types.KBoolean)
                     }
-                    val paramsCode = (paramPacking + isNullParams).joinToCode()
+                    val paramsCode = (paramPacking + isNullParams).joinToCode(",\n")
                     val callExternalCode = CodeBlock.of("%M(%L)", externalMember, paramsCode).returnType(f.returnType.jniType.jvmType)
+                    val returnValue = f.returnType.unpackCodeJvm(callExternalCode)
                     addCode(
                         CodeBlock.builder()
-                            .addStatement("return %L", f.returnType.unpackCodeJvm(callExternalCode).code)
+                            .addStatement("return %L", returnValue.code)
                             .build()
                     )
                 }.build()

@@ -10,14 +10,14 @@ data class ParamInfo(
     val typeInfo: TypeInfo,
 ) {
     fun paramCodeJvm(): TypedCode {
-        return CodeBlock.Companion.of("%N", name).returnType(typeInfo.jniType.jvmType)
+        return CodeBlock.of("%N", name).returnType(typeInfo.jniType.jvmType)
     }
 
     fun paramCodeNative(): TypedCode {
-        return CodeBlock.Companion.of("%N", name).returnType(typeInfo.jniType.nativeType)
+        return CodeBlock.of("%N", name).returnType(typeInfo.jniType.nativeType)
     }
 
     fun paramCodeKotlin(): TypedCode {
-        return CodeBlock.Companion.of("%N", name).returnType(typeInfo.kotlinType)
+        return CodeBlock.of("%N", name).returnType(typeInfo.kotlinType)
     }
 }

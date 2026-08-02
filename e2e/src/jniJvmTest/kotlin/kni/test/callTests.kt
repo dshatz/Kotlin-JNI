@@ -62,13 +62,14 @@ fun TestSuiteScope.callTests() {
                         async {
                             suspendCancellableCoroutine { cont ->
                                 CallerBridge.callbackFromCoroutine(object : Callback {
-                                    override fun onComplete(result: Boolean) {
+                                    override fun onComplete(result: Boolean): Result<String> {
                                         println("Received result! $result; Thread = ${Thread.currentThread().name}")
                                         cont.resume(result)
+                                        return Result.success("success")
                                     }
 
-                                    override fun onCompleteWithData(data: ColorfulObject) {
-                                        TODO("Not yet implemented")
+                                    override fun onCompleteWithData(data: ColorfulObject): Result<ByteArray>? {
+                                        return null
                                     }
 
                                     override fun onCompleteWithNullable(
@@ -108,10 +109,13 @@ fun TestSuiteScope.callTests() {
             val obj = ColorfulObject("orange", 20.0, 1..2)
             val result = suspendCancellableCoroutine<ColorfulObject> { cont ->
                 CallerBridge.callbackWithData(object: Callback {
-                    override fun onComplete(result: Boolean) {}
+                    override fun onComplete(result: Boolean): Result<String> {
+                        return Result.success("Hello")
+                    }
 
-                    override fun onCompleteWithData(data: ColorfulObject) {
+                    override fun onCompleteWithData(data: ColorfulObject): Result<ByteArray>? {
                         cont.resume(data)
+                        return null
                     }
 
                     override fun onCompleteWithNullable(

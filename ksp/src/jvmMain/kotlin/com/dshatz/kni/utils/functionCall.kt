@@ -3,41 +3,75 @@ package com.dshatz.kni.utils
 import com.dshatz.kni.callable.joinToString
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.withIndent
 
-fun CodeBlock.Builder.callFunction(
-    receiver: String,
+fun TypedCode.callFunction(
     member: MemberName,
+    returnType: TypeName,
     parameters: FunCallParamScope.() -> Unit
-): CodeBlock.Builder {
+): TypedCode {
     val scope = FunCallParamScope()
     scope.parameters()
     val params = scope.params
     val joined = params.joinToString(", \n")
-    val receiver = if (receiver.isEmpty()) CodeBlock.of("") else CodeBlock.of("%L.", receiver)
-    return add("%L%M(\n", receiver, member).withIndent {
-        add(joined)
-    }.add(")")
+    val callOnReceiver = CodeBlock.builder()
+        .add("%M(\n", member)
+        .withIndent {
+            add(joined)
+        }
+        .add(")")
+        .build()
+        .returnType(returnType.copy(nullable = this.type.isNullable))
+    return nullSafeCall(callOnReceiver)
 }
 
 class FunCallParamScope {
     val params = mutableListOf<CodeBlock>()
-    fun lambdaParam(name: String, create: LambdaParamScope.() -> CodeBlock) {
-        val scope = LambdaParamScope()
+    fun lambdaParam(
+        name: String,
+        receiverType: TypeName,
+        create: LambdaParamScope.() -> CodeBlock
+    ) {
+        val scope = LambdaParamScope(receiverType)
         val code = scope.create()
+        makeLambdaParam(name, code)
+    }
+
+    fun lambdaParam(
+        name: String,
+        argumentType: TypeName,
+        receiverType: TypeName,
+        create: LambdaParamWithArgument.() -> CodeBlock
+    ) {
+        val scope = LambdaParamWithArgument(receiverType, argumentType)
+        val code = scope.create()
+        makeLambdaParam(name, code)
+    }
+
+    private fun makeLambdaParam(paramName: String, code: CodeBlock) {
         val lambda = CodeBlock.builder().beginControlFlow("")
             .add("%L\n", code)
             .endControlFlow().build()
-        named(name, lambda)
+        named(paramName, lambda)
     }
 
     fun named(name: String, value: CodeBlock) {
         params.add(CodeBlock.of("%N = %L", name, value))
     }
 
-    class LambdaParamScope {
-        val it = CodeBlock.of("it")
+
+    open class LambdaParamScope(receiverType: TypeName) {
+        val `this` = CodeBlock.of("this").returnType(receiverType)
     }
+
+    class LambdaParamWithArgument(
+        receiverType: TypeName,
+        argumentType: TypeName,
+    ): LambdaParamScope(argumentType) {
+        val it = CodeBlock.of("it").returnType(argumentType)
+    }
+
 }
 
 fun CodeBlock.asReceiver(): CodeBlock {

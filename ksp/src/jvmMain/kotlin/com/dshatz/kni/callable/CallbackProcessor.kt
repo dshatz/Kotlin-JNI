@@ -1,6 +1,7 @@
 package com.dshatz.kni.callable
 
 import com.dshatz.kni.BaseProcessor
+import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.Types.typeOf
@@ -38,6 +39,7 @@ import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle
+import javax.swing.text.html.HTML.Attribute.N
 
 class CallbackProcessor(
     override val mapper: TypeMapper,
@@ -104,24 +106,30 @@ class CallbackProcessor(
 
         val funs = callback.funs.map { f ->
             val returnType = f.returnType.kotlinType
-            val call = Def.callHelper(returnType)
-            val returnConverter = Def.returnTypeConverters[returnType.copy(nullable = false)] ?: CodeBlock.of("")
+            val call = Def.callHelper(f.returnType)
+            // If it is not nullable, then call to jni will not return null.
             val nullCheck = if (returnType.isNullable) "" else CodeBlock.of("!!")
             val callCode = CodeBlock.builder().addStatement(
-                "env.%M(%N, %N, %N)%L$nullCheck",
+                "val jniCallResult = env.%M(%N, %N, %N)$nullCheck",
                 call,
                 "adapterClassGlobal",
                 f.simpleName + "ID",
                 "args",
-                returnConverter
             ).build()
+            val jniCallResult = CodeBlock.of("%N", "jniCallResult").returnType(f.returnType.jniType.nativeType)
+            val unpacked = f.returnType.unpackCode(jniCallResult)
+            val returnConverted = CodeBlock.builder()
+                .add(callCode)
+                .add(unpacked.code)
+                .build()
             val params = f.parameters
             FunSpec.builder(f.simpleName)
                 .addParams(f.parameters)
+                .addKdoc(CodeBlock.of("@returns ${f.returnType.kotlinType} converted using ${f.returnType}"))
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(f.returnType.kotlinType)
                 .addCode(CodeBlock.builder()
-                    .add("%L", buildArgs(params, callCode))
+                    .add("%L", buildArgs(params, returnConverted))
                     .build()
                 )
                 .build()
@@ -153,8 +161,16 @@ class CallbackProcessor(
             callback.declaration.containingFile,
             callback.declaration.parentDeclaration?.containingFile
         ).toTypedArray())
+        val factory = FunSpec.builder("asNative${cls.simpleName.capitalize()}")
+            .receiver(Types.JObject)
+            .addParameter("env", Types.Environment)
+            .returns(cls.getNativeImplClass())
+            .addCode(CodeBlock.of("return %T(env, this)", cls.getNativeImplClass()))
+            .build()
+
         val fileSpec = FileSpec.builder(implCls)
             .addType(bridgeClass)
+            .addFunction(factory)
             .addImport("kotlinx.cinterop", "get")
             .addAnnotation(optin())
             .build()
@@ -186,12 +202,18 @@ class CallbackProcessor(
                 .addParameters(paramsSpecs)
                 .addParameters(isNullParamSpecs)
                 .addAnnotation(JvmStatic::class)
-            val code = CodeBlock.of("%N.%N(%L)", "instance", fName, convertArgsCode)
+            val makeCall = CodeBlock.of("%N.%N(%L)", "instance", fName, convertArgsCode)
+                .returnType(f.returnType.kotlinType)
 
             if (f.returnType.kotlinType != Types.UnitOrVoid) {
-                builder.addCode("return %L", code)
+                val convertReturn = f.returnType.packCodeJvm(CodeBlock.of("%N", "jvmResult").returnType(f.returnType.kotlinType))
+                builder
+                    .addStatement("val jvmResult = %L", makeCall.code)
+                    .addCode("return %L", convertReturn.code)
                     .returns(f.returnType.jniType.jvmType)
-            } else builder.addCode(code)
+            } else {
+                builder.addStatement("%L", makeCall.code)
+            }
 
             builder.build()
         }.toList()
@@ -253,14 +275,15 @@ internal object Def {
     val allocArray = MemberName("kotlinx.cinterop", "allocArray")
     val reinterpret = MemberName("kotlinx.cinterop", "reinterpret")
 
-    internal fun callHelper(type: TypeName): MemberName {
-        return when (type.copy(nullable = false)) {
-            Types.KString, Types.KByteArray -> {
-                CallStaticObjMethodA
-            }
-            UNIT -> CallStaticVoidMethodA
+    internal fun callHelper(typeInfo: TypeInfo): MemberName {
+        val type = typeInfo.jniType.nativeType
+        return when(type.copy(nullable = false)) {
+            Types.JObject,
+            Types.JByteArray,
+            Types.JString,
+            UNIT -> CallStaticObjMethodA
             else -> {
-                val clsName = (type as? ClassName)?.simpleName ?: error("Unable to map callback return to jni function: $type")
+                val clsName = (typeInfo.kotlinType as? ClassName)?.simpleName ?: error("Unable to map callback return to jni function: $type")
                 MemberName("com.dshatz.kni.utils", "CallStatic${clsName}MethodA")
             }
         }

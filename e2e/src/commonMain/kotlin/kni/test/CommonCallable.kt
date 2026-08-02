@@ -58,12 +58,12 @@ expect object CommonCallable {
 }
 
 class NoopCallback: Callback {
-    override fun onComplete(result: Boolean) {
-
+    override fun onComplete(result: Boolean): Result<String> {
+        return Result.success("success")
     }
 
-    override fun onCompleteWithData(data: ColorfulObject) {
-
+    override fun onCompleteWithData(data: ColorfulObject): Result<ByteArray>? {
+        return null
     }
 
     override fun onCompleteWithNullable(
