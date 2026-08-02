@@ -6,8 +6,8 @@ import com.dshatz.kni.buffers.allocateBuffer
 
 @JniCallback
 interface Callback: AutoCloseable {
-    fun onComplete(result: Boolean)
-    fun onCompleteWithData(data: ColorfulObject)
+    fun onComplete(result: Boolean): Result<String>
+    fun onCompleteWithData(data: ColorfulObject): Result<ByteArray>?
 
     fun onCompleteWithNullable(
         str: String? = "",

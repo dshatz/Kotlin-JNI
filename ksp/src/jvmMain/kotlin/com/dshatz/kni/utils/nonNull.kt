@@ -15,13 +15,6 @@ fun TypedCode.nonNullOrPlaceholder(): TypedCode {
     } else this
 }
 
-fun TypedCode.checkNotNull(useNonNullValue: (CodeBlock) -> TypedCode): TypedCode {
-    val resultCode = useNonNullValue(code)
-    return if (type.isNullable) {
-        CodeBlock.of("if (%L == null) null else %L", code, resultCode.code).returnType(resultCode.type)
-    } else useNonNullValue(code)
-}
-
 fun TypedCode.nullSafeCall(callOnNonNull: TypedCode): TypedCode {
     return CodeBlock.of("%L%L%L", code, nullCheck, callOnNonNull.code).returnType(callOnNonNull.type.copy(nullable = type.isNullable))
 }

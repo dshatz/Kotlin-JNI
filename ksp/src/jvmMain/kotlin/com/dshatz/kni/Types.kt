@@ -91,12 +91,16 @@ internal object Types {
         val ToKShortArray = MemberName("com.dshatz.kni.utils", "toKShortArray")
         val ToKString = MemberName("com.dshatz.kni.utils", "toKString")
         val ToKDirectByteBuffer = MemberName("com.dshatz.kni.utils", "toKDirectByteBuffer")
+        val ToKByteBuffer = MemberName("com.dshatz.kni.buffers", "toKByteBuffer")
         val GetAndAttach = MemberName("com.dshatz.kni.utils", "GetAndAttach")
         val Pack = MemberName("com.dshatz.kni.serialization", "pack")
         val Unpack = MemberName("com.dshatz.kni.serialization", "unpack")
         val AsLongPointer = MemberName("com.dshatz.kni.utils", "asLongPointer")
         val FromLongPointer = MemberName("com.dshatz.kni.utils", "fromLongPointer")
         val ReleaseStableRef = MemberName("com.dshatz.kni.utils", "releaseStableRef")
+
+        val Serialize = MemberName("com.dshatz.kni.serialization", "serialize")
+        val Deserialize = MemberName("com.dshatz.kni.serialization", "deserialize")
     }
 
     val jTypes = mapOf(

@@ -2,10 +2,11 @@ package com.dshatz.kni.serialization
 
 import kotlinx.io.Buffer
 
-fun <T> Buffer.writeList(col: Collection<T>, writeItem: Buffer.(T) -> Unit) {
-    writeInt(col.size)
-    col.forEach {
-        writeItem(it)
+
+fun <T> Collection<T>.writeList(buffer: Buffer, writeItem: Buffer.(T) -> Unit) {
+    buffer.writeInt(size)
+    forEach {
+        buffer.writeItem(it)
     }
 }
 
@@ -16,11 +17,11 @@ inline fun <T> Buffer.readList(readItem: Buffer.() -> T): Collection<T> {
     }
 }
 
-fun <K, V> Buffer.writeMap(map: Map<K, V>, writeKey: Buffer.(K) -> Unit, writeValue: Buffer.(V) -> Unit) {
-    writeInt(map.size)
-    map.entries.forEach {
-        writeKey(this@writeMap, it.key)
-        writeValue(this@writeMap, it.value)
+fun <K, V> Map<K, V>.writeMap(buffer: Buffer, writeKey: Buffer.(K) -> Unit, writeValue: Buffer.(V) -> Unit) {
+    buffer.writeInt(size)
+    entries.forEach {
+        buffer.writeKey(it.key)
+        buffer.writeValue(it.value)
     }
 }
 
