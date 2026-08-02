@@ -36,3 +36,7 @@ actual data class ByteBuffer(val jvmBuffer: ByteBuffer) : IByteBuffer() {
     private var _released = false
     actual override val isReleased: Boolean get() = _released
 }
+
+fun ByteBuffer.toKByteBuffer(): com.dshatz.kni.buffers.ByteBuffer {
+    return ByteBuffer(this)
+}

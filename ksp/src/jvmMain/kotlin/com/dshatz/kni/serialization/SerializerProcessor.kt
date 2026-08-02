@@ -7,6 +7,7 @@ import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.kspfix.findAnnotation
 import com.dshatz.kni.kspfix.getClassArgument
 import com.dshatz.kni.utils.dereferenceTypeAlias
+import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -235,7 +236,11 @@ class SerializerProcessor(
                 throw e
             }
             if (serializer is IncludedSerializers.Serializer.Generic) registry.genericSerializers.add(serializer)
-            val statement = serializer.writeCode(CodeBlock.of("buffer"), CodeBlock.of("value.%N", it.name))
+            val paramValue = CodeBlock.of("value.%N", it.name).returnType(it.type)
+            val statement = serializer.writeCode(
+                CodeBlock.of("buffer"),
+                paramValue
+            ).code
             builder.add("\n%L\n", statement)
         }
         return builder.build()
@@ -250,7 +255,7 @@ class SerializerProcessor(
                 logger.error(e.message!!, it.declaration)
                 throw e
             }
-            builder.add("\nval %N = %L\n", it.name, serializer.readCode(CodeBlock.of("buffer")))
+            builder.add("\nval %N = %L\n", it.name, serializer.readCode(CodeBlock.of("buffer").returnType(Types.IoBuffer)).code)
         }
         return builder.addStatement("return %T(%L)", info.cls, info.properties.joinToString { it.name }).build()
     }
@@ -291,8 +296,9 @@ class SerializerProcessor(
                             .addParameter(ParameterSpec.builder("buffer", Types.IoBuffer).build())
                             .addModifiers(KModifier.OVERRIDE)
                             .addCode(
-                                CodeBlock.of("%L", serializer.writeCode(CodeBlock.of("buffer"),
-                                    CodeBlock.of("value")))
+                                serializer.writeCode(CodeBlock.of("buffer"),
+                                CodeBlock.of("value").returnType(type)
+                                ).code
                             ).build()
                     )
                     .addFunction(
@@ -301,7 +307,7 @@ class SerializerProcessor(
                             .returns(type)
                             .addModifiers(KModifier.OVERRIDE)
                             .addCode(
-                                CodeBlock.of("return %L", serializer.readCode(CodeBlock.of("buffer")))
+                                CodeBlock.of("return %L", serializer.readCode(CodeBlock.of("buffer").returnType(Types.IoBuffer)).code)
                             ).build()
                     )
                     .build()

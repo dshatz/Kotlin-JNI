@@ -3,7 +3,6 @@ package com.dshatz.kni
 import com.dshatz.kni.callable.getNativeImplClass
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.TypedCode
-import com.dshatz.kni.utils.checkNotNull
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.notNullable
 import com.dshatz.kni.utils.nullSafeCall
@@ -12,6 +11,7 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
@@ -204,29 +204,27 @@ sealed class TypeInfo {
         val serializer: IncludedSerializers.Serializer,
     ): TypeInfo() {
         override fun packCode(unpackedCode: TypedCode): TypedCode {
-            return CodeBlock.of(
-                "%L.%M(env)",
-                packCodeJvm(unpackedCode).code,
-                Types.Method.ToJByteArray
-            ).returnType(jniType.nativeType)
+            return packCodeJvm(unpackedCode).nullSafeCall(
+                CodeBlock.of(
+                    "%M(env)",
+                    Types.Method.ToJByteArray
+                ).returnType(jniType.nativeType)
+            )
         }
         override fun unpackCode(packedCode: TypedCode): TypedCode {
-            val deserializeCode = unpackCodeJvm(CodeBlock.of(
-                "%L.%M(env)",
-                packedCode.code,
-                Types.Method.ToKByteArray
-            ).returnType(kotlinType))
-            return packedCode.checkNotNull { deserializeCode }
+            val byteArray = packedCode.nullSafeCall(
+                CodeBlock.of(
+                    "%M(env)",
+                    Types.Method.ToKByteArray
+                ).returnType(kotlinType)
+            )
+            return unpackCodeJvm(byteArray)
         }
         override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
-            val serializeCode = serializer.writeCode(buffer = CodeBlock.of(""), unpackedCode.code)
-                .returnType(Types.KByteArray)
-            return unpackedCode.checkNotNull { serializeCode }
+            return serializer.writeCode(buffer = CodeBlock.of(""), unpackedCode)
         }
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
-            return packedCode.checkNotNull {
-                serializer.readCode(it).returnType(kotlinType)
-            }
+            return serializer.readCode(packedCode)
         }
 
         override fun describe(): String {
@@ -259,7 +257,9 @@ sealed class TypeInfo {
         }
 
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
-            return packedCode.checkNotNull { CodeBlock.of("%T(%L)", Types.KByteBuffer, it).returnType(Types.KByteBuffer) }
+            return packedCode.nullSafeCall(
+                CodeBlock.of("%M()", Types.Method.ToKByteBuffer).returnType(Types.KByteBuffer)
+            )
         }
 
         override fun describe(): String {
@@ -314,15 +314,18 @@ sealed class TypeInfo {
             "l"
         )
 
+        private val asNative = (kotlinType as ClassName).let {
+            MemberName(it.packageName, "asNative${it.simpleName.capitalize()}")
+        }
+
         override fun packCode(unpackedCode: TypedCode): TypedCode {
             error("Passing @Callback objects is only allowed in JVM->Native direction, not back.")
         }
 
         override fun unpackCode(packedCode: TypedCode): TypedCode {
-            return packedCode.checkNotNull {
-                CodeBlock.of("%T(env, %L)", kotlinType.getNativeImplClass(), it)
-                    .returnType(kotlinType)
-            }
+            return packedCode.nullSafeCall(
+                CodeBlock.of("%M(env)", asNative).returnType(kotlinType.getNativeImplClass())
+            )
         }
 
         override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
