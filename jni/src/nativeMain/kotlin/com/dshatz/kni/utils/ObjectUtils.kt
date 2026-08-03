@@ -29,8 +29,36 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
 
     val address = rawAddress.reinterpret<ByteVar>()
     return ByteBuffer.wrapAddress(address, size, owner = globalRef, finalizer = {
-        it?.let(env::DeleteGlobalRef)
+        it.let(env::DeleteGlobalRef)
     })
+}
+
+class JvmCallException(className: String, message: String): Exception(
+    "JVM Exception: $className($message)",
+    cause = RuntimeException("$className: $message")
+)
+
+@OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
+fun CPointer<JNIEnvVar>.checkException(): String? {
+    val check = ExceptionCheck()
+    return if (check == 1.toUByte()) {
+        val jexception = ExceptionOccurred()!!
+        val cls = GetObjectClass(jexception)
+        val getMessage = GetMethodID(cls, "getMessage", "()Ljava/lang/String;")!!
+        val messageStringObj = CallObjectMethodA(jexception, getMessage, null, noExceptionCheck = true)
+            ?.toKString(this)
+
+
+        val getNameMethod = GetMethodID(GetObjectClass(cls), "getName", "()Ljava/lang/String;")
+        val classNameObj = getNameMethod?.let {
+            CallObjectMethodA(cls, it, null, noExceptionCheck = true)
+        }
+        val exceptionClassName = classNameObj?.toKString(this) ?: "UnknownJvmException"
+        val message = messageStringObj.orEmpty()
+        ExceptionClear()
+        throw JvmCallException(exceptionClassName, message)
+    } else null
 }
 
 
@@ -76,6 +104,26 @@ fun ByteBuffer.toJNioByteBuffer(env: CPointer<JNIEnvVar>): jobject {
 @OptIn(ExperimentalForeignApi::class)
 fun CPointer<JNIEnvVar>.FindClass(name: String): jclass? = memScoped {
     pointed.pointedCommon!!.FindClass!!.invoke(this@FindClass, name.cstr.ptr)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.GetObjectClass(obj: jobject): jclass = memScoped {
+    pointed.pointedCommon!!.GetObjectClass!!.invoke(this@GetObjectClass, obj) ?: throw JniUnavailableError()
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.ExceptionCheck(): UByte {
+    return pointed.pointedCommon!!.ExceptionCheck!!.invoke(this)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.ExceptionOccurred(): jthrowable? {
+    return pointed.pointedCommon!!.ExceptionOccurred!!.invoke(this)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun CPointer<JNIEnvVar>.ExceptionClear() {
+    return pointed.pointedCommon!!.ExceptionClear!!.invoke(this)
 }
 
 /**
@@ -190,6 +238,7 @@ fun CPointer<JNIEnvVar>.GetFieldID(
 
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallIntMethodA(
     obj: jobject,
     method: jmethodID,
@@ -200,10 +249,13 @@ fun CPointer<JNIEnvVar>.CallIntMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallLongMethodA(
     obj: jobject,
     method: jmethodID,
@@ -214,38 +266,48 @@ fun CPointer<JNIEnvVar>.CallLongMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallObjectMethodA(
     obj: jobject,
     method: jmethodID,
-    args: CPointer<jvalue>
+    args: CPointer<jvalue>?,
+    noExceptionCheck: Boolean = false
 ): jobject? {
     return pointed.pointedCommon!!.CallObjectMethodA!!.invoke(
         this,
         obj,
         method,
         args
-    )
+    ).also {
+        if (!noExceptionCheck) checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallDoubleMethodA(
     obj: jobject,
     method: jmethodID,
     args: CPointer<jvalue>
-): jdouble? {
+): jdouble {
     return pointed.pointedCommon!!.CallDoubleMethodA!!.invoke(
         this,
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallFloatMethodA(
     obj: jobject,
     method: jmethodID,
@@ -256,10 +318,13 @@ fun CPointer<JNIEnvVar>.CallFloatMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallByteMethodA(
     obj: jobject,
     method: jmethodID,
@@ -270,10 +335,13 @@ fun CPointer<JNIEnvVar>.CallByteMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallCharMethodA(
     obj: jobject,
     method: jmethodID,
@@ -284,10 +352,13 @@ fun CPointer<JNIEnvVar>.CallCharMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallBooleanMethodA(
     obj: jobject,
     method: jmethodID,
@@ -298,10 +369,13 @@ fun CPointer<JNIEnvVar>.CallBooleanMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallVoidMethodA(
     obj: jobject,
     method: jmethodID,
@@ -312,10 +386,13 @@ fun CPointer<JNIEnvVar>.CallVoidMethodA(
         obj,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticVoidMethodA(
     cls: jclass,
     method: jmethodID,
@@ -326,16 +403,38 @@ fun CPointer<JNIEnvVar>.CallStaticVoidMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+private fun <T> CPointer<JNIEnvVar>.guardNullable(block: () -> T?): T? {
+    val result = block()
+    if (result == null) {
+        // Either real null result or an exception
+        checkException()
+        return result
+    } else return result
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun <T> CPointer<JNIEnvVar>.guardNonNull(block: () -> T?): T {
+    val result = block()
+    return result ?: run {
+        checkException() // if this does not throw, we just throw something else.
+        error("Unknown exception occurred when calling JVM from native")
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticObjMethodA(
     cls: jclass,
     method: jmethodID,
     args: CPointer<jvalue>
-): jobject? {
-    return pointed.pointedCommon!!.CallStaticObjectMethodA!!.invoke(
+): jobject = guardNonNull {
+    pointed.pointedCommon!!.CallStaticObjectMethodA!!.invoke(
         this,
         cls,
         method,
@@ -344,6 +443,22 @@ fun CPointer<JNIEnvVar>.CallStaticObjMethodA(
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
+fun CPointer<JNIEnvVar>.CallStaticObjMethodANullable(
+    cls: jclass,
+    method: jmethodID,
+    args: CPointer<jvalue>
+): jobject? = guardNullable {
+    pointed.pointedCommon!!.CallStaticObjectMethodA!!.invoke(
+        this,
+        cls,
+        method,
+        args
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticIntMethodA(
     cls: jclass,
     method: jmethodID,
@@ -354,10 +469,13 @@ fun CPointer<JNIEnvVar>.CallStaticIntMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticLongMethodA(
     cls: jclass,
     method: jmethodID,
@@ -368,10 +486,13 @@ fun CPointer<JNIEnvVar>.CallStaticLongMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticFloatMethodA(
     cls: jclass,
     method: jmethodID,
@@ -382,10 +503,13 @@ fun CPointer<JNIEnvVar>.CallStaticFloatMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticDoubleMethodA(
     cls: jclass,
     method: jmethodID,
@@ -396,10 +520,13 @@ fun CPointer<JNIEnvVar>.CallStaticDoubleMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticBooleanMethodA(
     cls: jclass,
     method: jmethodID,
@@ -410,10 +537,13 @@ fun CPointer<JNIEnvVar>.CallStaticBooleanMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticShortMethodA(
     cls: jclass,
     method: jmethodID,
@@ -424,10 +554,13 @@ fun CPointer<JNIEnvVar>.CallStaticShortMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticByteMethodA(
     cls: jclass,
     method: jmethodID,
@@ -438,10 +571,13 @@ fun CPointer<JNIEnvVar>.CallStaticByteMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
+@Throws(JvmCallException::class)
 fun CPointer<JNIEnvVar>.CallStaticCharMethodA(
     cls: jclass,
     method: jmethodID,
@@ -452,7 +588,9 @@ fun CPointer<JNIEnvVar>.CallStaticCharMethodA(
         cls,
         method,
         args
-    )
+    ).also {
+        checkException()
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)

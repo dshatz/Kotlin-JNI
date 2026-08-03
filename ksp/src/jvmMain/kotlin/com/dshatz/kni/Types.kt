@@ -101,6 +101,7 @@ internal object Types {
 
         val Serialize = MemberName("com.dshatz.kni.serialization", "serialize")
         val Deserialize = MemberName("com.dshatz.kni.serialization", "deserialize")
+        val CheckException = MemberName("com.dshatz.kni.utils", "checkException")
     }
 
     val jTypes = mapOf(

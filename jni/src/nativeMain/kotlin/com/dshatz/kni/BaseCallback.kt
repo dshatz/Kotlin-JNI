@@ -10,7 +10,6 @@ import com.dshatz.kni.utils.CallVoidMethodA
 import com.dshatz.kni.utils.DeleteGlobalRef
 import com.dshatz.kni.utils.DeleteLocalRef
 import com.dshatz.kni.utils.FindClass
-import com.dshatz.kni.utils.GetMethodID
 import com.dshatz.kni.utils.GetStaticMethodID
 import com.dshatz.kni.utils.NewGlobalRef
 import com.dshatz.kni.utils.getJavaVM
@@ -37,21 +36,27 @@ open class BaseCallback(
 ): AutoCloseable {
 
     private val javaVm: CPointer<JavaVMVar> = env.getJavaVM()
-    private var envPtr: CPointer<CPointerVar<JNIEnvVar>>? = nativeHeap.alloc<CPointerVar<JNIEnvVar>>().ptr
 
     val env: CPointer<JNIEnvVar> get() {
-        return envCache ?: run {
-            val p = envPtr ?: error("Callback already closed")
-            val vm = javaVm.pointed.pointed!!
-            val result = vm.GetEnv!!.invoke(javaVm, p.reinterpret(), JNI_VERSION_1_6)
+        envCache?.let { return it }
+
+        val nativeEnvPtr = nativeHeap.alloc<CPointerVar<JNIEnvVar>>()
+        try {
+            val vm = javaVm.pointed.pointed ?: error("JavaVM pointer is null")
+            val result = vm.GetEnv!!.invoke(javaVm, nativeEnvPtr.ptr.reinterpret(), JNI_VERSION_1_6)
 
             if (result == JNI_EDETACHED) {
-                if (javaVm.AttachCurrentThread(p.pointed) != JNI_OK) {
+                if (javaVm.AttachCurrentThread(nativeEnvPtr) != JNI_OK) {
+                    error("Failed to attach current thread")
                 }
             }
 
-            p.pointed.value!!
-        }.also { envCache = it }
+            val envInstance = nativeEnvPtr.value ?: error("Failed to obtain JNIEnv for current thread")
+            envCache = envInstance
+            return envInstance
+        } finally {
+            nativeHeap.free(nativeEnvPtr)
+        }
     }
 
     private val jvmClassGlobal: jobject = env.run {
@@ -83,7 +88,6 @@ open class BaseCallback(
         }
     }
 
-
     val closeMethod by lazyMethodId("close", "()V")
     private fun callCloseOnJvm() {
         memScoped {
@@ -93,15 +97,11 @@ open class BaseCallback(
     }
 
     override fun close() {
-        // Signal to JVM that it should clear the resources.
         runCatching {
             callCloseOnJvm()
         }.onFailure { it.printStackTrace() }
 
-        envPtr?.let { nativeHeap.free(it); envPtr = null }
-
         runCatching {
-            // Get rid of the global ref.
             env.DeleteGlobalRef(ref)
             env.DeleteGlobalRef(jvmClassGlobal)
             isClosed = true
@@ -110,7 +110,6 @@ open class BaseCallback(
         }
     }
 }
-
 
 @OptIn(ExperimentalForeignApi::class)
 @ThreadLocal
