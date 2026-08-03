@@ -3,7 +3,7 @@ package kni.test
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
-import kni.test.Bridge.byteArray
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlin.random.Random
 
 actual object CommonCallable {
@@ -95,6 +95,41 @@ actual object CommonCallable {
             buffer,
             callback
         ).any { it == null }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    @JniCall
+    actual fun callThrowingCallback(callback: ThrowingCallback, shouldThrow: Boolean) {
+        val result = runCatching {
+            callback.unstable(shouldThrow)
+        }.onFailure {
+            println("Native received exception! ${it}")
+            lastError = it.message
+        }.onSuccess {
+            println("Native received no exception from callback")
+            lastError = null
+        }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    @JniCall
+    actual fun callThrowingNullableCallback(callback: ThrowingCallback, shouldThrow: Boolean, returnNull: Boolean): String? {
+        return runCatching {
+            callback.nullable(shouldThrow, returnNull)
+        }.onFailure {
+            println("Native received exception! ${it}")
+            lastError = it.message
+        }.onSuccess {
+            println("Native received no exception from callback")
+            lastError = null
+        }.getOrNull()
+    }
+
+    private var lastError: String? = null
+
+    @JniCall
+    actual fun getError(): String? {
+        return lastError
     }
 }
 

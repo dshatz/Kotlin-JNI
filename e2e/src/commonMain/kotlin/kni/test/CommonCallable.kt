@@ -55,6 +55,15 @@ expect object CommonCallable {
         callback: Callback? = NoopCallback()
     ): Boolean
 
+    @JniCall
+    fun callThrowingCallback(callback: ThrowingCallback, shouldThrow: Boolean)
+
+    @JniCall
+    fun callThrowingNullableCallback(callback: ThrowingCallback, shouldThrow: Boolean, returnNull: Boolean): String?
+
+    @JniCall
+    fun getError(): String?
+
 }
 
 class NoopCallback: Callback {
