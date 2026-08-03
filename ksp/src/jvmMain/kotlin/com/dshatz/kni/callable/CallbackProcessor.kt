@@ -108,9 +108,8 @@ class CallbackProcessor(
             val returnType = f.returnType.kotlinType
             val call = Def.callHelper(f.returnType)
             // If it is not nullable, then call to jni will not return null.
-            val nullCheck = if (returnType.isNullable) "" else CodeBlock.of("!!")
             val callCode = CodeBlock.builder().addStatement(
-                "val jniCallResult = env.%M(%N, %N, %N)$nullCheck",
+                "val jniCallResult = env.%M(%N, %N, %N)",
                 call,
                 "adapterClassGlobal",
                 f.simpleName + "ID",
@@ -120,6 +119,7 @@ class CallbackProcessor(
             val unpacked = f.returnType.unpackCode(jniCallResult)
             val returnConverted = CodeBlock.builder()
                 .add(callCode)
+//                .addStatement("env.%M()", Types.Method.CheckException)
                 .add(unpacked.code)
                 .build()
             val params = f.parameters
@@ -270,7 +270,9 @@ private fun optin(): AnnotationSpec {
 
 internal object Def {
     val CallStaticObjMethodA = MemberName("com.dshatz.kni.utils", "CallStaticObjMethodA")
+    val CallStaticObjMethodANullable = MemberName("com.dshatz.kni.utils", "CallStaticObjMethodANullable")
     val CallStaticVoidMethodA = MemberName("com.dshatz.kni.utils", "CallStaticVoidMethodA")
+
     val memScoped = MemberName("kotlinx.cinterop", "memScoped")
     val allocArray = MemberName("kotlinx.cinterop", "allocArray")
     val reinterpret = MemberName("kotlinx.cinterop", "reinterpret")
@@ -281,7 +283,7 @@ internal object Def {
             Types.JObject,
             Types.JByteArray,
             Types.JString,
-            UNIT -> CallStaticObjMethodA
+            UNIT -> if (type.isNullable) CallStaticObjMethodANullable else CallStaticObjMethodA
             else -> {
                 val clsName = (typeInfo.kotlinType as? ClassName)?.simpleName ?: error("Unable to map callback return to jni function: $type")
                 MemberName("com.dshatz.kni.utils", "CallStatic${clsName}MethodA")

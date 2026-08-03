@@ -39,6 +39,7 @@ class NativeKommons : SymbolProcessorProvider {
 
 
         private var generated = false
+        private var genericSerializersGenerated = false
 
         private val mapper: TypeMapper = TypeMapper(registry, env.logger)
 
@@ -73,9 +74,10 @@ class NativeKommons : SymbolProcessorProvider {
                 registry.nativeInstances.addAll(it.map { it.toClassName() })
             }
 
-            if (isCommon && !generated) {
+            if (isCommon && !genericSerializersGenerated) {
                 serializableProcessor.generateGenericSerializers()
                     .writeTo(codeGenerator, Dependencies(false))
+                genericSerializersGenerated = true
             }
 
             if (!isJvm && !isCommon) {
