@@ -156,6 +156,40 @@ fun TestSuiteScope.bridgeTests() {
         CommonCallable.anyIsNull(buffer = null) shouldBe true
         CommonCallable.anyIsNull(callback = null) shouldBe true
     }
+
+    test("exception") {
+        val callback = object: ThrowingCallback {
+            override fun unstable(shouldThrow: Boolean) {
+                if (shouldThrow) error("Error from jvm callback")
+            }
+
+            override fun nullable(
+                shouldThrow: Boolean,
+                returnNull: Boolean
+            ): String? {
+                if (shouldThrow) error("Error from nullable jvm callback") else {
+                    return if (returnNull) null
+                    else "value"
+                }
+            }
+
+            override fun close() {
+                TODO("Not yet implemented")
+            }
+
+        }
+        CommonCallable.callThrowingCallback(callback, true)
+        CommonCallable.getError() shouldBe "JVM call exception: Error from jvm callback"
+        CommonCallable.callThrowingCallback(callback, false) // should clear the error
+        CommonCallable.getError() shouldBe null
+
+        CommonCallable.callThrowingNullableCallback(callback, true, false) shouldBe null
+        CommonCallable.getError() shouldBe "JVM call exception: Error from nullable jvm callback"
+        CommonCallable.callThrowingNullableCallback(callback, false, false) shouldBe "value"
+        CommonCallable.getError() shouldBe null
+        CommonCallable.callThrowingNullableCallback(callback, false, true) shouldBe null
+        CommonCallable.getError() shouldBe null
+    }
 }
 
 class NoopCloseListener: CloseListener {

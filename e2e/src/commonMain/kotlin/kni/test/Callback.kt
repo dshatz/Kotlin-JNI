@@ -28,3 +28,10 @@ interface Callback: AutoCloseable {
 
     fun onCompleteWithGeneric(result: Result<Int>)
 }
+
+@JniCallback
+interface ThrowingCallback: AutoCloseable {
+    fun unstable(shouldThrow: Boolean)
+
+    fun nullable(shouldThrow: Boolean, returnNull: Boolean): String?
+}
