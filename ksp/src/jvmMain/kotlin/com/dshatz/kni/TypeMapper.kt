@@ -284,7 +284,7 @@ sealed class TypeInfo {
         override fun packCode(unpackedCode: TypedCode): TypedCode {
             assert(unpackedCode.type.notNullable() == kotlinType)
             return unpackedCode.nullSafeCall(
-                CodeBlock.of("%M()", Types.Method.AsLongPointer)
+                CodeBlock.of("%M()", Types.Method.asStableRefLongPointer)
                     .returnType(Types.KLong)
             )
         }
@@ -292,7 +292,7 @@ sealed class TypeInfo {
         override fun unpackCode(packedCode: TypedCode): TypedCode {
             assert(packedCode.type.notNullable() == Types.KLong)
             return packedCode.nullSafeCall(
-                CodeBlock.of("%M<%T>()", Types.Method.FromLongPointer, kotlinType)
+                CodeBlock.of("%M<%T>()", Types.Method.valueFromStableRefPointer, kotlinType)
                     .returnType(kotlinType)
             )
         }

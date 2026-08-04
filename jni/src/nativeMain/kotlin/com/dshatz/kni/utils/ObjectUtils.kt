@@ -10,7 +10,6 @@ import com.dshatz.kni.l
 import com.dshatz.kni.pointedCommon
 import kotlinx.cinterop.*
 import kotlinx.cinterop.toCPointer
-import platform.posix.close
 
 
 /**
@@ -593,6 +592,7 @@ fun CPointer<JNIEnvVar>.CallStaticCharMethodA(
     }
 }
 
+@Deprecated("Name can be misleading.", replaceWith = ReplaceWith("asStableRefLongPointer()"))
 @OptIn(ExperimentalForeignApi::class)
 fun Any.asLongPointer(): Long {
     val stableRef = StableRef.create(this)
@@ -600,10 +600,33 @@ fun Any.asLongPointer(): Long {
 }
 
 @OptIn(ExperimentalForeignApi::class)
+fun <T : Any> T.asStableRef(): StableRef<T> {
+    return StableRef.create(this)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun <T : Any> T.asStableRefLongPointer(): Long {
+    return StableRef.create(this).asCPointer().toLong()
+}
+
+@Deprecated("Name can be misleading.", replaceWith = ReplaceWith("valueFromStableRefPointe()"))
+@OptIn(ExperimentalForeignApi::class)
 inline fun <reified T: Any> Long.fromLongPointer(): T {
     val rendererRef = toCPointer<COpaque>()?.asStableRef<T>() ?: error("Could not convert $this to pointer.")
     return rendererRef.get()
 }
+
+@OptIn(ExperimentalForeignApi::class)
+inline fun <reified T: Any> Long.stableRefFromPointer(): StableRef<T> {
+    return toCPointer<COpaque>()?.asStableRef<T>() ?: error("Could not convert $this to pointer.")
+}
+
+@OptIn(ExperimentalForeignApi::class)
+inline fun <reified T: Any> Long.valueFromStableRefPointer(): T {
+    return toCPointer<COpaque>()?.asStableRef<T>()?.get() ?: error("Could not convert $this to pointer.")
+}
+
+
 
 @OptIn(ExperimentalForeignApi::class)
 inline fun <reified T: AutoCloseable> Long.releaseStableRef() {
