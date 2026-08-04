@@ -2,8 +2,11 @@
 
 import com.dshatz.kni.bundlesNatives
 import com.google.devtools.ksp.gradle.KspAATask
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -110,8 +113,16 @@ kotlin {
 }
 
 tasks.withType<Test>().configureEach {
-    reports {
-        junitXml.required.set(true)
-    }
+    outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
+}
+
+tasks.withType<KotlinNativeTest>().configureEach {
+    outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
+}
+
+tasks.withType<KotlinTest>().configureEach {
+    outputs.upToDateWhen { false }
     failOnNoDiscoveredTests = false
 }

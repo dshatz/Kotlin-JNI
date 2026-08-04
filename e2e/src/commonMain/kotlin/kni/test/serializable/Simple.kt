@@ -1,7 +1,6 @@
 package kni.test.serializable
 
 import com.dshatz.kni.annotations.JniSerializable
-import kni.test.ColorfulObject
 
 @JniSerializable
 data class Simple(

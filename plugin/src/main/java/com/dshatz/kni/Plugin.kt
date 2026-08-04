@@ -16,11 +16,13 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.internal.extensions.stdlib.capitalized
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
+import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames.FqNames.target
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
 import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import javax.inject.Inject
 import kotlin.jvm.java
 
@@ -33,6 +35,22 @@ class Plugin: Plugin<Project> {
     }
 }
 
+private fun Project.wireKspMetadata(kotlin: KotlinMultiplatformExtension) {
+    afterEvaluate {
+        val metadataConfig = configurations.findByName("kspCommonMainMetadata") ?: return@afterEvaluate
+        kotlin.sourceSets.named("commonMain") {
+            it.kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/metadata/commonMain/kotlin"))
+        }
+        tasks.withType(KotlinCompilationTask::class.java).configureEach {
+            it.dependsOn("kspCommonMainKotlinMetadata")
+        }
+        tasks.named("sourcesJar") {
+            it.dependsOn("kspCommonMainKotlinMetadata")
+        }
+    }
+
+}
+
 internal fun autoWire(target: Project, config: AutoWireExtension) {
     val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
     config.kspDependency.convention("")
@@ -42,10 +60,6 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
     }
     kotlin.sourceSets.register("jniCommonTest") {
         it.dependsOn(kotlin.sourceSets.getByName("commonTest"))
-    }
-
-    kotlin.sourceSets.named("commonMain") {
-        it.kotlin.srcDir(target.layout.buildDirectory.dir("generated/ksp/metadata/commonMain/kotlin"))
     }
 
     target.pluginManager.withPlugin("com.google.devtools.ksp") {
@@ -60,6 +74,8 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
             target.dependencies.add("kspCommonMainMetadata", config.kspDependency)
         }
     }
+
+    target.wireKspMetadata(kotlin)
 
     val jniNatives = (androidNativeTargets + linuxTargets + macOsTargets + windowsTargets)
     val jniJvms = listOf("android", "jvm")

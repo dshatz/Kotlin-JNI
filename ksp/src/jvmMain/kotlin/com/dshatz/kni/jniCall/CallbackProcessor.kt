@@ -1,4 +1,4 @@
-package com.dshatz.kni.callable
+package com.dshatz.kni.jniCall
 
 import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.Registry
@@ -8,9 +8,14 @@ import com.dshatz.kni.Types
 import com.dshatz.kni.Types.typeOf
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.model.KSCallback
-import com.dshatz.kni.model.KSFun
+import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.needsIsNullParam
+import com.dshatz.kni.utils.add
+import com.dshatz.kni.utils.addCode
+import com.dshatz.kni.utils.addReturn
+import com.dshatz.kni.utils.capitalized
+import com.dshatz.kni.utils.define
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.nullSafeCall
 import com.dshatz.kni.utils.returnType
@@ -35,6 +40,7 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.joinToCode
+import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 
@@ -62,11 +68,6 @@ class CallbackProcessor(
                     logger.error("@JniCallback annotated interface should extend kotlin.AutoCloseable.", declaration)
                     return@filter false
                 }
-
-                /*if (declaration.classKind != ClassKind.INTERFACE) {
-                    logger.error("@JniCallback can only be applied to an interface.")
-                    return@filter false
-                }*/
                 true
             }
             .associate { declaration ->
@@ -77,7 +78,7 @@ class CallbackProcessor(
                 if (Modifier.SUSPEND in f.modifiers) {
                     logger.error("suspend functions are not supported in @JniCallback.", f)
                 }
-                KSFun(
+                KSCallbackFun(
                     name = f.simpleName.asString(),
                     returnType = mapper.mapType(f.returnType!!),
                     parameters = f.parameters.toTypeInfos(),
@@ -87,7 +88,8 @@ class CallbackProcessor(
             val callbackType = declaration.toClassName()
             callbackType to KSCallback(
                 type = callbackType,
-                funs = funs
+                funs = funs,
+                dependency = declaration.containingFile!!
             )
         }
         registry.callbacks.putAll(callbacks)
@@ -111,20 +113,20 @@ class CallbackProcessor(
         }
 
         val funs = callback.funs.map { f ->
-            val returnType = f.returnType.kotlinType
             val call = Def.callHelper(f.returnType)
-            val callCode = CodeBlock.builder().addStatement(
-                "val jniCallResult = env.%M(%N, %N, %N)",
-                call,
-                "adapterClassGlobal",
-                f.name + "ID",
-                "args",
-            ).build()
-            val jniCallResult = CodeBlock.of("%N", "jniCallResult").returnType(f.returnType.jniType.nativeType)
-            val unpacked = f.returnType.unpackCode(jniCallResult)
+            val (callCode, jniResultRef) = CodeBlock.builder()
+                .define(
+                    "jniCallResult",
+                    f.returnType,
+                    "env.%M(%N, %N, %N)",
+                    call,
+                    "adapterClassGlobal",
+                    f.name + "ID",
+                    "args",
+                )
+            val unpacked = jniResultRef.unpackCode()
             val returnConverted = CodeBlock.builder()
                 .add(callCode)
-//                .addStatement("env.%M()", Types.Method.CheckException)
                 .add(unpacked.code)
                 .build()
             val params = f.parameters
@@ -161,12 +163,7 @@ class CallbackProcessor(
             .addSuperclassConstructorParameter("instance")
             .addSuperinterface(cls)
             .build()
-
-        /*val deps = Dependencies(false, *listOfNotNull(
-            callback.declaration.containingFile,
-            callback.declaration.parentDeclaration?.containingFile
-        ).toTypedArray())*/
-        val factory = FunSpec.builder("asNative${cls.simpleName.capitalize()}")
+        val factory = FunSpec.builder("asNative${cls.simpleName.capitalized()}")
             .receiver(Types.JObject)
             .addParameter("env", Types.Environment)
             .returns(cls.getNativeImplClass())
@@ -211,11 +208,15 @@ class CallbackProcessor(
                 .returnType(f.returnType.kotlinType)
 
             if (f.returnType.kotlinType != Types.UnitOrVoid) {
-                val convertReturn = f.returnType.packCodeJvm(CodeBlock.of("%N", "jvmResult").returnType(f.returnType.kotlinType))
+                val (getJvmResult, jvmResultRef) = CodeBlock.builder().define(
+                    "jvmResult",
+                    f.returnType,
+                    "%L",
+                    makeCall.code
+                )
                 builder
-                    .addStatement("val jvmResult = %L", makeCall.code)
-                    .addCode("return %L", convertReturn.code)
-                    .returns(f.returnType.jniType.jvmType)
+                    .addCode(getJvmResult)
+                    .addReturn(jvmResultRef.packCodeJvm())
             } else {
                 builder.addStatement("%L", makeCall.code)
             }
@@ -225,6 +226,7 @@ class CallbackProcessor(
         return FileSpec.builder(file)
             .addType(
                 TypeSpec.objectBuilder(file)
+                    .addOriginatingKSFile(callback.dependency)
                     .addFunctions(funs).build()
             )
             .build()
