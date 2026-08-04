@@ -101,7 +101,10 @@ internal object Types {
         val GetAndAttach = MemberName("com.dshatz.kni.utils", "GetAndAttach")
         val Pack = MemberName("com.dshatz.kni.serialization", "pack")
         val Unpack = MemberName("com.dshatz.kni.serialization", "unpack")
-        val AsLongPointer = MemberName("com.dshatz.kni.utils", "asLongPointer")
+
+        val asStableRefLongPointer = MemberName("com.dshatz.kni.utils", "asStableRefLongPointer")
+        val stableRefFromPointer = MemberName("com.dshatz.kni.utils", "stableRefFromPointer")
+        val valueFromStableRefPointer = MemberName("com.dshatz.kni.utils", "valueFromStableRefPointer")
         val FromLongPointer = MemberName("com.dshatz.kni.utils", "fromLongPointer")
         val ReleaseStableRef = MemberName("com.dshatz.kni.utils", "releaseStableRef")
 
