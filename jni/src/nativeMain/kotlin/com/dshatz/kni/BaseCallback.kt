@@ -9,10 +9,15 @@ import com.dshatz.kni.utils.AttachCurrentThread
 import com.dshatz.kni.utils.CallVoidMethodA
 import com.dshatz.kni.utils.DeleteGlobalRef
 import com.dshatz.kni.utils.DeleteLocalRef
+import com.dshatz.kni.utils.ExceptionCheck
+import com.dshatz.kni.utils.ExceptionClear
 import com.dshatz.kni.utils.FindClass
+import com.dshatz.kni.utils.GetMethodID
 import com.dshatz.kni.utils.GetStaticMethodID
 import com.dshatz.kni.utils.NewGlobalRef
 import com.dshatz.kni.utils.getJavaVM
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -26,6 +31,7 @@ import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.value
+import kotlin.concurrent.Volatile
 import kotlin.native.concurrent.ThreadLocal
 
 @OptIn(ExperimentalForeignApi::class)
@@ -34,6 +40,12 @@ open class BaseCallback(
     env: CPointer<JNIEnvVar>,
     instance: jobject
 ): AutoCloseable {
+
+    protected val lock = ReentrantLock()
+
+    @Volatile
+    var isClosed: Boolean = false
+        protected set
 
     private val javaVm: CPointer<JavaVMVar> = env.getJavaVM()
 
@@ -74,9 +86,13 @@ open class BaseCallback(
         globalClass
     }
 
-    private var isClosed: Boolean = false
+    val ref: jobject = env.NewGlobalRef(instance)
 
-    val ref: jobject = env.NewGlobalRef(instance) ?: error("Unable to create new GlobalRef")
+    protected inline fun <T> runIfOpen(block: () -> T): T {
+        return lock.withLock {
+            if (isClosed) error("${this::class.simpleName} callback is closed.") else block()
+        }
+    }
 
     protected fun lazyMethodId(name: String, signature: String): Lazy<jmethodID> {
         return lazy {
@@ -88,25 +104,38 @@ open class BaseCallback(
         }
     }
 
-    val closeMethod by lazyMethodId("close", "()V")
     private fun callCloseOnJvm() {
-        memScoped {
-            val args = allocArray<jvalue>(0)
-            env.CallVoidMethodA(ref, closeMethod, args)
+        val closeCall = env.GetMethodID(jvmClassGlobal, "close", "()V")
+        if (env.ExceptionCheck() == 1.toUByte()) {
+            env.ExceptionClear()
+            return
+        }
+        if (closeCall != null) {
+            memScoped {
+                val args = allocArray<jvalue>(0)
+                runCatching {
+                    env.CallVoidMethodA(ref, closeCall, args)
+                }
+            }
         }
     }
 
     override fun close() {
-        runCatching {
-            callCloseOnJvm()
-        }.onFailure { it.printStackTrace() }
-
-        runCatching {
-            env.DeleteGlobalRef(ref)
-            env.DeleteGlobalRef(jvmClassGlobal)
+        lock.withLock {
+            if (isClosed) return@withLock
             isClosed = true
-        }.onFailure {
-            it.printStackTrace()
+
+            runCatching {
+                callCloseOnJvm()
+            }.onFailure { it.printStackTrace() }
+
+            runCatching {
+                env.DeleteGlobalRef(ref)
+                env.DeleteGlobalRef(jvmClassGlobal)
+                env.DeleteGlobalRef(adapterClassGlobal)
+            }.onFailure {
+                it.printStackTrace()
+            }
         }
     }
 }
