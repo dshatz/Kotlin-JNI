@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinTest
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.publish)
     alias(libs.plugins.test)
     alias(libs.plugins.dokka)
@@ -21,9 +22,15 @@ plugins {
 }
 
 val libGroup = VersionCatalog.artifactName()
-val libName = "buffers"
+val libName = "flows"
 group = libGroup
 version = libVersion
+
+kni {
+    autoWire {
+        kspDependency = project(":ksp")
+    }
+}
 
 kotlin {
     jvmToolchain(21)
@@ -117,6 +124,13 @@ kotlin {
             dependencies {
                 implementation(libs.test.core)
                 implementation(libs.test.kotest)
+            }
+        }
+
+        val jniCommonMain by getting {
+            dependencies {
+                implementation(project(":annotations"))
+                implementation(libs.coroutines.core)
             }
         }
 

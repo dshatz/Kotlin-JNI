@@ -11,6 +11,7 @@ if (!settings.extra.has("onlyDocs")) {
 }
 include(":jni")
 include(":buffers")
+include(":flows")
 
 pluginManagement {
     repositories {

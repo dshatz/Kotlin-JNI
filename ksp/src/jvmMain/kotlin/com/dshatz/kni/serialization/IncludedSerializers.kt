@@ -93,7 +93,7 @@ class IncludedSerializers(
                 Serializer.Array(type, serializer(arrays[type]!!), type)
             }
             in registry.serializers -> {
-                Serializer.StaticObject(type as ClassName, registry.serializers[type]!!)
+                Serializer.StaticObject(type as ClassName, registry.serializers[type]!!.serializer)
             }
             else -> throw NoSerializerException(type)
         }

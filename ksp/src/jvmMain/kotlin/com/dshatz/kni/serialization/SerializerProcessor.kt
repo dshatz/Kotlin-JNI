@@ -6,6 +6,7 @@ import com.dshatz.kni.annotations.JniSerializable
 import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.kspfix.findAnnotation
 import com.dshatz.kni.kspfix.getClassArgument
+import com.dshatz.kni.model.KSDefinedSerializer
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.processing.KSPLogger
@@ -97,7 +98,7 @@ class SerializerProcessor(
         return paramValue
     }
 
-    fun findSerializers(resolver: Resolver, env: SymbolProcessorEnvironment): Map<ClassName, ClassName> {
+    fun collectDefinedSerializers(env: SymbolProcessorEnvironment, resolver: Resolver): Map<TypeName, KSDefinedSerializer> {
         val serializers = resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
         return serializers.mapNotNull {
@@ -110,7 +111,10 @@ class SerializerProcessor(
                         env.logger.error("Could not read @JniSerializerFor annotation", it)
                         error("Could not read target argument")
                     }
-                serializable to it.toClassName()
+                serializable to KSDefinedSerializer(
+                    typeName = serializable,
+                    serializer = it.toClassName()
+                )
             }
         }.toMap()
     }
@@ -286,7 +290,7 @@ class SerializerProcessor(
             if (serializer !is IncludedSerializers.Serializer.StaticObject) {
                 val name = "SerializerFor_${(type as ClassName).simpleName}"
                 val cls = ClassName(pkg, name)
-                registry.serializers[type] = cls
+                registry.serializers[type] = KSDefinedSerializer(type, cls)
                 TypeSpec.objectBuilder(cls)
                     .superclass(Types.JniSerializer.parameterizedBy(type))
                     .addSuperclassConstructorParameter(CodeBlock.of("%S", type.canonicalName))
@@ -320,7 +324,7 @@ class SerializerProcessor(
             .initializer(CodeBlock.of(
                 "%T(%L)",
                 (serializer.rawSerializer as IncludedSerializers.Serializer.StaticObject).serializer,
-                registry.serializers[generic.typeArguments.first()]
+                registry.serializers[generic.typeArguments.first()]?.serializer
             )).build()
         return GeneratedGenericSerializer(
             argSerializers,

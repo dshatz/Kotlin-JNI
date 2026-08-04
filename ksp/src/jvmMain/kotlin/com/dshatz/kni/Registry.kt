@@ -1,34 +1,32 @@
 package com.dshatz.kni
 
+import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
-import com.dshatz.kni.model.KSFun
+import com.dshatz.kni.model.KSDefinedSerializer
+import com.dshatz.kni.model.KSCallFun
+import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.serialization.IncludedSerializers
+import com.dshatz.kni.serialization.SerializerProcessor
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 
 class Registry {
-    val serializers: MutableMap<TypeName, ClassName> = mutableMapOf()
+    val callables: MutableSet<KSCallFun> = mutableSetOf()
+
+    val serializers: MutableMap<TypeName, KSDefinedSerializer> = mutableMapOf()
 
     val genericSerializers: MutableSet<IncludedSerializers.Serializer.Generic> = mutableSetOf()
-
-    private val callbacks: MutableSet<KSCallback> = mutableSetOf()
-    private val callbackClasses: MutableSet<TypeName> = mutableSetOf()
-    fun addCallbacks(callbacks: List<KSCallback>) {
-        this.callbacks.addAll(callbacks)
-        this.callbackClasses.addAll(callbacks.map { it.type })
-    }
+    val callbacks: MutableMap<TypeName, KSCallback> = mutableMapOf()
 
     fun isCallback(typeName: TypeName): Boolean {
-        return typeName in callbackClasses
+        return typeName in callbacks
     }
 
     val nativeInstances: MutableSet<ClassName> = mutableSetOf()
 
-    val callables: MutableSet<KSFun> = mutableSetOf()
-
     fun serializersToString(): String {
-        val list = serializers.entries.joinToString("\n") {
-            "${it.key} -> ${it.value.simpleName}"
+        val list = serializers.values.joinToString("\n") {
+            "${it.typeName} -> ${it.serializer.simpleName}"
         }.takeUnless { it.isEmpty() } ?: "No serializers."
         return buildString {
             appendLine()
@@ -36,4 +34,6 @@ class Registry {
             append(list)
         }
     }
+
+    val flowFields: MutableMap<FunctionParent.Class, List<KSFlowProp>> = mutableMapOf()
 }
