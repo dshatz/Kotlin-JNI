@@ -17,7 +17,9 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.UNIT
+import com.squareup.kotlinpoet.ksp.TypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 class TypeMapper(
@@ -38,7 +40,7 @@ class TypeMapper(
 
     context(decl: KSNode)
     fun mapType(
-        type: KSType
+        type: KSType,
     ): TypeInfo {
         return mapType(type.toTypeName())
     }
@@ -147,6 +149,10 @@ sealed class TypeInfo {
     val nullCheck get() = if (kotlinType.isNullable && kotlinType.notNullable() !in Types.boxedWhenNullable) {
         CodeBlock.of("?.")
     } else CodeBlock.of(".")
+
+    companion object {
+        val Unit = TypeInfo.Simple(UNIT, JNIType(UNIT, UNIT, "l"))
+    }
 
     /**
      * jint, jfloat, jdouble, etc

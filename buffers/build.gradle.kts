@@ -25,19 +25,6 @@ val libName = "buffers"
 group = libGroup
 version = libVersion
 
-fun KotlinNativeTargetWithHostTests.setupTestLib() {
-    binaries.sharedLib()
-    binaries.withType<SharedLibrary> {
-        if (this.buildType == NativeBuildType.DEBUG) {
-            val linkTask = linkTaskProvider
-            tasks.withType<Test>().configureEach {
-                dependsOn(linkTask)
-                systemProperty("java.library.path", linkTask.get().destinationDirectory.get().asFile.absolutePath)
-            }
-        }
-    }
-}
-
 kotlin {
     jvmToolchain(21)
     android {
@@ -68,10 +55,6 @@ kotlin {
             macosX64(),
             macosArm64()
         )
-
-        desktopTargets.filterIsInstance<KotlinNativeTargetWithHostTests>().forEach {
-            it.setupTestLib()
-        }
 
         iosX64()
         iosArm64()

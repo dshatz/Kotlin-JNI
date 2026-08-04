@@ -1,8 +1,7 @@
 package com.dshatz.kni.callable
 
-import com.dshatz.kni.TypeMapper
+import com.dshatz.kni.model.KSCallFun
 import com.dshatz.kni.model.KSFun
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 
