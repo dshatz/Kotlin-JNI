@@ -6,9 +6,8 @@ import com.dshatz.kni.load.BundledLibLoader
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
 import kni.test.flows.NativeObjWithFlow
-import kotlinx.coroutines.delay
+import kni.test.serializable.ColorfulObject
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.time.delay
 import kotlin.coroutines.resume
 
 fun TestSuiteScope.bridgeTests() {
@@ -194,12 +193,16 @@ fun TestSuiteScope.bridgeTests() {
         CommonCallable.getError() shouldBe null
     }
 
-    test("flows") {
+    test("flow of int") {
         val withFlow = NativeObjWithFlow()
         withFlow.myFlow.value shouldBe 11 // as initialized in defined actual in native code.
         withFlow.increment(2)
         withFlow.myFlow.value shouldBe 13
         withFlow.doubleAndGet() shouldBe withFlow.myFlow.value shouldBe 26
+    }
+    test("flow of serializable") {
+        val withFlow = NativeObjWithFlow()
+        withFlow.objectFlow.value shouldBe null
     }
 }
 

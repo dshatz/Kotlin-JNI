@@ -1,21 +1,9 @@
-package com.dshatz.kni.callable
+package com.dshatz.kni.jniCall
 
-import com.dshatz.kni.model.KSCallFun
-import com.dshatz.kni.model.KSFun
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 
-fun KSFun.getSignature(): String {
-    val parameterDescriptors = parameters.joinToString("") { parameter ->
-        parameter.typeInfo.jniType.jvmType.toJniDescriptor()
-    }
-
-    val returnDescriptor = returnType.jniType.jvmType.toJniDescriptor()
-
-    return "($parameterDescriptors)$returnDescriptor"
-}
-
-private fun TypeName.toJniDescriptor(): String {
+internal fun TypeName.toJniDescriptor(): String {
     return (this as ClassName).toJniDescriptor()
 }
 

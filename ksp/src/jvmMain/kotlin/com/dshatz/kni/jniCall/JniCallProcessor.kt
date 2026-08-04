@@ -1,4 +1,4 @@
-package com.dshatz.kni.callable
+package com.dshatz.kni.jniCall
 
 import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.CNameUtils
@@ -10,14 +10,19 @@ import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.kspfix.FunctionParent
-import com.dshatz.kni.model.KSCallFun
+import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.needsIsNullParam
+import com.dshatz.kni.utils.addCode
+import com.dshatz.kni.utils.addReturn
+import com.dshatz.kni.utils.define
 import com.dshatz.kni.utils.joinToCode
 import com.dshatz.kni.utils.nonNullOrPlaceholder
+import com.dshatz.kni.utils.originatesFrom
 import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
@@ -39,13 +44,13 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toTypeName
 
-class CallableProcessor(
+class JniCallProcessor(
     override val registry: Registry,
     override val logger: KSPLogger,
     override val mapper: TypeMapper
 ): BaseProcessor() {
     @OptIn(KspExperimental::class)
-    private fun getAnnotatedCallables(resolver: Resolver): List<KSFunctionDeclaration> {
+    private fun getAnnotatedJniCalls(resolver: Resolver): List<KSFunctionDeclaration> {
         val allowedClassKinds = setOf(ClassKind.OBJECT, ClassKind.CLASS)
         return resolver.getSymbolsWithAnnotation(JniCall::class.java.name).toList()
             .filterIsInstance<KSFunctionDeclaration>()
@@ -67,15 +72,15 @@ class CallableProcessor(
             .distinctBy { it.qualifiedName?.asString() }
     }
 
-    fun collectCallables(
+    fun collectJniCalls(
         resolver: Resolver
     ) {
-        val funs = getAnnotatedCallables(resolver)
-        val callables = funs.groupBy {
+        val funs = getAnnotatedJniCalls(resolver)
+        val jniCalls = funs.groupBy {
             it.functionLocation()
         }.flatMap { (parent, funs) ->
             funs.map { f ->
-                KSCallFun(
+                KSJniCall(
                     name = f.simpleName.asString(),
                     returnType = mapper.mapType(f.returnType!!),
                     parameters = f.parameters.toTypeInfos(),
@@ -84,12 +89,12 @@ class CallableProcessor(
                 )
             }
         }
-        registry.callables.addAll(callables)
+        registry.jniCalls.addAll(jniCalls)
     }
 
     fun generateNative(): List<FileSpec> {
         val fileSpecs = mutableMapOf<ClassName, FileSpec.Builder>()
-        registry.callables.groupBy { it.parent }.forEach { (parent, functions) ->
+        registry.jniCalls.groupBy { it.parent }.forEach { (parent, functions) ->
             val funSpecs = functions.map { f ->
                 context(f.declaration) {
                     generateCnameFunction(
@@ -97,7 +102,7 @@ class CallableProcessor(
                         f.parent,
                         f.parameters,
                         f.returnType
-                    )
+                    ).toBuilder().originatesFrom(f.declaration).build()
                 }
             }
 
@@ -131,21 +136,38 @@ class CallableProcessor(
     ): FunSpec {
         context(funParent) {
             val callbackType = TypeInfo.Callback(flowProp.baseCallbackClass)
-            val callbackCode = callbackType.unpackCode(CodeBlock.of("callback").returnType(Types.JObject))
+            val callback = CodeBlock.of("callback").returnType(callbackType)
+            val unpackCallback = callback.unpackCode()
+
+            val (initCallback, callbackRef) = CodeBlock.builder()
+                .define(
+                    "callback",
+                    callbackType,
+                    "%L",
+                    unpackCallback.code
+                )
+
+            val (initCode, defaultValue) = CodeBlock.builder()
+                .define(
+                    "defaultValue",
+                    flowProp.innerType,
+                    "instance.%M<%T>().%N.bindToJvm(%L)",
+                    Types.Method.FromLongPointer,
+                    funParent.className,
+                    flowProp.name,
+                    callbackRef.code
+                )
+
+            val converted = defaultValue.packCode()
             return cnameFunBuilder(
                 funName = flowProp.initFunction.cnameFunName(),
                 cname = flowProp.initFunction.cname()
             )
-                .returns(flowProp.innerType.jniType.nativeType)
                 .addParameter("instance", Types.JLong)
                 .addParameter("callback", Types.JObject)
-                .addStatement(
-                    "return instance.%M<%T>().%N.bindToJvm(%L)",
-                    Types.Method.FromLongPointer,
-                    funParent.className,
-                    flowProp.name,
-                    callbackCode.code
-                )
+                .addCode(initCallback)
+                .addCode(initCode)
+                .addReturn(converted)
                 .build()
         }
     }
@@ -354,7 +376,7 @@ class CallableProcessor(
     }
 
     private fun generateJvmFunctions(
-        functions: List<KSCallFun>,
+        functions: List<KSJniCall>,
         instanceParameter: TypeInfo? = null
     ): List<FunSpec> {
         val funNames = functions.associateWith { f ->
@@ -362,7 +384,6 @@ class CallableProcessor(
         }
 
         return functions.flatMap { f ->
-
             val externalMember = MemberName(funNames[f]!!.packageName, f.name + "External")
 
             val funSpec = FunSpec.builder(funNames[f]!!)
@@ -379,6 +400,7 @@ class CallableProcessor(
                         ).build())
                     }
                 }
+                .originatesFrom(f.declaration)
                 .apply {
                     val paramPacking = f.parameters.map { p ->
                         val paramCode = p.paramCodeKotlin()
@@ -441,10 +463,10 @@ class CallableProcessor(
 
 
     fun generateJvm(): List<FileSpec> {
-        return generateJvmActuals(registry.callables)
+        return generateJvmActuals(registry.jniCalls)
     }
 
-    private fun generateJvmActuals(funs: Collection<KSCallFun>): List<FileSpec> {
+    private fun generateJvmActuals(funs: Collection<KSJniCall>): List<FileSpec> {
         val fileSpecs = mutableMapOf<ClassName, FileSpec.Builder>()
         funs.groupBy { it.parent }.forEach { (parent, functions) ->
             val instance = parent as? FunctionParent.Class

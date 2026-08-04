@@ -7,9 +7,11 @@ import com.dshatz.kni.serialization.IncludedSerializers.Serializer.Extension.Com
 import com.dshatz.kni.utils.TypedCode
 import com.dshatz.kni.utils.asReceiver
 import com.dshatz.kni.utils.callFunction
+import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.nullSafeCall
 import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.BOOLEAN
 import com.squareup.kotlinpoet.BOOLEAN_ARRAY
 import com.squareup.kotlinpoet.BYTE
@@ -50,6 +52,7 @@ class IncludedSerializers(
     val logger: KSPLogger
 ) {
     @Throws(NoSerializerException::class)
+    context(decl: KSNode)
     fun serializer(type: TypeName, overrideSerializer: ClassName? = null): Serializer {
         if (overrideSerializer != null) {
             return Serializer.StaticObject(type, overrideSerializer)
@@ -75,9 +78,8 @@ class IncludedSerializers(
                     Serializer.Generic(
                         type,
                         rawSerializer,
-                        paramSerializers,
-                        type
-                    ).also { registry.genericSerializers += it }
+                        paramSerializers
+                    )
                 }
             }
             in setOf(BYTE, SHORT, INT, LONG) -> {
@@ -106,8 +108,8 @@ class IncludedSerializers(
                 val typeName = (type as ClassName).simpleName
                 return Extension(
                     type,
-                    MemberName("kotlinx.io", "read${typeName.capitalize()}"),
-                    MemberName("kotlinx.io", "write${typeName.capitalize()}"),
+                    MemberName("kotlinx.io", "read${typeName.capitalized()}"),
+                    MemberName("kotlinx.io", "write${typeName.capitalized()}"),
                 )
             }
         }
@@ -149,11 +151,11 @@ class IncludedSerializers(
         ): Serializer() {
             override fun readCodeInternal(buffer: TypedCode): CodeBlock {
                 return buffer.nullSafeCall(
-                    CodeBlock.of("read${typeName.capitalize()}()").returnType(type)
+                    CodeBlock.of("read${typeName.capitalized()}()").returnType(type)
                 ).code
             }
             override fun writeCodeInternal(buffer: CodeBlock, value: TypedCode): CodeBlock {
-                return CodeBlock.of("%L%L(%L)", buffer.asReceiver(), "write${typeName.capitalize()}", value.code)
+                return CodeBlock.of("%L%L(%L)", buffer.asReceiver(), "write${typeName.capitalized()}", value.code)
             }
         }
         data class Extension(
@@ -174,8 +176,8 @@ class IncludedSerializers(
             companion object {
                 fun kniExtension(type: TypeName, typeName: String): Extension {
                     return Extension(
-                        read = MemberName("com.dshatz.kni.serialization", "read${typeName.capitalize()}"),
-                        write = MemberName("com.dshatz.kni.serialization", "write${typeName.capitalize()}"),
+                        read = MemberName("com.dshatz.kni.serialization", "read${typeName.capitalized()}"),
+                        write = MemberName("com.dshatz.kni.serialization", "write${typeName.capitalized()}"),
                         type = type
                     )
                 }
@@ -277,12 +279,12 @@ class IncludedSerializers(
 
 
         data class Generic(
-            override val type: TypeName,
+            override val type: ParameterizedTypeName,
             val rawSerializer: Serializer,
-            val argumentSerializer: List<Serializer>,
-            val kotlinType: ParameterizedTypeName
+            val argumentSerializer: List<Serializer>
         ): Serializer() {
-            private val serializer = StaticObject(kotlinType, kotlinType.genericSerializerName())
+            val serializerClass = type.genericSerializerName()
+            private val serializer = StaticObject(type, serializerClass)
             override fun readCodeInternal(buffer: TypedCode): CodeBlock {
                 return serializer.readCode(buffer).code
             }

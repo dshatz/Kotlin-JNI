@@ -6,6 +6,7 @@ import com.dshatz.kni.load.BundledLibLoader
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import kni.test.serializable.ColorfulObject
 import kotlinx.coroutines.*
 import kotlin.coroutines.resume
 import kotlin.random.Random

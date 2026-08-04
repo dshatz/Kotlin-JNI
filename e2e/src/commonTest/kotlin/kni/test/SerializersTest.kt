@@ -4,6 +4,8 @@ import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import kni.test.serializable.ColorEnum
 import kni.test.serializable.ColorEnumSerializer_generated
+import kni.test.serializable.ColorfulObject
+import kni.test.serializable.ColorfulObjectSerializer_generated
 import kni.test.serializable.Inner
 import kni.test.serializable.PolymorphicFruit
 import kni.test.serializable.PolymorphicFruitSerializer_generated

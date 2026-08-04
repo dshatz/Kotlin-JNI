@@ -3,6 +3,7 @@ package kni.test
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
+import kni.test.serializable.ColorfulObject
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlin.random.Random
 

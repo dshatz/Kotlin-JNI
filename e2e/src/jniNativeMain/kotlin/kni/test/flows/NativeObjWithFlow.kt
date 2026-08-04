@@ -2,7 +2,7 @@ package kni.test.flows
 
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.flows.NativeBackedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kni.test.serializable.ColorfulObject
 
 actual class NativeObjWithFlow actual constructor(): AutoCloseable {
     @JniCall
@@ -18,4 +18,6 @@ actual class NativeObjWithFlow actual constructor(): AutoCloseable {
     actual fun doubleAndGet(): Int {
         return myFlow.updateAndGet { it * 2 }
     }
+
+    actual val objectFlow: NativeBackedFlow<ColorfulObject?> = NativeBackedFlow<ColorfulObject?>(null)
 }

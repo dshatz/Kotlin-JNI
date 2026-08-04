@@ -1,6 +1,7 @@
 package kni.test
 
 import com.dshatz.kni.annotations.JniCall
+import kni.test.serializable.ColorfulObject
 
 
 expect object Bridge {
