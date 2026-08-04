@@ -16,6 +16,7 @@ import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.needsIsNullParam
 import com.dshatz.kni.utils.addCode
 import com.dshatz.kni.utils.addReturn
+import com.dshatz.kni.utils.addStatement
 import com.dshatz.kni.utils.define
 import com.dshatz.kni.utils.joinToCode
 import com.dshatz.kni.utils.nonNullOrPlaceholder
@@ -116,7 +117,8 @@ class JniCallProcessor(
             val flowGetValueFuncs = flows.map { flowProp ->
                 generateNativeFlowInit(funParent, flowProp)
             }
-            val fileSpec = fileSpecs.getOrPut(parent.className) { FileSpec.builder(parent.className) }
+            val fileClassName = ClassName(parent.className.packageName, parent.className.simpleName + "_jniCalls")
+            val fileSpec = fileSpecs.getOrPut(fileClassName) { FileSpec.builder(fileClassName) }
 
             fileSpec
                 .addFunctions(funSpecs)
@@ -152,7 +154,7 @@ class JniCallProcessor(
                     "defaultValue",
                     flowProp.innerType,
                     "instance.%M<%T>().%N.bindToJvm(%L)",
-                    Types.Method.FromLongPointer,
+                    Types.Method.valueFromStableRefPointer,
                     funParent.className,
                     flowProp.name,
                     callbackRef.code
@@ -370,8 +372,8 @@ class JniCallProcessor(
     private fun generateJvmExternalDispose(cl: FunctionParent.Class): FunSpec = context(cl.declaration) {
         val type = mapper.mapType(cl.className)
         return FunSpec.builder("disposeNative")
-            .addParameter(ParameterSpec.builder("instance", type.jniType.jvmType).defaultValue("nativeInstance").build())
-            .addModifiers(KModifier.EXTERNAL)
+            .addParameter(ParameterSpec("instance", type.jniType.jvmType))
+            .addModifiers(KModifier.EXTERNAL, KModifier.OVERRIDE)
             .build()
     }
 
@@ -409,14 +411,23 @@ class JniCallProcessor(
                     val isNullParams = f.parameters.filter { it.typeInfo.needsIsNullParam() }.map {
                         CodeBlock.of("%N == null", it.name).returnType(Types.KBoolean)
                     }
-                    val paramsCode = (paramPacking + isNullParams).joinToCode(",\n")
+                    val params = if (instanceParameter == null) {
+                        paramPacking + isNullParams
+                    } else {
+                        paramPacking + isNullParams + CodeBlock.of("it").returnType(instanceParameter.jniType.nativeType)
+                    }
+                    val paramsCode = params.joinToCode(",\n")
                     val callExternalCode = CodeBlock.of("%M(%L)", externalMember, paramsCode).returnType(f.returnType.jniType.jvmType)
                     val returnValue = f.returnType.unpackCodeJvm(callExternalCode)
-                    addCode(
-                        CodeBlock.builder()
-                            .addStatement("return %L", returnValue.code)
+                    if (instanceParameter != null) {
+                        val withValidInstanceBlock = CodeBlock.builder()
+                            .beginControlFlow("return withValidInstance")
+                            .add(returnValue.code)
+                            .endControlFlow()
                             .build()
-                    )
+                        addCode(withValidInstanceBlock)
+                    } else addCode("return %L", returnValue.code)
+
                 }.build()
 
 
@@ -442,12 +453,10 @@ class JniCallProcessor(
                 .apply {
                     instanceParameter?.let {
                         addParameter(
-                            ParameterSpec.builder(
+                            ParameterSpec(
                                 name = "nativeInstance",
                                 type = it.jniType.jvmType
                             )
-                                .defaultValue("this.nativeInstance")
-                                .build()
                         )
                     }
                 }
@@ -484,22 +493,23 @@ class JniCallProcessor(
             when {
                 parent is FunctionParent.Class && nativeInstanceType != null -> {
                     val flowProps = registry.flowFields[parent].orEmpty()
-                    val nativeProp = PropertySpec.builder("nativeInstance", nativeInstanceType.jniType.jvmType).build()
+//                    val nativeProp = PropertySpec.builder("nativeInstance", nativeInstanceType.jniType.jvmType).build()
                     val type = TypeSpec.classBuilder(parent.className)
                         .addModifiers(KModifier.ACTUAL, parent.declaration.modifiers.visibilityKModifier)
                         .addSuperinterfaces(parent.superTypes)
-                        .addProperty(nativeProp)
+                        .superclass(Types.NativeInstanceJvm)
+//                        .addProperty(nativeProp)
                         .apply { constructors?.toList()?.let(::addFunctions) }
                         .apply {
                             externalDispose?.let(::addFunction)
-                            externalDispose?.let {
+                            /*externalDispose?.let {
                                 addFunction(
                                     FunSpec.builder("close")
                                         .addModifiers(KModifier.OVERRIDE, KModifier.ACTUAL)
                                         .addCode(CodeBlock.of("%L", "disposeNative()"))
                                         .build()
                                 )
-                            }
+                            }*/
                         }
                         .addFunctions(flowProps.map(KSFlowProp::generateGetValueFun))
                         .addProperties(flowProps.map(KSFlowProp::generateFlowProp))

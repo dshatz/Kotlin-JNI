@@ -5,7 +5,6 @@ import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
@@ -67,6 +66,8 @@ internal object Types {
 
     val NativeBackedFlow = ClassName("com.dshatz.kni.flows", "NativeBackedFlow")
     val FlowCallback = ClassName("com.dshatz.kni.flows", "FlowCallback")
+
+    val NativeInstanceJvm = ClassName("com.dshatz.kni", "NativeInstanceJvm")
 
     object Method {
 
