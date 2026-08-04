@@ -101,6 +101,7 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(project(":buffers"))
+            implementation(project(":flows"))
         }
     }
     compilerOptions {
