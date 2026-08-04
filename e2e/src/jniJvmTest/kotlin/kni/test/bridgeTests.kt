@@ -4,11 +4,17 @@ import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
 import com.dshatz.kni.load.BundledLibLoader
 import de.infix.testBalloon.framework.core.TestSuiteScope
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kni.test.flows.NativeObjWithFlow
 import kni.test.serializable.ColorfulObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
+import kotlin.math.pow
 
 fun TestSuiteScope.bridgeTests() {
     BundledLibLoader.loadBundledLibrary("e2e")
@@ -203,6 +209,31 @@ fun TestSuiteScope.bridgeTests() {
     test("flow of serializable") {
         val withFlow = NativeObjWithFlow()
         withFlow.objectFlow.value shouldBe null
+    }
+
+    test("init on different thread") {
+        val withFlow = withContext(Dispatchers.Default) {
+            NativeObjWithFlow()
+        }
+        withContext(Dispatchers.IO) {
+            (1..10).map {
+                launch {
+                    withFlow.doubleAndGet()
+                }
+            }.joinAll()
+        }
+        withFlow.myFlow.value shouldBe 11 * 2.0.pow(10.0)
+    }
+
+    test("close and overwrite") {
+        val a = NativeInstance1(100)
+        a.getInput() shouldBe 100
+        a.close()
+        shouldThrow<IllegalStateException> {
+            a.getInput()
+        }.message shouldBe "NativeInstance1 is closed."
+        val b = NativeInstance1(200)
+        b.getInput() shouldBe 200
     }
 }
 

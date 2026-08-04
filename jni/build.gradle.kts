@@ -103,7 +103,8 @@ kotlin {
     jvm()
     android {
         namespace = "$libGroup.$libName"
-        compileSdk = 36
+        compileSdk = Configuration.compileSdk
+        minSdk = Configuration.minSdk
     }
 
     applyDefaultHierarchyTemplate {
