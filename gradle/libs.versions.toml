@@ -23,6 +23,7 @@ android-runner = { module = "androidx.test:runner", version = "1.7.0" }
 test-kotest = { module = "de.infix.testBalloon:testBalloon-integration-kotest-assertions", version.ref = "testBalloon" }
 junit4 = { module = "junit:junit", version = "4.13.2" }
 io = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version = "0.9.0" }
+atomic = { module = "org.jetbrains.kotlinx:atomicfu", version = "0.33.0" }
 
 [plugins]
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

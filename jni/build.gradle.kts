@@ -133,6 +133,7 @@ kotlin {
         }
         nativeMain.dependencies {
             implementation(project(":buffers"))
+            implementation(libs.atomic)
         }
     }
     compilerOptions {
