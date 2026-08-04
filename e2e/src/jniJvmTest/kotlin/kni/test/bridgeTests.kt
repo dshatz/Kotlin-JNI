@@ -181,12 +181,12 @@ fun TestSuiteScope.bridgeTests() {
 
         }
         CommonCallable.callThrowingCallback(callback, true)
-        CommonCallable.getError() shouldBe "JVM call exception: Error from jvm callback"
+        CommonCallable.getError() shouldBe "JVM Exception: java.lang.IllegalStateException(Error from jvm callback)"
         CommonCallable.callThrowingCallback(callback, false) // should clear the error
         CommonCallable.getError() shouldBe null
 
         CommonCallable.callThrowingNullableCallback(callback, true, false) shouldBe null
-        CommonCallable.getError() shouldBe "JVM call exception: Error from nullable jvm callback"
+        CommonCallable.getError() shouldBe "JVM Exception: java.lang.IllegalStateException(Error from nullable jvm callback)"
         CommonCallable.callThrowingNullableCallback(callback, false, false) shouldBe "value"
         CommonCallable.getError() shouldBe null
         CommonCallable.callThrowingNullableCallback(callback, false, true) shouldBe null
