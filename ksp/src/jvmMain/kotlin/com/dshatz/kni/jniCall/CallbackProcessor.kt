@@ -74,6 +74,10 @@ class CallbackProcessor(
             val funDeclarations = declaration.declarations
                 .filterIsInstance<KSFunctionDeclaration>()
                 .filterNot { it.isConstructor() }
+                .filterNot {
+                    // Remove close function, if defined (overridden). Call to it is already implemented in BaseCallback.
+                    it.simpleName.asString() == "close" && it.parameters.isEmpty() && it.returnType?.toTypeName() == UNIT
+                }
             val funs = funDeclarations.map { f ->
                 if (Modifier.SUSPEND in f.modifiers) {
                     logger.error("suspend functions are not supported in @JniCallback.", f)
@@ -136,7 +140,9 @@ class CallbackProcessor(
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(f.returnType.kotlinType)
                 .addCode(CodeBlock.builder()
+                    .beginControlFlow("return runIfOpen")
                     .add("%L", buildArgs(params, returnConverted))
+                    .endControlFlow()
                     .build()
                 )
                 .build()
@@ -200,7 +206,7 @@ class CallbackProcessor(
                 } else unpackCode
             }
             val builder = FunSpec.builder(fName)
-                .addParameter(ParameterSpec.builder("instance", callback.type).build())
+                .addParameter(ParameterSpec("instance", callback.type))
                 .addParameters(paramsSpecs)
                 .addParameters(isNullParamSpecs)
                 .addAnnotation(JvmStatic::class)
@@ -237,7 +243,7 @@ class CallbackProcessor(
         innerCode: CodeBlock,
     ): CodeBlock {
         return CodeBlock.builder()
-            .beginControlFlow("return %M", Def.memScoped)
+            .beginControlFlow("%M", Def.memScoped)
             .addStatement("val args = %M<%T>(%L)", Def.allocArray, Types.JValue, args.size + 1)
             .apply {
                 addStatement("args[0].l = ref.%M()", Def.reinterpret)
@@ -289,17 +295,12 @@ internal object Def {
         return when(type.copy(nullable = false)) {
             Types.JObject,
             Types.JByteArray,
-            Types.JString,
-            UNIT -> if (type.isNullable) CallStaticObjMethodANullable else CallStaticObjMethodA
+            Types.JString -> if (type.isNullable) CallStaticObjMethodANullable else CallStaticObjMethodA
+            Types.UnitOrVoid -> CallStaticVoidMethodA
             else -> {
                 val clsName = (typeInfo.kotlinType as? ClassName)?.simpleName ?: error("Unable to map callback return to jni function: $type")
                 MemberName("com.dshatz.kni.utils", "CallStatic${clsName}MethodA")
             }
         }
     }
-
-    val returnTypeConverters = mapOf(
-        Types.KString to CodeBlock.of("?.%M(env)", Types.Method.ToKString),
-        Types.KByteArray to CodeBlock.of("?.%M(env)", Types.Method.ToKByteArray)
-    )
 }
