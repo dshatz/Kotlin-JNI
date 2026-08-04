@@ -1,16 +1,16 @@
 package com.dshatz.kni.model.flow
 
-import com.dshatz.kni.CNameUtils
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.kspfix.FunctionParent
-import com.dshatz.kni.model.KSCallFun
-import com.dshatz.kni.model.KSCallback
-import com.dshatz.kni.model.KSFun
+import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.model.WithClassParent
+import com.dshatz.kni.utils.add
 import com.dshatz.kni.utils.capitalized
+import com.dshatz.kni.utils.define
+import com.dshatz.kni.utils.originatesFrom
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
@@ -44,7 +44,7 @@ data class KSFlowProp(
         "Base" + callbackClass.className.simpleName.capitalized()
     )
 
-    val onValueFun: KSFun = KSFun(
+    val onValueFun: KSCallbackFun = KSCallbackFun(
         name = "onValue",
         returnType = TypeInfo.Unit,
         parameters = listOf(ParamInfo("value", innerType)),
@@ -75,6 +75,7 @@ data class KSFlowProp(
     fun generateFlowCallbackCommon(): TypeSpec {
         return TypeSpec.interfaceBuilder(baseCallbackClass)
             .addSuperinterface(callbackClass.superTypes.first())
+            .originatesFrom(parent.declaration)
             .build()
     }
 
@@ -97,11 +98,24 @@ data class KSFlowProp(
     }
 
     fun generateFlowProp(): PropertySpec {
+        val (initCall, defaultValue) = CodeBlock.builder()
+            .define(
+                name = "defaultValue",
+                type = innerType,
+                "%N(callback = %L())",
+                initFunction.simpleName,
+                callbackClass.className.simpleName
+            )
+
+        val defaultValueConverted = defaultValue.unpackCodeJvm()
+        val returnCode = CodeBlock.builder().addStatement("%T(%L)", Types.NativeBackedFlow, defaultValueConverted.code).build()
+
         return PropertySpec.builder(name, fullType)
             .delegate(
                 CodeBlock.builder()
                     .beginControlFlow("lazy")
-                    .addStatement("%T(%N(callback = %L()))", Types.NativeBackedFlow, initFunction.simpleName, callbackClass.className.simpleName)
+                    .add(initCall)
+                    .add(returnCode)
                     .endControlFlow()
                     .build()
             )

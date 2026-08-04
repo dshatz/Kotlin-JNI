@@ -1,8 +1,9 @@
 package com.dshatz.kni
 
-import com.dshatz.kni.callable.getNativeImplClass
+import com.dshatz.kni.jniCall.getNativeImplClass
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.TypedCode
+import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.notNullable
 import com.dshatz.kni.utils.nullSafeCall
@@ -17,9 +18,7 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.UNIT
-import com.squareup.kotlinpoet.ksp.TypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 class TypeMapper(
@@ -86,7 +85,7 @@ class TypeMapper(
                     jniType = JNIType(jvmType = jvmType, nativeType, jniField)
                 )
             }
-        } else if (rawType in registry.serializers) {
+        } else if (rawType in registry.serializers || nonNull in registry.serializers) {
             // custom serializer defined
             val serializer = included.serializer(nonNull)
             TypeInfo.Serializable(
@@ -110,7 +109,7 @@ class TypeMapper(
                 jniType = JNIType(kotlinType, kotlinType, jniField)
             )
         } else {
-            logger.error("Unknown type: $kotlinType, don't know how to pass to JNI. ${registry.serializersToString()}", decl)
+            logger.error("Unknown type: $kotlinType, rawType: $rawType don't know how to pass to JNI. ${registry.serializersToString()}", decl)
             error("JNI type mapping failed - see above for errors.")
             /*TypeInfo.Simple(
                 kotlinType = kotlinType,
@@ -321,7 +320,7 @@ sealed class TypeInfo {
         )
 
         private val asNative = (kotlinType as ClassName).let {
-            MemberName(it.packageName, "asNative${it.simpleName.capitalize()}")
+            MemberName(it.packageName, "asNative${it.simpleName.capitalized()}")
         }
 
         override fun packCode(unpackedCode: TypedCode): TypedCode {

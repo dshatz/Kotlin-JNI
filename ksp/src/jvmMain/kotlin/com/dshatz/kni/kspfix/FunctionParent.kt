@@ -29,7 +29,7 @@ sealed class FunctionParent {
     }
 
     data class Object(
-        override val declaration: KSDeclaration,
+        override val declaration: KSClassDeclaration,
         override val className: ClassName
     ): FunctionParent() {
         override val classNameKt: ClassName = className
