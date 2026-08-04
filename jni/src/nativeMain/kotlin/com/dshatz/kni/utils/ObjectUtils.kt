@@ -609,7 +609,7 @@ fun <T : Any> T.asStableRefLongPointer(): Long {
     return StableRef.create(this).asCPointer().toLong()
 }
 
-@Deprecated("Name can be misleading.", replaceWith = ReplaceWith("valueFromStableRefPointe()"))
+@Deprecated("Name can be misleading.", replaceWith = ReplaceWith("valueFromStableRefPointer()"))
 @OptIn(ExperimentalForeignApi::class)
 inline fun <reified T: Any> Long.fromLongPointer(): T {
     val rendererRef = toCPointer<COpaque>()?.asStableRef<T>() ?: error("Could not convert $this to pointer.")
