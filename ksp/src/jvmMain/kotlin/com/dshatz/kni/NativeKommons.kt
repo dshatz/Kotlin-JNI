@@ -3,18 +3,18 @@ package com.dshatz.kni
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.callable.CallableProcessor
 import com.dshatz.kni.callable.CallbackProcessor
+import com.dshatz.kni.flow.FlowProcessor
+import com.dshatz.kni.model.KSDefinedSerializer
 import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
-import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
-import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.squareup.kotlinpoet.ksp.originatingKSFiles
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import kotlin.jvm.java
 
@@ -44,25 +44,25 @@ class NativeKommons : SymbolProcessorProvider {
         private val mapper: TypeMapper = TypeMapper(registry, env.logger)
 
         val serializableProcessor = SerializerProcessor(registry, env.logger)
-        val callbackProcessor = CallbackProcessor(mapper, env.logger)
+        val callbackProcessor = CallbackProcessor(mapper, env.logger, registry)
         private val callableProcessor = CallableProcessor(registry, env.logger, mapper)
+        private val flowProcessor = FlowProcessor(registry, env.logger, mapper)
 
-        override fun process(resolver: Resolver): List<KSAnnotated> {
+
+        fun processV1(resolver: Resolver): List<KSAnnotated> {
             val isJvm = env.platforms.singleOrNull()?.platformName == "JVM"
             val isCommon = env.platforms.size > 1
             env.logger.warn("Platforms: ${env.platforms.joinToString { it.platformName }}")
 
             val serializables = serializableProcessor.findSerializables(env, resolver).also {
-                registry.serializers.putAll(it.associate { it.cls to it.cls.serializerClass() })
+                registry.serializers.putAll(it.associate { it.cls to KSDefinedSerializer(it.cls, it.cls.serializerClass()) })
             }
-            val externalSerializers = serializableProcessor.findSerializers(resolver, env)
+            val externalSerializers = serializableProcessor.collectDefinedSerializers(env, resolver)
             registry.serializers.putAll(externalSerializers)
 
-            val callbacks = callbackProcessor.collectDeclarations(resolver)
-            registry.addCallbacks(callbacks)
-
-            val callables = callableProcessor.collectCallables(resolver)
-            registry.callables.addAll(callables)
+            callbackProcessor.collectDeclarations(resolver)
+            callableProcessor.collectCallables(resolver)
+            flowProcessor.process()
 
             if (isCommon) {
                 serializableProcessor.generateSerializers(serializables).forEach {
@@ -80,32 +80,35 @@ class NativeKommons : SymbolProcessorProvider {
                 genericSerializersGenerated = true
             }
 
-            if (!isJvm && !isCommon) {
-                val bridges = callbacks.map { callbackProcessor.generateNativeCallback(it) }
-                bridges.forEach {
-                    it.fileSpec.writeTo(codeGenerator, it.deps)
-                }
-            }
-
-            val sources = callables.mapNotNull { it.declaration.containingFile }.distinct().toTypedArray()
             if (!generated) {
                 if (isJvm) {
-                    callbacks.map {
-                        callbackProcessor.generateJvmAdapter(it)
-                    }.forEach {
-                        it.writeTo(codeGenerator, Dependencies(false, sources = sources))
+                    callbackProcessor.generateJvm().forEach {
+                        it.writeTo(codeGenerator, Dependencies(false))
                     }
-                    callableProcessor.generateJvmActuals().forEach {
-                        it.writeTo(codeGenerator, Dependencies(false, sources = sources))
+                    callableProcessor.generateJvm().forEach {
+                        it.writeTo(codeGenerator, Dependencies(false))
                     }
                 } else if (!isCommon) {
-                    callableProcessor.generateNativeFuns().forEach {
-                        it.writeTo(codeGenerator, Dependencies(false, sources = sources))
+                    callableProcessor.generateNative().forEach {
+                        it.writeTo(codeGenerator, Dependencies(false))
+                    }
+                    val callbacks = callbackProcessor.generateNative()
+                    callbacks.forEach {
+                        it.fileSpec.writeTo(codeGenerator, Dependencies(false))
+                    }
+                } else {
+                    // common
+                    flowProcessor.generateCommon().forEach {
+                        it.writeTo(codeGenerator, Dependencies(false))
                     }
                 }
                 generated = true
             }
             return emptyList()
+        }
+
+        override fun process(resolver: Resolver): List<KSAnnotated> {
+            return processV1(resolver)
         }
 
         private fun getNativeInstances(resolver: Resolver): List<KSClassDeclaration> {

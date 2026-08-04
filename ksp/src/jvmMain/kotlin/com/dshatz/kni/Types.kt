@@ -1,8 +1,11 @@
 package com.dshatz.kni
 
+import com.dshatz.kni.annotations.KniInternalApi
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
@@ -62,6 +65,9 @@ internal object Types {
 
     val JniSerializer = ClassName("com.dshatz.kni.serialization", "JniSerializer")
 
+    val NativeBackedFlow = ClassName("com.dshatz.kni.flows", "NativeBackedFlow")
+    val FlowCallback = ClassName("com.dshatz.kni.flows", "FlowCallback")
+
     object Method {
 
         val ToJBoolean = MemberName("com.dshatz.kni.utils", "toJBoolean")
@@ -102,6 +108,23 @@ internal object Types {
         val Serialize = MemberName("com.dshatz.kni.serialization", "serialize")
         val Deserialize = MemberName("com.dshatz.kni.serialization", "deserialize")
         val CheckException = MemberName("com.dshatz.kni.utils", "checkException")
+    }
+
+    object Annotations {
+        val CName = ClassName("kotlin.native", "CName")
+        object Optin {
+            private val OptIn = ClassName("kotlin", "OptIn")
+            private val ExperimentalForeignApi = ClassName("kotlinx.cinterop", "ExperimentalForeignApi")
+            private val ExperimentalNativeApi = ClassName("kotlin.experimental", "ExperimentalNativeApi")
+
+            val NativeOptIn = AnnotationSpec.builder(OptIn)
+                .addMember("%T::class, %T::class", ExperimentalForeignApi, ExperimentalNativeApi)
+                .build()
+
+            val KniInternalOptIn = AnnotationSpec.builder(OptIn)
+                .addMember("%T::class", KniInternalApi::class)
+                .build()
+        }
     }
 
     val jTypes = mapOf(

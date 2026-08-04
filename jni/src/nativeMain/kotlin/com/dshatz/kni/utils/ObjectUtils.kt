@@ -601,7 +601,7 @@ fun Any.asLongPointer(): Long {
 
 @OptIn(ExperimentalForeignApi::class)
 inline fun <reified T: Any> Long.fromLongPointer(): T {
-    val rendererRef = toCPointer<COpaque>()!!.asStableRef<T>()
+    val rendererRef = toCPointer<COpaque>()?.asStableRef<T>() ?: error("Could not convert $this to pointer.")
     return rendererRef.get()
 }
 
