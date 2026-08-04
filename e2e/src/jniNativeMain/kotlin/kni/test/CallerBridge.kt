@@ -2,6 +2,7 @@ package kni.test
 
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
+import kni.test.serializable.ColorfulObject
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

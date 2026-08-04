@@ -100,18 +100,9 @@ kotlin {
     }
 
 
-    applyDefaultHierarchyTemplate {
-        common {
-            group("androidJvm") {
-                withAndroidTarget()
-                withJvm()
-            }
-        }
-    }
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
-        val androidJvmMain by getting
-        val androidJvmTest by getting
         val androidDeviceTest by getting
 
         val jsMain by gettingOptional {
@@ -120,11 +111,9 @@ kotlin {
             }
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.test.core)
-                implementation(libs.test.kotest)
-            }
+        commonTest.dependencies {
+            implementation(libs.test.core)
+            implementation(libs.test.kotest)
         }
 
         val jniCommonMain by getting {
@@ -138,11 +127,6 @@ kotlin {
             implementation(libs.android.runner)
             implementation(libs.test.core)
             implementation(libs.junit4)
-        }
-        androidDeviceTest.dependsOn(androidJvmTest)
-
-        val androidMain by getting {
-            dependsOn(androidJvmMain)
         }
     }
 
@@ -197,21 +181,17 @@ mavenPublishing {
 
 tasks.withType<Test>().configureEach {
     outputs.upToDateWhen { false }
-    /*reports {
-        junitXml.required.set(true)
-    }*/
     failOnNoDiscoveredTests = false
 }
 
 tasks.withType<KotlinNativeTest>().configureEach {
     outputs.upToDateWhen { false }
-    /*reports {
-        junitXml.required.set(true)
-    }*/
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType<KotlinTest>().configureEach {
     outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
 }
 
 dokka {

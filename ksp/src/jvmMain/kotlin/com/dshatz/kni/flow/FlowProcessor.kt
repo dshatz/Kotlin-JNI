@@ -8,10 +8,8 @@ import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName
-import com.squareup.kotlinpoet.ksp.toTypeName
 
 class FlowProcessor(
     override val registry: Registry,
@@ -25,7 +23,7 @@ class FlowProcessor(
     }
 
     private fun collectFlows() {
-        val flowFields = registry.callables
+        val flowFields = registry.jniCalls
             .map { it.parent }
             .filterIsInstance<FunctionParent.Class>()
             .groupBy { it }
@@ -55,6 +53,7 @@ class FlowProcessor(
                 KSCallback(
                     type = flowProp.baseCallbackClass,
                     funs = listOf(flowProp.onValueFun),
+                    dependency = parentClass.declaration.containingFile!!
                 )
             }.associateBy { it.type }
             registry.callbacks.putAll(flowCallbacks)
@@ -62,18 +61,12 @@ class FlowProcessor(
     }
 
     fun generateCommon(): List<FileSpec> {
-        println("Fields: " + registry.flowFields)
         return registry.flowFields.keys.map { parent ->
             val fields = registry.flowFields[parent].orEmpty()
             FileSpec.builder(parent.className.packageName, "${parent.className.simpleName}FlowCallbacks")
                 .addTypes(fields.map(KSFlowProp::generateFlowCallbackCommon))
                 .build()
         }
-        /*return registry.flowFields.map { (parentClass, fields) ->
-            FileSpec.builder(parentClass.className)
-                .addTypes(fields.map(KSFlowProp::generateFlowCallbackCommon))
-                .build()
-        }*/
     }
 }
 

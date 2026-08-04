@@ -3,6 +3,7 @@ package kni.test
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
+import kni.test.serializable.ColorfulObject
 
 @JniCallback
 interface Callback: AutoCloseable {
