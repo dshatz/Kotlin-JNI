@@ -109,12 +109,23 @@ class TypeMapper(
                 jniType = JNIType(kotlinType, kotlinType, jniField)
             )
         } else {
-            logger.error("Unknown type: $kotlinType, rawType: $rawType don't know how to pass to JNI. ${registry.serializersToString()}", decl)
+            val typeStr = if (kotlinType is ParameterizedTypeName)
+                "$kotlinType (raw: ${kotlinType.rawType})"
+            else kotlinType.toString()
+
+            val error = """
+                Unknown type $typeStr - don't know how to pass to JNI.
+                
+                ===
+                
+                ${registry.serializersToString()}
+                
+                ===
+                
+                ${registry.nativeInstancesToString()}
+            """.trimIndent()
+            logger.error(error)
             error("JNI type mapping failed - see above for errors.")
-            /*TypeInfo.Simple(
-                kotlinType = kotlinType,
-                jniType = JNIType(kotlinType, kotlinType)
-            )*/
         }
     }
 }
@@ -302,7 +313,12 @@ sealed class TypeInfo {
         }
 
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
-            return packedCode
+            return packedCode.nullSafeCall(
+                CodeBlock.of("as%L()", (kotlinType as ClassName).simpleName)
+                    .returnType(kotlinType)
+            )
+//            return CodeBlock.of()
+//            return packedCode
         }
 
         override fun describe(): String {

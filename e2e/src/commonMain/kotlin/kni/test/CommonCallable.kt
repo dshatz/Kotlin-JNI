@@ -64,7 +64,6 @@ expect object CommonCallable {
 
     @JniCall
     fun getError(): String?
-
 }
 
 class NoopCallback: Callback {

@@ -37,6 +37,7 @@ import kotlin.native.concurrent.ThreadLocal
 @OptIn(ExperimentalForeignApi::class)
 open class BaseCallback(
     private val className: String,
+    private val jvmAdapterClassName: String,
     env: CPointer<JNIEnvVar>,
     instance: jobject
 ): AutoCloseable {
@@ -79,7 +80,7 @@ open class BaseCallback(
     }
 
     protected val adapterClassGlobal: jobject = env.run {
-        val name = "${className}Adapter"
+        val name = jvmAdapterClassName
         val localClass = FindClass(name) ?: error("Class not found: $name")
         val globalClass = NewGlobalRef(localClass) ?: error("Failed to create GlobalRef for adapter class")
         DeleteLocalRef(localClass)
