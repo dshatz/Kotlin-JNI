@@ -4,7 +4,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-abstract class NativeInstanceJvm: AutoCloseable {
+abstract class NativeInstanceJvm(): AutoCloseable {
+
+    constructor(nativeInstancePtr: Long): this()
     @Volatile
     public var nativeInstance: Long = 0L
         protected set

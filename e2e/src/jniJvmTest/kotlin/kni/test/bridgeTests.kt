@@ -9,8 +9,11 @@ import io.kotest.matchers.shouldBe
 import kni.test.flows.NativeObjWithFlow
 import kni.test.serializable.ColorfulObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
@@ -234,6 +237,28 @@ fun TestSuiteScope.bridgeTests() {
         }.message shouldBe "NativeInstance1 is closed."
         val b = NativeInstance1(200)
         b.getInput() shouldBe 200
+    }
+
+    test("async callback to jvm") {
+        // NativeInstance that calls to jvm for data, providing another NativeInstance as a callback.
+        var requestReceived: Boolean = false
+        val callback = object: RequestIntCallback {
+            override fun close() {}
+
+            override fun requestInt(nativeCallback: NativeCallback) {
+                println("requestInt received from native")
+                requestReceived = true
+                launch {
+                    // work
+                    nativeCallback.receiveFromJvm(100)
+                }
+            }
+        }
+        val intAccumulator = IntAccumulator()
+        intAccumulator.init(callback)
+        intAccumulator.fetchFromJvm()
+        requestReceived shouldBe true
+        intAccumulator.currentValue.flow.take(2).toList() shouldBe listOf(0, 100)
     }
 }
 
