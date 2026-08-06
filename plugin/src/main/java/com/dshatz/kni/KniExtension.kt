@@ -18,4 +18,5 @@ open class KniExtension @Inject constructor(private val objects: ObjectFactory, 
 
 open class AutoWireExtension @Inject constructor(objects: ObjectFactory) {
     val kspDependency = objects.property(Any::class.java)
+    val createSourceSets = objects.property(Boolean::class.java).convention(true)
 }

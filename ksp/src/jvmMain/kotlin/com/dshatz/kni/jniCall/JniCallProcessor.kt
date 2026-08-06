@@ -5,6 +5,7 @@ import com.dshatz.kni.CNameUtils
 import com.dshatz.kni.CNameUtils.cname
 import com.dshatz.kni.CNameUtils.cnameFunName
 import com.dshatz.kni.Registry
+import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
@@ -22,14 +23,18 @@ import com.dshatz.kni.utils.joinToCode
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.originatesFrom
 import com.dshatz.kni.utils.returnType
+import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.FileLocation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.Location
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
@@ -43,7 +48,9 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import jdk.javadoc.internal.doclets.toolkit.util.DocPath.parent
 
 class JniCallProcessor(
     override val registry: Registry,
@@ -70,7 +77,21 @@ class JniCallProcessor(
                     } else true
                 }
             }
+            .filter { it.isExpect } // only take from common. common should act as the source of truth.
             .distinctBy { it.qualifiedName?.asString() }
+    }
+
+    /**
+     * Find all **classes** with at least one [JniCall] function.
+     * Saves found classNames to registry so [TypeMapper] knows that these should be treated accordingly.
+     */
+    fun collectNativeInstances(
+        resolver: Resolver
+    ) {
+        val funDecls = getAnnotatedJniCalls(resolver)
+            .map { it.parentDeclaration }
+            .filterIsInstance<KSClassDeclaration>()
+        registry.nativeInstances.addAll(funDecls.map { it.toClassName() })
     }
 
     fun collectJniCalls(
@@ -81,6 +102,7 @@ class JniCallProcessor(
             it.functionLocation()
         }.flatMap { (parent, funs) ->
             funs.map { f ->
+                if (parent.declaration.containingFile == null) error("$parent has no containingFile.")
                 KSJniCall(
                     name = f.simpleName.asString(),
                     returnType = mapper.mapType(f.returnType!!),
@@ -94,8 +116,8 @@ class JniCallProcessor(
     }
 
     fun generateNative(): List<FileSpec> {
-        val fileSpecs = mutableMapOf<ClassName, FileSpec.Builder>()
-        registry.jniCalls.groupBy { it.parent }.forEach { (parent, functions) ->
+        return registry.jniCalls.groupBy { it.parent }.map { (parent, functions) ->
+            logger.info("JniCall: ${parent.className}: ${parent.declaration.containingFile?.filePath}")
             val funSpecs = functions.map { f ->
                 context(f.declaration) {
                     generateCnameFunction(
@@ -117,19 +139,16 @@ class JniCallProcessor(
             val flowGetValueFuncs = flows.map { flowProp ->
                 generateNativeFlowInit(funParent, flowProp)
             }
-            val fileClassName = ClassName(parent.className.packageName, parent.className.simpleName + "_jniCalls")
-            val fileSpec = fileSpecs.getOrPut(fileClassName) { FileSpec.builder(fileClassName) }
-
-            fileSpec
-                .addFunctions(funSpecs)
+            val fileClassName = parent.classNameKt.withSuffix("_jniCalls")
+            FileSpec.builder(fileClassName).apply {
+                addFunctions(funSpecs)
                 .addFunctions(flowGetValueFuncs)
                 .apply {
                     constructors?.let(::addFunctions)
                     dispose?.let(::addFunction)
                 }
-                .build()
+            }.build()
         }
-        return fileSpecs.values.map { it.build() }.toList()
     }
 
     private fun generateNativeFlowInit(
@@ -480,6 +499,11 @@ class JniCallProcessor(
         funs.groupBy { it.parent }.forEach { (parent, functions) ->
             val instance = parent as? FunctionParent.Class
             val constructors = instance?.let(::generateJvmActualConstructors)
+            val constructorFromPointer = FunSpec.constructorBuilder()
+                .addParameter(ParameterSpec("nativeInstancePtr", Types.KLong))
+                .callSuperConstructor()
+                .addCode(CodeBlock.of("nativeInstance = nativeInstancePtr"))
+                .build()
             val externalConstructors = instance?.let(::generateJvmExternalConstructors)
             val externalDispose = instance?.let(::generateJvmExternalDispose)
             val nativeInstanceType = instance?.let {
@@ -491,25 +515,26 @@ class JniCallProcessor(
             val fileSpec = fileSpecs.getOrPut(parent.className) { FileSpec.builder(parent.className) }
             val specs = generateJvmFunctions(functions, nativeInstanceType)
             when {
-                parent is FunctionParent.Class && nativeInstanceType != null -> {
+                parent is FunctionParent.Class -> {
                     val flowProps = registry.flowFields[parent].orEmpty()
-//                    val nativeProp = PropertySpec.builder("nativeInstance", nativeInstanceType.jniType.jvmType).build()
+                    val factory = FunSpec.builder("as${parent.className.simpleName}")
+                        .returns(parent.className)
+                        .receiver(Types.KLong)
+                        .addCode("return %T(this)", parent.className)
+                        .build()
+                    val factoryFileClass = parent.className.withSuffix("_converter")
+                    val factoryFileSpec = FileSpec.builder(factoryFileClass)
+                        .addFunction(factory)
+                    fileSpecs[factoryFileClass] = factoryFileSpec
+
                     val type = TypeSpec.classBuilder(parent.className)
                         .addModifiers(KModifier.ACTUAL, parent.declaration.modifiers.visibilityKModifier)
                         .addSuperinterfaces(parent.superTypes)
                         .superclass(Types.NativeInstanceJvm)
-//                        .addProperty(nativeProp)
-                        .apply { constructors?.toList()?.let(::addFunctions) }
+                        .addFunction(constructorFromPointer)
+                        .apply { constructors?.let(::addFunctions) }
                         .apply {
                             externalDispose?.let(::addFunction)
-                            /*externalDispose?.let {
-                                addFunction(
-                                    FunSpec.builder("close")
-                                        .addModifiers(KModifier.OVERRIDE, KModifier.ACTUAL)
-                                        .addCode(CodeBlock.of("%L", "disposeNative()"))
-                                        .build()
-                                )
-                            }*/
                         }
                         .addFunctions(flowProps.map(KSFlowProp::generateGetValueFun))
                         .addProperties(flowProps.map(KSFlowProp::generateFlowProp))

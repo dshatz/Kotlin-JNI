@@ -14,6 +14,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
+import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -37,7 +38,7 @@ abstract class BaseProcessor {
             val pkg = packageName.asString()
             val classname = ClassName(pkg, cls)
             FunctionParent.TopLevel(
-                containingFile!!,
+                this,
                 classNameKt = ClassName(pkg,clsKt),
                 className = classname,
             )
@@ -46,7 +47,7 @@ abstract class BaseProcessor {
 
     @OptIn(KspExperimental::class)
     fun KSFunctionDeclaration.functionLocation(): FunctionParent {
-        return parentDeclaration?.closestClassDeclaration()?.innerFunLocation()
+        return closestClassDeclaration()?.innerFunLocation()
             ?: topLevelFunLocation()
             ?: error("Could not derive classname")
     }
