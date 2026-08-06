@@ -55,16 +55,18 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
     val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
     config.kspDependency.convention("")
 
-    kotlin.sourceSets.register("jniCommonMain") {
-        it.dependsOn(kotlin.sourceSets.getByName("commonMain"))
-    }
-    kotlin.sourceSets.register("jniCommonTest") {
-        it.dependsOn(kotlin.sourceSets.getByName("commonTest"))
+    if (config.createSourceSets.get()) {
+        kotlin.sourceSets.register("jniCommonMain") {
+            it.dependsOn(kotlin.sourceSets.getByName("commonMain"))
+        }
+        kotlin.sourceSets.register("jniCommonTest") {
+            it.dependsOn(kotlin.sourceSets.getByName("commonTest"))
+        }
     }
 
     target.pluginManager.withPlugin("com.google.devtools.ksp") {
         kotlin.targets.withType(KotlinMultiplatformAndroidLibraryTarget::class.java).all { androidTarget ->
-            kotlin.addJniSourceSets(androidTarget, "jniJvm", "common")
+            kotlin.addJniSourceSets(androidTarget, "jniJvm", "common", config)
             if (config.kspDependency.get().toString().isNotEmpty()) {
                 target.dependencies.add("ksp${androidTarget.name.capitalized()}", config.kspDependency)
             }
@@ -93,7 +95,7 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
             else -> null to null
         }
         if (groupName == null || dependOn == null) return@all
-        kotlin.addJniSourceSets(it, groupName, dependOn)
+        kotlin.addJniSourceSets(it, groupName, dependOn, config)
         if (config.kspDependency.get().toString().isNotEmpty()) {
             target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
         }
@@ -105,7 +107,13 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
     }
 }
 
-private fun KotlinMultiplatformExtension.addJniSourceSets(target: KotlinTarget, groupSourceSet: String, dependOn: String) {
+private fun KotlinMultiplatformExtension.addJniSourceSets(
+    target: KotlinTarget,
+    groupSourceSet: String,
+    dependOn: String,
+    config: AutoWireExtension
+) {
+    if (!config.createSourceSets.get()) return
     val (main, test) = if (dependOn == "common") {
         sourceSets.commonMain to sourceSets.commonTest
     } else if (dependOn == "native") {

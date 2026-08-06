@@ -8,6 +8,7 @@ import com.dshatz.kni.model.flow.KSFlowProp
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSFile
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
@@ -36,7 +37,7 @@ sealed class FunctionParent {
     }
 
     data class TopLevel(
-        override val declaration: KSFile,
+        override val declaration: KSFunctionDeclaration,
         override val className: ClassName,
         override val classNameKt: ClassName
     ): FunctionParent()

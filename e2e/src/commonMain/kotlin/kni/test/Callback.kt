@@ -24,7 +24,7 @@ interface Callback: AutoCloseable {
         floatArray: FloatArray? = floatArrayOf(1f),
         doubleArray: DoubleArray? = doubleArrayOf(1.0),
         serializable: ColorfulObject? = ColorfulObject("orange", 2.0, 1..2),
-        buffer: ByteBuffer? = allocateBuffer(1024 * 1024),
+        buffer: ByteBuffer? = allocateBuffer(1024 * 1025),
     )
 
     fun onCompleteWithGeneric(result: Result<Int>)
@@ -35,4 +35,14 @@ interface ThrowingCallback: AutoCloseable {
     fun unstable(shouldThrow: Boolean)
 
     fun nullable(shouldThrow: Boolean, returnNull: Boolean): String?
+}
+
+/**
+ * Example callback that native can call to request some data.
+ *
+ * [requestInt] can run asynchronously on JVM, calling [NativeCallback] when it is done.
+ */
+@JniCallback
+interface RequestIntCallback: AutoCloseable {
+    fun requestInt(nativeCallback: NativeCallback)
 }

@@ -7,8 +7,15 @@ import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.serialization.SerializerProcessor
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSDeclaration
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeSpec
 
 class Registry {
     val jniCalls: MutableSet<KSJniCall> = mutableSetOf()
@@ -25,6 +32,12 @@ class Registry {
 
     val nativeInstances: MutableSet<ClassName> = mutableSetOf()
 
+    enum class Platform {
+        COMMON,
+        NATIVE,
+        JVM
+    }
+
     fun serializersToString(): String {
         val list = serializers.values.joinToString("\n") {
             "${it.typeName} -> ${it.serializer.simpleName}"
@@ -36,14 +49,10 @@ class Registry {
         }
     }
 
-    val flowFields: MutableMap<FunctionParent.Class, List<KSFlowProp>> = mutableMapOf()
+    fun nativeInstancesToString(): String = """
+        Registered native instances:
+        ${nativeInstances.joinToString("\n")}
+    """.trimIndent()
 
-    fun clear() {
-        jniCalls.clear()
-        generatedSerializers.clear()
-        genericSerializers.clear()
-        callbacks.clear()
-        nativeInstances.clear()
-        flowFields.clear()
-    }
+    val flowFields: MutableMap<FunctionParent.Class, List<KSFlowProp>> = mutableMapOf()
 }

@@ -2,12 +2,14 @@ package com.dshatz.kni.flow
 
 import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.Registry
+import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.google.devtools.ksp.processing.KSPLogger
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName
 
@@ -63,26 +65,13 @@ class FlowProcessor(
     fun generateCommon(): List<FileSpec> {
         return registry.flowFields.keys.map { parent ->
             val fields = registry.flowFields[parent].orEmpty()
-            FileSpec.builder(parent.className.packageName, "${parent.className.simpleName}FlowCallbacks")
+            val fileClass = ClassName(
+                parent.className.packageName,
+                "${parent.className.simpleName}FlowCallbacks"
+            )
+            FileSpec.builder(fileClass)
                 .addTypes(fields.map(KSFlowProp::generateFlowCallbackCommon))
                 .build()
         }
     }
 }
-
-
-/*
-object FlowTools {
-    fun initFunctionName(flowProp: ParamInfo): String {
-        return flowProp.name + "InitJni"
-    }
-
-    fun initFunctionCname(flowProp: ParamInfo, parent: FunctionParent): String {
-        return CNameUtils.jniFunctionCName(
-            parent.className.packageName,
-            parent.className.simpleName,
-            initFunctionName(flowProp)
-        )
-    }
-}
-*/

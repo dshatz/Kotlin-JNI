@@ -16,6 +16,7 @@ import com.dshatz.kni.utils.addCode
 import com.dshatz.kni.utils.addReturn
 import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.define
+import com.dshatz.kni.utils.jniClassName
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.nullSafeCall
 import com.dshatz.kni.utils.returnType
@@ -45,9 +46,9 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 class CallbackProcessor(
-    override val mapper: TypeMapper,
+    override val registry: Registry,
     override val logger: KSPLogger,
-    override val registry: Registry
+    override val mapper: TypeMapper
 ): BaseProcessor() {
 
     data class CallableBridge(
@@ -99,11 +100,11 @@ class CallbackProcessor(
         registry.callbacks.putAll(callbacks)
     }
 
-    fun generateNative(): List<CallableBridge> {
+    fun generateNative(): List<FileSpec> {
         return registry.callbacks.values.map(::generateNativeCallback)
     }
 
-    private fun generateNativeCallback(callback: KSCallback): CallableBridge {
+    private fun generateNativeCallback(callback: KSCallback): FileSpec {
         val cls = callback.type
         val implCls = cls.getNativeImplClass()
 
@@ -164,7 +165,8 @@ class CallbackProcessor(
             .addProperties(methodIds.toList())
             .superclass(Types.BaseCallback)
             .primaryConstructor(constructor)
-            .addSuperclassConstructorParameter("%S", callback.jniClassName())
+            .addSuperclassConstructorParameter("%S", callback.type.jniClassName())
+            .addSuperclassConstructorParameter("%S", callback.jvmAdapterName().jniClassName())
             .addSuperclassConstructorParameter("env")
             .addSuperclassConstructorParameter("instance")
             .addSuperinterface(cls)
@@ -182,7 +184,7 @@ class CallbackProcessor(
             .addImport("kotlinx.cinterop", "get")
             .addAnnotation(optin())
             .build()
-        return CallableBridge(fileSpec, cls)
+        return fileSpec
     }
 
     fun generateJvm(): List<FileSpec> {

@@ -1,6 +1,7 @@
 package com.dshatz.kni.serialization
 
 import com.dshatz.kni.Registry
+import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniSerializable
@@ -11,6 +12,7 @@ import com.dshatz.kni.model.KSDefinedSerializer
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.originatesFrom
 import com.dshatz.kni.utils.returnType
+import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
@@ -100,11 +102,14 @@ class SerializerProcessor(
         return paramValue
     }
 
-    fun collectDefinedSerializers(resolver: Resolver): Map<TypeName, KSDefinedSerializer> {
+    /**
+     * Find all defined serializers, annotated with [JniSerializerFor] and save to registry as [KSDefinedSerializer].
+     */
+    fun collectDefinedSerializers(resolver: Resolver) {
         val serializers = resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
         logger.info("Found ${serializers.toList().size} @JniSerializerFor declarations.")
-        return serializers.mapNotNull {
+        val defined = serializers.mapNotNull {
             if (it.classKind != ClassKind.OBJECT && it.classKind != ClassKind.CLASS) {
                 logger.error("@JniSerializerFor must be applied to a class/object.", it)
                 null
@@ -120,6 +125,7 @@ class SerializerProcessor(
                 )
             }
         }.toMap()
+        registry.serializers.putAll(defined)
     }
 
     fun collectGenericSerializers() {
@@ -164,9 +170,7 @@ class SerializerProcessor(
         val saved = serializersToGenerate.associate {
             it.type to KSDefinedSerializer(it.type,it.serializerClass)
         }
-        registry.serializers.putAll(saved).also {
-            logger.warn("Put $saved into registry.serializers")
-        }
+        registry.serializers.putAll(saved)
     }
 
     fun generateSerializers(
@@ -393,15 +397,15 @@ class SerializerProcessor(
     )
 
     fun generateGenericSerializers(): FileSpec? {
-        val file = FileSpec.builder(pkg, "genericSerializers")
         if (registry.genericSerializers.isEmpty()) return null
-        registry.genericSerializers.map {
-            generateGeneric(it)
-        }.forEach {
-            file.addProperty(it.serializer)
-            file.addTypes(it.arg)
-        }
-        return file.build()
+        return FileSpec.builder(ClassName(pkg, "genericSerializers")).apply {
+            registry.genericSerializers.map {
+                generateGeneric(it)
+            }.forEach {
+                addProperty(it.serializer)
+                addTypes(it.arg)
+            }
+        }.build()
     }
 
     sealed class SerialClass {
@@ -439,5 +443,5 @@ fun ParameterizedTypeName.genericSerializerName(): ClassName {
 
 fun TypeName.serializerClass(): ClassName {
     this as ClassName
-    return ClassName(packageName, simpleName + "Serializer_generated")
+    return withSuffix("_Serializer_generated")
 }

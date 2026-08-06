@@ -1,5 +1,6 @@
 package com.dshatz.kni.model
 
+import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.symbol.KSFile
 import com.squareup.kotlinpoet.ClassName
 
@@ -9,10 +10,6 @@ data class KSCallback(
     val dependency: KSFile
 ) {
     fun jvmAdapterName(): ClassName {
-        return ClassName(type.packageName, type.simpleName + "Adapter")
-    }
-
-    fun jniClassName(): String {
-        return type.canonicalName.replace('.', '/')
+        return type.withSuffix("_JvmAdapter")
     }
 }
