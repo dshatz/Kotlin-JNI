@@ -68,6 +68,13 @@ internal object Types {
     val FlowCallback = ClassName("com.dshatz.kni.flows", "FlowCallback")
 
     val NativeInstanceJvm = ClassName("com.dshatz.kni", "NativeInstanceJvm")
+    val SuspendCallback = ClassName("com.dshatz.kni.flows", "SuspendCallback")
+    val SuspendCallback0 = ClassName("com.dshatz.kni.flows", "SuspendCallback0")
+    val JvmSuspendCallback = ClassName("com.dshatz.kni.flows", "JvmSuspendCallback")
+    val JvmSuspendCallback0 = ClassName("com.dshatz.kni.flows", "JvmSuspendCallback0")
+
+    val AtomicLong = ClassName("kotlin.concurrent.atomics", "AtomicLong")
+
 
     object Method {
 
@@ -111,7 +118,9 @@ internal object Types {
 
         val Serialize = MemberName("com.dshatz.kni.serialization", "serialize")
         val Deserialize = MemberName("com.dshatz.kni.serialization", "deserialize")
-        val CheckException = MemberName("com.dshatz.kni.utils", "checkException")
+        val SuspendCancellableCoroutine = MemberName("kotlinx.coroutines", "suspendCancellableCoroutine")
+        val Resume = MemberName("kotlin.coroutines", "resume")
+        val ExecuteSuspend = MemberName("com.dshatz.kni.flows", "executeSuspend")
     }
 
     object Annotations {
@@ -121,12 +130,18 @@ internal object Types {
             private val ExperimentalForeignApi = ClassName("kotlinx.cinterop", "ExperimentalForeignApi")
             private val ExperimentalNativeApi = ClassName("kotlin.experimental", "ExperimentalNativeApi")
 
+            private val ExperimentalAtomicApi = ClassName("kotlin.concurrent.atomics", "ExperimentalAtomicApi")
+
             val NativeOptIn = AnnotationSpec.builder(OptIn)
                 .addMember("%T::class, %T::class", ExperimentalForeignApi, ExperimentalNativeApi)
                 .build()
 
             val KniInternalOptIn = AnnotationSpec.builder(OptIn)
                 .addMember("%T::class", KniInternalApi::class)
+                .build()
+
+            val AtomicsOptIn = AnnotationSpec.builder(OptIn)
+                .addMember("%T::class", ExperimentalAtomicApi)
                 .build()
         }
     }

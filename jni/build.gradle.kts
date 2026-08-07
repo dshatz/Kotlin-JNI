@@ -135,6 +135,11 @@ kotlin {
             implementation(project(":buffers"))
             implementation(libs.atomic)
         }
+        val jniCommonMain by getting {
+            dependencies {
+                api(libs.coroutines.core)
+            }
+        }
     }
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")

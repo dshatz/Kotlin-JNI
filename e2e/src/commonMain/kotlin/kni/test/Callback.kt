@@ -24,7 +24,7 @@ interface Callback: AutoCloseable {
         floatArray: FloatArray? = floatArrayOf(1f),
         doubleArray: DoubleArray? = doubleArrayOf(1.0),
         serializable: ColorfulObject? = ColorfulObject("orange", 2.0, 1..2),
-        buffer: ByteBuffer? = allocateBuffer(1024 * 1025),
+        buffer: ByteBuffer? = allocateBuffer(1024 * 1024),
     )
 
     fun onCompleteWithGeneric(result: Result<Int>)

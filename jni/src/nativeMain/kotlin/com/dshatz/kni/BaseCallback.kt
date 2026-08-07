@@ -51,25 +51,25 @@ open class BaseCallback(
     private val javaVm: CPointer<JavaVMVar> = env.getJavaVM()
 
     val env: CPointer<JNIEnvVar> get() {
-        envCache?.let { return it }
+        /*envCache?.let { return it }*/
 
         val nativeEnvPtr = nativeHeap.alloc<CPointerVar<JNIEnvVar>>()
-        try {
-            val vm = javaVm.pointed.pointed ?: error("JavaVM pointer is null")
-            val result = vm.GetEnv!!.invoke(javaVm, nativeEnvPtr.ptr.reinterpret(), JNI_VERSION_1_6)
+        val vm = javaVm.pointed.pointed ?: error("JavaVM pointer is null")
+        val result = vm.GetEnv!!.invoke(javaVm, nativeEnvPtr.ptr.reinterpret(), JNI_VERSION_1_6)
 
-            if (result == JNI_EDETACHED) {
-                if (javaVm.AttachCurrentThread(nativeEnvPtr) != JNI_OK) {
-                    error("Failed to attach current thread")
-                }
+        if (result == JNI_EDETACHED) {
+            if (javaVm.AttachCurrentThread(nativeEnvPtr) != JNI_OK) {
+                nativeHeap.free(nativeEnvPtr)
+                error("Failed to attach current thread")
             }
-
-            val envInstance = nativeEnvPtr.value ?: error("Failed to obtain JNIEnv for current thread")
-            envCache = envInstance
-            return envInstance
-        } finally {
-            nativeHeap.free(nativeEnvPtr)
         }
+
+        val envInstance = nativeEnvPtr.value ?: run {
+            nativeHeap.free(nativeEnvPtr)
+            error("Failed to obtain JNIEnv for current thread")
+        }
+        nativeHeap.free(nativeEnvPtr)
+        return envInstance
     }
 
     private val jvmClassGlobal: jobject = env.run {
@@ -141,6 +141,7 @@ open class BaseCallback(
     }
 }
 
+/*
 @OptIn(ExperimentalForeignApi::class)
 @ThreadLocal
-private var envCache: CPointer<JNIEnvVar>? = null
+private var envCache: CPointer<JNIEnvVar>? = null*/
