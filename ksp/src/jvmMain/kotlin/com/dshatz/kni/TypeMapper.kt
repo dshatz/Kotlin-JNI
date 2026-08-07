@@ -162,6 +162,12 @@ sealed class TypeInfo {
 
     companion object {
         val Unit = TypeInfo.Simple(UNIT, JNIType(UNIT, UNIT, "l"))
+        val STRING = TypeInfo.Convertible(
+            Types.KString,
+            JNIType(Types.KString, Types.JString, "l"),
+            toJni = Types.toJTypes[Types.KString]!!,
+            fromJni = Types.toKTypes[Types.JString]!!
+        )
     }
 
     /**

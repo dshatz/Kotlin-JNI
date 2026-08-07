@@ -4,7 +4,9 @@ import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
 import kni.test.serializable.ColorfulObject
+import kni.test.serializable.PolymorphicFruit
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 actual object CommonCallable {
@@ -131,6 +133,12 @@ actual object CommonCallable {
     @JniCall
     actual fun getError(): String? {
         return lastError
+    }
+
+    @JniCall
+    actual suspend fun doWork(fail: Boolean, orange: PolymorphicFruit): ByteBuffer {
+        if (fail) error("Simulated error")
+        return allocateBuffer(1)
     }
 }
 

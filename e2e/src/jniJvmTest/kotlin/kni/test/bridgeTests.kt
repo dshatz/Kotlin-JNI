@@ -8,6 +8,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kni.test.flows.NativeObjWithFlow
 import kni.test.serializable.ColorfulObject
+import kni.test.serializable.PolymorphicFruit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.math.pow
 
@@ -259,6 +261,22 @@ fun TestSuiteScope.bridgeTests() {
         intAccumulator.fetchFromJvm()
         requestReceived shouldBe true
         intAccumulator.currentValue.flow.take(2).toList() shouldBe listOf(0, 100)
+    }
+
+    test("suspend") {
+        val orange = PolymorphicFruit.Orange(true)
+        val buffer = CommonCallable.doWork(false, orange)
+        buffer.capacity shouldBe 1
+
+        shouldThrow<CancellationException> {
+            CommonCallable.doWork(true, orange)
+        }.message shouldBe "Native coroutine was cancelled: Simulated error"
+
+        val job = launch {
+            CommonCallable.doWork(true, orange)
+        }
+        job.join()
+        job.isCancelled shouldBe true
     }
 }
 

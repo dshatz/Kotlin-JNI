@@ -90,6 +90,7 @@ class NativeKommons : SymbolProcessorProvider {
 
             when (platform) {
                 Platform.COMMON -> {
+                    callbackProcessor.generateSuspendAdapters().write()
                     serializableProcessor.generateSerializers(serializables).write()
                     serializableProcessor.generateGenericSerializers()?.write()
                     flowProcessor.generateCommon().write()

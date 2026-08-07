@@ -11,11 +11,11 @@ import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.needsIsNullParam
-import com.dshatz.kni.utils.add
 import com.dshatz.kni.utils.addCode
 import com.dshatz.kni.utils.addReturn
 import com.dshatz.kni.utils.capitalized
-import com.dshatz.kni.utils.define
+import com.dshatz.kni.utils.defineCommon
+import com.dshatz.kni.utils.defineNative
 import com.dshatz.kni.utils.jniClassName
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.nullSafeCall
@@ -51,12 +51,6 @@ class CallbackProcessor(
     override val mapper: TypeMapper
 ): BaseProcessor() {
 
-    data class CallableBridge(
-        val fileSpec: FileSpec,
-//        val deps: Dependencies,
-        val cls: ClassName
-    )
-
     fun collectDeclarations(
         resolver: Resolver
     ) {
@@ -87,14 +81,15 @@ class CallbackProcessor(
                     name = f.simpleName.asString(),
                     returnType = mapper.mapType(f.returnType!!),
                     parameters = f.parameters.toTypeInfos(),
-                    parent = f.functionLocation(),
+                    parent = f.functionLocation()
                 )
             }.toList()
             val callbackType = declaration.toClassName()
             callbackType to KSCallback(
                 type = callbackType,
                 funs = funs,
-                dependency = declaration.containingFile!!
+                dependency = declaration.containingFile!!,
+                superType = null
             )
         }
         registry.callbacks.putAll(callbacks)
@@ -104,15 +99,28 @@ class CallbackProcessor(
         return registry.callbacks.values.map(::generateNativeCallback)
     }
 
+    fun generateSuspendAdapters(): List<FileSpec> {
+        return registry.jniCallSuspendAdapters.map { a ->
+            val callback = TypeSpec.interfaceBuilder(a.type)
+                .addAnnotation(JniCallback::class)
+                .addSuperinterface(Types.AutoCloseable)
+                .apply {
+                    a.superType?.let(::addSuperinterface)
+                }
+                .build()
+            FileSpec.builder(a.type)
+                .addType(callback)
+                .build()
+        }
+    }
+
     private fun generateNativeCallback(callback: KSCallback): FileSpec {
         val cls = callback.type
         val implCls = cls.getNativeImplClass()
 
         fun FunSpec.Builder.addParams(params: List<ParamInfo>): FunSpec.Builder {
             params.forEach {
-                addParameter(
-                    ParameterSpec(it.name, it.typeInfo.kotlinType)
-                )
+                addParameter(it.paramSpecKotlin())
             }
             return this
         }
@@ -120,7 +128,7 @@ class CallbackProcessor(
         val funs = callback.funs.map { f ->
             val call = Def.callHelper(f.returnType)
             val (callCode, jniResultRef) = CodeBlock.builder()
-                .define(
+                .defineNative(
                     "jniCallResult",
                     f.returnType,
                     "env.%M(%N, %N, %N)",
@@ -131,7 +139,7 @@ class CallbackProcessor(
                 )
             val unpacked = jniResultRef.unpackCode()
             val returnConverted = CodeBlock.builder()
-                .add(callCode)
+                .add(callCode.code)
                 .add(unpacked.code)
                 .build()
             val params = f.parameters
@@ -165,6 +173,9 @@ class CallbackProcessor(
             .addProperties(methodIds.toList())
             .superclass(Types.BaseCallback)
             .primaryConstructor(constructor)
+            .apply {
+                callback.superType?.let(::addSuperinterface)
+            }
             .addSuperclassConstructorParameter("%S", callback.type.jniClassName())
             .addSuperclassConstructorParameter("%S", callback.jvmAdapterName().jniClassName())
             .addSuperclassConstructorParameter("env")
@@ -195,14 +206,12 @@ class CallbackProcessor(
         val file = callback.jvmAdapterName()
         val funs = callback.funs.map { f ->
             val fName = f.name
-            val paramsSpecs = f.parameters.map {
-                ParameterSpec(it.name, it.typeInfo.jniType.jvmType)
-            }
+            val paramsSpecs = f.parameters.map { it.paramSpecJvm() }
             val isNullParamSpecs = f.parameters.filter { it.typeInfo.needsIsNullParam() }.map {
                 ParameterSpec("_${it.name}IsNull", Types.KBoolean)
             }
             val convertArgsCode = f.parameters.joinToCode(",\n") {
-                val unpackCode = it.typeInfo.unpackCodeJvm(it.paramCodeJvm()).code
+                val unpackCode = it.refJvm.unpackCode().code
                 if (it.typeInfo.needsIsNullParam()) {
                     CodeBlock.of("if (_%NIsNull) null else %L", it.name, unpackCode)
                 } else unpackCode
@@ -216,7 +225,7 @@ class CallbackProcessor(
                 .returnType(f.returnType.kotlinType)
 
             if (f.returnType.kotlinType != Types.UnitOrVoid) {
-                val (getJvmResult, jvmResultRef) = CodeBlock.builder().define(
+                val (getJvmResult, jvmResultRef) = CodeBlock.builder().defineCommon(
                     "jvmResult",
                     f.returnType,
                     "%L",
@@ -224,7 +233,8 @@ class CallbackProcessor(
                 )
                 builder
                     .addCode(getJvmResult)
-                    .addReturn(jvmResultRef.packCodeJvm())
+                    .addKdoc("return type is ${f.returnType}")
+                    .addReturn(jvmResultRef.packToJvm())
             } else {
                 builder.addStatement("%L", makeCall.code)
             }
