@@ -1,56 +1,45 @@
 package com.dshatz.kni.jniCall
 
 import com.dshatz.kni.BaseProcessor
-import com.dshatz.kni.CNameUtils
-import com.dshatz.kni.CNameUtils.cname
-import com.dshatz.kni.CNameUtils.cnameFunName
 import com.dshatz.kni.Registry
-import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.kspfix.FunctionParent
+import com.dshatz.kni.model.KSCallback
+import com.dshatz.kni.model.KSCallbackFun
+import com.dshatz.kni.model.KSInstance
 import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.needsIsNullParam
-import com.dshatz.kni.utils.addCode
-import com.dshatz.kni.utils.addReturn
-import com.dshatz.kni.utils.addStatement
-import com.dshatz.kni.utils.define
 import com.dshatz.kni.utils.joinToCode
 import com.dshatz.kni.utils.nonNullOrPlaceholder
 import com.dshatz.kni.utils.originatesFrom
 import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.closestClassDeclaration
-import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
-import com.google.devtools.ksp.symbol.FileLocation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.Location
 import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import jdk.javadoc.internal.doclets.toolkit.util.DocPath.parent
 
 class JniCallProcessor(
     override val registry: Registry,
@@ -79,6 +68,7 @@ class JniCallProcessor(
             }
             .filter { it.isExpect } // only take from common. common should act as the source of truth.
             .distinctBy { it.qualifiedName?.asString() }
+
     }
 
     /**
@@ -102,260 +92,86 @@ class JniCallProcessor(
             it.functionLocation()
         }.flatMap { (parent, funs) ->
             funs.map { f ->
-                if (parent.declaration.containingFile == null) error("$parent has no containingFile.")
-                KSJniCall(
-                    name = f.simpleName.asString(),
-                    returnType = mapper.mapType(f.returnType!!),
-                    parameters = f.parameters.toTypeInfos(),
-                    parent = parent,
-                    declaration = f
-                )
+                val returnType = mapper.mapType(f.returnType!!)
+                val params = f.parameters.toTypeInfos()
+                val name = f.simpleName.asString()
+                if (Modifier.SUSPEND in f.modifiers) {
+                    KSJniCall.Suspend(
+                        name = name,
+                        returnType = returnType,
+                        parameters = params,
+                        declaration = f,
+                        parent = parent
+                    )
+                } else {
+                    KSJniCall.Blocking(
+                        name = f.simpleName.asString(),
+                        returnType = mapper.mapType(f.returnType!!),
+                        parameters = f.parameters.toTypeInfos(),
+                        parent = parent,
+                        declaration = f,
+                    )
+                }
             }
         }
         registry.jniCalls.addAll(jniCalls)
+        registerSuspendAdapters()
+    }
+
+    private fun registerSuspendAdapters() {
+        registry.jniCalls.filterIsInstance<KSJniCall.Suspend>().map { f ->
+            val callbackCls = f.suspendCallbackClass
+            val callback = KSCallback(
+                type = callbackCls,
+                funs = listOf(
+                    KSCallbackFun(
+                        f.onValueFun,
+                        returnType = TypeInfo.Unit,
+                        parameters = if (f.returnType != TypeInfo.Unit) listOf(
+                            ParamInfo("value", f.returnType)
+                        ) else emptyList(),
+                        parent = f.parent // ?
+                    ),
+                    KSCallbackFun(
+                        f.onFailureFun,
+                        returnType = TypeInfo.Unit,
+                        parameters = listOf(
+                            ParamInfo("message", TypeInfo.STRING),
+                            ParamInfo("stackTrace", TypeInfo.STRING)
+                        ),
+                        parent = f.parent // ?
+                    )
+                ),
+                dependency = f.declaration.containingFile!!,
+                superType = if (f.returnType == TypeInfo.Unit)
+                    Types.SuspendCallback0
+                else Types.SuspendCallback.parameterizedBy(f.returnType.kotlinType)
+            )
+            registry.callbacks[callbackCls] = callback
+            registry.jniCallSuspendAdapters.add(callback)
+        }
     }
 
     fun generateNative(): List<FileSpec> {
         return registry.jniCalls.groupBy { it.parent }.map { (parent, functions) ->
-            logger.info("JniCall: ${parent.className}: ${parent.declaration.containingFile?.filePath}")
-            val funSpecs = functions.map { f ->
-                context(f.declaration) {
-                    generateCnameFunction(
-                        f.parent.toMemberName(f.name),
-                        f.parent,
-                        f.parameters,
-                        f.returnType
-                    ).toBuilder().originatesFrom(f.declaration).build()
-                }
-            }
-
-            val nativeInstance = parent as? FunctionParent.Class
-
-            val constructors = nativeInstance?.let(::generateNativeConstructors)
-            val dispose = nativeInstance?.let(::generateNativeDispose)
-
-            val funParent = functions.first().parent
-            val flows = registry.flowFields[funParent].orEmpty()
-            val flowGetValueFuncs = flows.map { flowProp ->
-                generateNativeFlowInit(funParent, flowProp)
-            }
-            val fileClassName = parent.classNameKt.withSuffix("_jniCalls")
-            FileSpec.builder(fileClassName).apply {
-                addFunctions(funSpecs)
-                .addFunctions(flowGetValueFuncs)
-                .apply {
-                    constructors?.let(::addFunctions)
-                    dispose?.let(::addFunction)
-                }
-            }.build()
-        }
-    }
-
-    private fun generateNativeFlowInit(
-        funParent: FunctionParent,
-        flowProp: KSFlowProp,
-    ): FunSpec {
-        context(funParent) {
-            val callbackType = TypeInfo.Callback(flowProp.baseCallbackClass)
-            val callback = CodeBlock.of("callback").returnType(callbackType)
-            val unpackCallback = callback.unpackCode()
-
-            val (initCallback, callbackRef) = CodeBlock.builder()
-                .define(
-                    "callback",
-                    callbackType,
-                    "%L",
-                    unpackCallback.code
+            if (parent is FunctionParent.Class) {
+                val instance = KSInstance(
+                    parent.className,
+                    parent.constructors,
+                    functions,
+                    registry.flowFields[parent].orEmpty()
                 )
-
-            val (initCode, defaultValue) = CodeBlock.builder()
-                .define(
-                    "defaultValue",
-                    flowProp.innerType,
-                    "instance.%M<%T>().%N.bindToJvm(%L)",
-                    Types.Method.valueFromStableRefPointer,
-                    funParent.className,
-                    flowProp.name,
-                    callbackRef.code
-                )
-
-            val converted = defaultValue.packCode()
-            return cnameFunBuilder(
-                funName = flowProp.initFunction.cnameFunName(),
-                cname = flowProp.initFunction.cname()
-            )
-                .addParameter("instance", Types.JLong)
-                .addParameter("callback", Types.JObject)
-                .addCode(initCallback)
-                .addCode(initCode)
-                .addReturn(converted)
-                .build()
-        }
-    }
-
-    private fun generateNativeConstructors(
-        cl: FunctionParent.Class
-    ): List<FunSpec> {
-        val returnTypeInfo = context(cl.declaration) {
-            mapper.mapType(cl.className)
-        }
-        return cl.constructors.map { constructor ->
-            val jniCName = CNameUtils.jniFunctionCName(
-                packageName = cl.className.packageName,
-                className = cl.className.simpleName,
-                functionName = "initNative${constructor.id}"
-            )
-            val paramSpecs = constructor.params.map {
-                ParameterSpec.builder(it.name, it.typeInfo.jniType.nativeType).build()
+                instance.generateNative()
+            } else {
+                val fileClass = parent.classNameKt.withSuffix("_jniCalls")
+                FileSpec.builder(fileClass)
+                    .addFunctions(functions.map(KSJniCall::generateCnameFunction))
+                    .build()
             }
-            val paramConversion = constructor.params.map {
-                it.typeInfo.unpackCode(it.paramCodeNative())
-            }.joinToCode()
-
-            val initNativeCode = CodeBlock.builder()
-                .addStatement("%T(%L)", returnTypeInfo.kotlinType, paramConversion)
-                .build()
-                .returnType(returnTypeInfo.kotlinType)
-            val returnCode = CodeBlock.builder()
-                .addStatement("return %L", returnTypeInfo.packCode(initNativeCode).code)
-                .build()
-
-            cnameFunBuilder(
-                MemberName(cl.className, "init${constructor.id}"),
-                jniCName
-            )
-                .returns(LONG)
-                .addParameters(paramSpecs)
-                .addCode(returnCode)
-                .build()
         }
     }
 
-    private fun generateNativeDispose(
-        cl: FunctionParent.Class
-    ): FunSpec = context(cl.declaration) {
-        val jniCname = CNameUtils.jniFunctionCName(
-            packageName = cl.className.packageName,
-            className = cl.className.simpleName,
-            functionName = "disposeNative"
-        )
-        val instanceType = mapper.mapType(cl.className)
-        val unpack = instanceType.unpackCode(CodeBlock.of("%N", "instance").returnType(instanceType.kotlinType))
-        return cnameFunBuilder(
-            MemberName(cl.className, "disposeNative"),
-            jniCname
-        ).addParameter(
-            ParameterSpec.builder("instance", instanceType.jniType.nativeType).build()
-        )
-            .addCode(
-                CodeBlock.builder()
-                    .addStatement("%L.close()", unpack.code)
-                    .addStatement("%N.%M<%T>()", "instance", Types.Method.ReleaseStableRef, cl.className)
-                    .build()
-            )
-            .build()
-    }
 
-    private fun cnameFunBuilder(
-        callFun: MemberName,
-        jniCname: String,
-    ): FunSpec.Builder {
-        return cnameFunBuilder(
-            funName = "_${callFun.enclosingClassName?.simpleName.orEmpty()}_${callFun.simpleName}JNI",
-            cname = jniCname
-        ).addKdoc("Calling user function [$callFun]")
-    }
-
-    private fun cnameFunBuilder(
-        funName: String,
-        cname: String
-    ): FunSpec.Builder {
-        return FunSpec.builder(funName)
-            .addAnnotation(AnnotationSpec.builder(Types.Annotations.CName).addMember(CodeBlock.of("%S", cname)).build())
-            .addAnnotation(Types.Annotations.Optin.NativeOptIn)
-            .addParameter("env", Types.Environment)
-            .addParameter("clazz", Types.JObject)
-    }
-
-    context(decl: KSFunctionDeclaration)
-    private fun generateCnameFunction(
-        callFun: MemberName,
-        funLocation: FunctionParent,
-        params: List<ParamInfo>,
-        returnType: TypeInfo
-    ): FunSpec {
-
-        val jniCName = CNameUtils.jniFunctionCName(
-            packageName = callFun.packageName,
-            className = funLocation.classNameKt.simpleName,
-            functionName = callFun.simpleName + "External"
-        )
-
-        val builder = cnameFunBuilder(
-            callFun,
-            jniCName
-        )
-
-        val paramCodes = params.map {
-            val paramCode = it.paramCodeNative()
-            val nullified = if (it.typeInfo.needsIsNullParam()) {
-                CodeBlock.of("(if (%N.%M()) null else %L)", "_${it.name}IsNull", Types.Method.ToKBoolean, paramCode.code)
-                    .returnType(it.typeInfo.kotlinType)
-            } else paramCode
-            it.name to it.typeInfo.unpackCode(nullified)
-        }
-        val paramAssignment = paramCodes.map { (name, code) ->
-            CodeBlock.builder().addStatement("val %N: %T = %L", name, code.type, code.code).build()
-        }.joinToString("")
-        val paramConversionCode = params.joinToString(", ") { it.name }
-        val callUserCode = if (funLocation is FunctionParent.Class) {
-            val instanceType = mapper.mapType(funLocation.className)
-            val unpackInstance = instanceType.unpackCode(CodeBlock.of("%N", "instance").returnType(Types.KLong))
-            CodeBlock.of("%L.%L(%L)", unpackInstance.code, callFun.simpleName, paramConversionCode)
-        } else {
-            CodeBlock.of("%M(%L)", callFun, paramConversionCode)
-        }
-        val packResult = returnType.packCode(callUserCode.returnType(returnType.kotlinType))
-        val instanceParameters = if (funLocation is FunctionParent.Class) {
-            val pointerParam = ParameterSpec.builder(
-                "instance",
-                mapper.mapType(funLocation.className).jniType.nativeType
-            ).build()
-            listOf(pointerParam)
-        } else emptyList()
-
-        val f = builder
-            .returns(
-                returnType.jniType.nativeType,
-                kdoc = CodeBlock.of("${returnType.kotlinType} <- ${returnType.jniType.nativeType}")
-            )
-            .addParameters(params.map {
-                ParameterSpec
-                    .builder(it.name, it.typeInfo.jniType.nativeType)
-                    .addKdoc("${it.typeInfo.kotlinType} -> ${it.typeInfo.jniType.nativeType} (via ${it.typeInfo::class.simpleName})")
-                    .build()
-            } + instanceParameters)
-            .addParameters(
-                params
-                    .filter {
-                        it.typeInfo.needsIsNullParam()
-                    }
-                    .map {
-                        ParameterSpec.builder("_${it.name}IsNull", Types.JBoolean).build()
-                    }
-            )
-            .addCode(
-                CodeBlock.builder()
-                    .addStatement("// generated by Kotlin-JNI")
-                    .addStatement("val env = env.%M()!!", Types.Method.GetAndAttach)
-                    .add(paramAssignment)
-                    .addStatement("val result: %T = %L", packResult.type, packResult.code)
-                    .addStatement("return result")
-                    .build()
-            )
-            .build()
-        return f
-    }
 
     private fun generateJvmActualConstructors(cl: FunctionParent.Class): List<FunSpec> {
         return cl.constructors.map { constructor ->
@@ -363,12 +179,13 @@ class JniCallProcessor(
                 ParameterSpec.builder(it.name, it.typeInfo.kotlinType).build()
             }
             val convertParamsCode = constructor.params.map {
-                it.typeInfo.packCodeJvm(it.paramCodeKotlin())
+                it.refCommon.packToJvm().code
             }.joinToCode()
             FunSpec.constructorBuilder()
                 .addParameters(params)
+                .addAnnotation(Types.Annotations.Optin.AtomicsOptIn)
                 .addModifiers(KModifier.ACTUAL, cl.declaration.primaryConstructor?.modifiers?.visibilityKModifier ?: KModifier.PUBLIC)
-                .addCode(CodeBlock.builder().addStatement("nativeInstance = initNative%L(%L)", constructor.id, convertParamsCode).build())
+                .addCode(CodeBlock.builder().addStatement("nativeInstance.store(initNative%L(%L))", constructor.id, convertParamsCode).build())
                 .build()
         }
     }
@@ -405,12 +222,11 @@ class JniCallProcessor(
         }
 
         return functions.flatMap { f ->
-            val externalMember = MemberName(funNames[f]!!.packageName, f.name + "External")
-
             val funSpec = FunSpec.builder(funNames[f]!!)
                 .addModifiers(KModifier.ACTUAL, f.declaration.modifiers.visibilityKModifier)
                 .apply {
                     if (Modifier.OVERRIDE in f.declaration.modifiers) addModifiers(KModifier.OVERRIDE)
+                    if (Modifier.SUSPEND in f.declaration.modifiers) addModifiers(KModifier.SUSPEND)
                 }
                 .returns(f.returnType.kotlinType)
                 .apply {
@@ -424,8 +240,7 @@ class JniCallProcessor(
                 .originatesFrom(f.declaration)
                 .apply {
                     val paramPacking = f.parameters.map { p ->
-                        val paramCode = p.paramCodeKotlin()
-                        p.typeInfo.packCodeJvm(paramCode).nonNullOrPlaceholder()
+                        p.refCommon.packToJvm().typed.nonNullOrPlaceholder()
                     }
                     val isNullParams = f.parameters.filter { it.typeInfo.needsIsNullParam() }.map {
                         CodeBlock.of("%N == null", it.name).returnType(Types.KBoolean)
@@ -435,12 +250,18 @@ class JniCallProcessor(
                     } else {
                         paramPacking + isNullParams + CodeBlock.of("it").returnType(instanceParameter.jniType.nativeType)
                     }
-                    val paramsCode = params.joinToCode(",\n")
-                    val callExternalCode = CodeBlock.of("%M(%L)", externalMember, paramsCode).returnType(f.returnType.jniType.jvmType)
-                    val returnValue = f.returnType.unpackCodeJvm(callExternalCode)
+                    val paramsCode = params.joinToCode(prefix = "\n", separator = ",\n", suffix = "\n") { it.code }
+                    val callExternalCode = CodeBlock.of("%L(%L)", f.callToExternal.simpleName, paramsCode).returnType(f.returnType.jniType.jvmType)
+                    val returnValue = if (f is KSJniCall.Suspend) {
+                        callExternalCode // No need to convert, callback already converted.
+                    } else {
+                        f.returnType.unpackCodeJvm(callExternalCode)
+                    }
+
                     if (instanceParameter != null) {
+                        val method = if (f is KSJniCall.Suspend) "withValidInstanceSuspend" else "withValidInstance"
                         val withValidInstanceBlock = CodeBlock.builder()
-                            .beginControlFlow("return withValidInstance")
+                            .beginControlFlow("return %L", method)
                             .add(returnValue.code)
                             .endControlFlow()
                             .build()
@@ -449,43 +270,35 @@ class JniCallProcessor(
 
                 }.build()
 
+            val externalAsyncSpec = (f as? KSJniCall.Suspend)?.externalAsyncSpec()
 
-            val externalSpec = FunSpec.builder(externalMember)
+
+            val externalSpec = FunSpec.builder(f.externalFun)
                 .addModifiers(KModifier.EXTERNAL, KModifier.PRIVATE)
                 .apply {
-                    f.parameters.forEach {
+                    f.jniParams.forEach {
                         addKdoc("@param ${it.name} [${it.typeInfo.kotlinType}] converted to `${it.typeInfo.jniType.nativeType}`.\n")
                     }
-                    if (f.returnType.kotlinType != UNIT) {
+                    if (f.jniReturn.kotlinType != UNIT) {
                         addKdoc("@return Representing `${f.returnType.describe()}`. Converted from `${f.returnType.jniType.nativeType}` to `${f.returnType.jniType.jvmType}`.\n")
                     }
                 }
-                .returns(f.returnType.jniType.jvmType)
+                .returns(f.jniReturn.jniType.jvmType)
                 .addParameters(
-                    f.parameters.map { (name, typeInfo) ->
+                    f.jniParams.map { (name, typeInfo) ->
                         ParameterSpec.builder(
                             name = name,
                             type = typeInfo.jniType.jvmType,
                         ).build()
                     }
                 )
-                .apply {
-                    instanceParameter?.let {
-                        addParameter(
-                            ParameterSpec(
-                                name = "nativeInstance",
-                                type = it.jniType.jvmType
-                            )
-                        )
-                    }
-                }
                 .addParameters(f.parameters.filter {
                     it.typeInfo.needsIsNullParam()
                 }.map {
                     ParameterSpec("_${it.name}IsNull", Types.KBoolean)
                 })
                 .build()
-            listOf(funSpec, externalSpec)
+            listOfNotNull(funSpec, externalSpec, externalAsyncSpec)
         }
     }
 
@@ -500,9 +313,10 @@ class JniCallProcessor(
             val instance = parent as? FunctionParent.Class
             val constructors = instance?.let(::generateJvmActualConstructors)
             val constructorFromPointer = FunSpec.constructorBuilder()
+                .addAnnotation(Types.Annotations.Optin.AtomicsOptIn)
                 .addParameter(ParameterSpec("nativeInstancePtr", Types.KLong))
                 .callSuperConstructor()
-                .addCode(CodeBlock.of("nativeInstance = nativeInstancePtr"))
+                .addCode(CodeBlock.of("nativeInstance.store(nativeInstancePtr)"))
                 .build()
             val externalConstructors = instance?.let(::generateJvmExternalConstructors)
             val externalDispose = instance?.let(::generateJvmExternalDispose)

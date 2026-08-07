@@ -2,6 +2,7 @@ package com.dshatz.kni
 
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
+import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.KSDefinedSerializer
 import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.flow.KSFlowProp
@@ -31,6 +32,8 @@ class Registry {
     }
 
     val nativeInstances: MutableSet<ClassName> = mutableSetOf()
+
+    val jniCallSuspendAdapters: MutableSet<KSCallback> = mutableSetOf()
 
     enum class Platform {
         COMMON,

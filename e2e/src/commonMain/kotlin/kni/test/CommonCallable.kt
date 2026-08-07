@@ -4,6 +4,7 @@ import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
 import kni.test.serializable.ColorfulObject
+import kni.test.serializable.PolymorphicFruit
 
 expect object CommonCallable {
 
@@ -64,6 +65,9 @@ expect object CommonCallable {
 
     @JniCall
     fun getError(): String?
+
+    @JniCall
+    suspend fun doWork(fail: Boolean, orange: PolymorphicFruit): ByteBuffer
 }
 
 class NoopCallback: Callback {
