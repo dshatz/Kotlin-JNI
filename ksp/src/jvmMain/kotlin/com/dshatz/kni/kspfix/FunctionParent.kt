@@ -19,6 +19,8 @@ sealed class FunctionParent {
     abstract val declaration: KSNode
     abstract val classNameKt: ClassName
     abstract val className: ClassName
+
+    abstract fun member(simpleName: String): MemberName
     data class Class(
         override val declaration: KSClassDeclaration,
         override val className: ClassName,
@@ -27,6 +29,9 @@ sealed class FunctionParent {
         val props: List<PropInfo>
     ): FunctionParent() {
         override val classNameKt: ClassName = className
+        override fun member(simpleName: String): MemberName {
+            return MemberName(className, simpleName)
+        }
     }
 
     data class Object(
@@ -34,16 +39,19 @@ sealed class FunctionParent {
         override val className: ClassName
     ): FunctionParent() {
         override val classNameKt: ClassName = className
+        override fun member(simpleName: String): MemberName {
+            return MemberName(className, simpleName)
+        }
     }
 
     data class TopLevel(
         override val declaration: KSFunctionDeclaration,
         override val className: ClassName,
         override val classNameKt: ClassName
-    ): FunctionParent()
+    ): FunctionParent() {
+        override fun member(simpleName: String): MemberName {
+            return MemberName(className.packageName, simpleName)
+        }
 
-    fun toMemberName(funName: String): MemberName {
-        return if (this is TopLevel) MemberName(className.packageName, funName)
-        else MemberName(className, funName)
     }
 }
