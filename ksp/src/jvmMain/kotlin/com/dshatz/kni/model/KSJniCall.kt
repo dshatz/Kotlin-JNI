@@ -11,7 +11,6 @@ import com.dshatz.kni.utils.defineCommon
 import com.dshatz.kni.utils.nativeCode
 import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.withSuffix
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
@@ -22,17 +21,17 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.joinToCode
-import kotlin.plus
 
 sealed class KSJniCall: WithParent {
 
     abstract val name: String
     abstract val returnType: TypeInfo
     abstract val parameters: List<ParamInfo>
-    abstract val declaration: KSFunctionDeclaration
 
     abstract val jniParams: List<ParamInfo>
     abstract val jniReturn: TypeInfo
+
+    abstract val modifiers: Set<KModifier>
 
     val externalFun: MemberName by lazy { parent.member("${name}External") }
 
@@ -41,16 +40,19 @@ sealed class KSJniCall: WithParent {
      */
     abstract val callToExternal: MemberName
 
-    val nativeInstance: TypeInfo? by lazy {
+    abstract val nativeInstance: TypeInfo.NativeInstance?
+
+    /*val nativeInstance: TypeInfo? by lazy {
         (parent as? FunctionParent.Class)?.className?.let(TypeInfo::NativeInstance)
-    }
+    }*/
 
     data class Blocking(
         override val name: String,
         override val returnType: TypeInfo,
         override val parameters: List<ParamInfo>,
-        override val declaration: KSFunctionDeclaration,
-        override val parent: FunctionParent
+        override val parent: FunctionParent,
+        override val modifiers: Set<KModifier>,
+        override val nativeInstance: TypeInfo.NativeInstance?
     ): KSJniCall() {
         override val jniParams: List<ParamInfo> by lazy {
             parameters + listOfNotNull(nativeInstance?.let { ParamInfo("instance", it) })
@@ -63,8 +65,9 @@ sealed class KSJniCall: WithParent {
         override val name: String,
         override val returnType: TypeInfo,
         override val parameters: List<ParamInfo>,
-        override val declaration: KSFunctionDeclaration,
-        override val parent: FunctionParent
+        override val parent: FunctionParent,
+        private val additionalModifiers: Set<KModifier>,
+        override val nativeInstance: TypeInfo.NativeInstance?
     ): KSJniCall() {
         val suspendCallbackClass: ClassName = parent.className.withSuffix("_${name}_SuspendCallback")
         val externalAsyncFun: MemberName = parent.member("${externalFun.simpleName}Async")
@@ -78,11 +81,12 @@ sealed class KSJniCall: WithParent {
             ) + listOfNotNull(nativeInstance?.let { ParamInfo("instance", it) })
         }
         override val jniReturn: TypeInfo = TypeInfo.Unit
+        override val modifiers: Set<KModifier> = additionalModifiers + KModifier.SUSPEND
 
         val callbackType = TypeInfo.Callback(suspendCallbackClass)
         private val jvmSuspendAdapter: TypeName = if (returnType == TypeInfo.Unit) {
-            Types.JvmSuspendCallback0
-        } else Types.JvmSuspendCallback.parameterizedBy(returnType.kotlinType)
+            Types.SuspendCallbackImpl0
+        } else Types.SuspendCallbackImpl.parameterizedBy(returnType.kotlinType)
 
         fun externalAsyncSpec(): FunSpec {
             val anonCallback = TypeSpec.anonymousClassBuilder()

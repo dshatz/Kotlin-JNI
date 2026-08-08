@@ -1,6 +1,5 @@
 package com.dshatz.kni
 
-import com.dshatz.kni.jniCall.getNativeImplClass
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.TypedCode
 import com.dshatz.kni.utils.capitalized
@@ -100,7 +99,8 @@ class TypeMapper(
         } else if (registry.isCallback(nonNull)) {
             TypeInfo.Callback(kotlinType)
         } else if (nonNull in registry.nativeInstances) {
-            TypeInfo.NativeInstance(kotlinType)
+            val baseClass = registry.nativeInstances[nonNull]?.baseClass
+            TypeInfo.NativeInstance(kotlinType, baseClass)
         } else if (nonNull == Types.KByteBuffer) {
             TypeInfo.ByteBuffer(nullable = nullable)
         } else if (nonNull == UNIT) {
@@ -290,8 +290,10 @@ sealed class TypeInfo {
     }
 
     data class NativeInstance(
-        override val kotlinType: TypeName
+        override val kotlinType: TypeName,
+        private val baseType: TypeName? = null
     ): TypeInfo() {
+        val commonType = baseType ?: kotlinType
         override val jniType: JNIType = JNIType(
             LONG.copy(nullable = kotlinType.isNullable),
             Types.JLong.copy(nullable = kotlinType.isNullable),
@@ -309,7 +311,7 @@ sealed class TypeInfo {
         override fun unpackCode(packedCode: TypedCode): TypedCode {
             assert(packedCode.type.notNullable() == Types.KLong)
             return packedCode.nullSafeCall(
-                CodeBlock.of("%M<%T>()", Types.Method.valueFromStableRefPointer, kotlinType)
+                CodeBlock.of("%M<%T>()", Types.Method.valueFromStableRefPointer, commonType)
                     .returnType(kotlinType)
             )
         }
@@ -320,11 +322,9 @@ sealed class TypeInfo {
 
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
             return packedCode.nullSafeCall(
-                CodeBlock.of("as%L()", (kotlinType as ClassName).simpleName)
+                CodeBlock.of("as%L()", (commonType as ClassName).simpleName)
                     .returnType(kotlinType)
             )
-//            return CodeBlock.of()
-//            return packedCode
         }
 
         override fun describe(): String {
@@ -351,7 +351,7 @@ sealed class TypeInfo {
 
         override fun unpackCode(packedCode: TypedCode): TypedCode {
             return packedCode.nullSafeCall(
-                CodeBlock.of("%M(env)", asNative).returnType(kotlinType.getNativeImplClass())
+                CodeBlock.of("%M(env)", asNative).returnType(kotlinType)
             )
         }
 

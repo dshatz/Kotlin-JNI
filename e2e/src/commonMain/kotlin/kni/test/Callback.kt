@@ -46,3 +46,8 @@ interface ThrowingCallback: AutoCloseable {
 interface RequestIntCallback: AutoCloseable {
     fun requestInt(nativeCallback: NativeCallback)
 }
+
+@JniCallback
+interface SuspendingCallback: AutoCloseable {
+    suspend fun getBlock(): ByteArray
+}

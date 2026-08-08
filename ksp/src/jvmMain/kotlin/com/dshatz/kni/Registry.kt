@@ -4,6 +4,7 @@ import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.KSDefinedSerializer
+import com.dshatz.kni.model.KSInstance
 import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.serialization.IncludedSerializers
@@ -28,12 +29,15 @@ class Registry {
     val callbacks: MutableMap<TypeName, KSCallback> = mutableMapOf()
 
     fun isCallback(typeName: TypeName): Boolean {
-        return typeName in callbacks
+        return typeName in callbacks || typeName in callbackClasses
     }
 
-    val nativeInstances: MutableSet<ClassName> = mutableSetOf()
+    val callbackClasses: MutableSet<ClassName> = mutableSetOf()
+
+    val nativeInstances: MutableMap<ClassName, KSInstance> = mutableMapOf()
 
     val jniCallSuspendAdapters: MutableSet<KSCallback> = mutableSetOf()
+    val callbackSuspendAdapters: MutableSet<KSInstance> = mutableSetOf()
 
     enum class Platform {
         COMMON,
@@ -54,8 +58,6 @@ class Registry {
 
     fun nativeInstancesToString(): String = """
         Registered native instances:
-        ${nativeInstances.joinToString("\n")}
+        ${nativeInstances.keys.joinToString("\n")}
     """.trimIndent()
-
-    val flowFields: MutableMap<FunctionParent.Class, List<KSFlowProp>> = mutableMapOf()
 }
