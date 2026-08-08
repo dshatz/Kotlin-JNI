@@ -13,6 +13,7 @@ import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
 import com.google.devtools.ksp.containingFile
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -20,6 +21,7 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
+import kotlin.io.encoding.Base64.Default.encodeToByteArray
 
 class NativeKommons : SymbolProcessorProvider {
     var called: Boolean = false
@@ -82,15 +84,33 @@ class NativeKommons : SymbolProcessorProvider {
             }
 
             serializableProcessor.collectDefinedSerializers(resolver)
+            callbackProcessor.collectCallbackClasses(resolver)
             jniCallProcessor.collectNativeInstances(resolver)
             callbackProcessor.collectDeclarations(resolver)
             jniCallProcessor.collectJniCalls(resolver)
             flowProcessor.process()
             serializableProcessor.collectGenericSerializers()
 
+            val deps = Dependencies(true, sources = originatingFiles.toTypedArray())
+            codeGenerator.createNewFile(
+                deps,
+                "com.dshatz.kni.debug",
+                "nativeInstances",
+                "txt"
+            ).write(registry.nativeInstances.values.joinToString("\n").encodeToByteArray())
+
+            codeGenerator.createNewFile(
+                deps,
+                "com.dshatz.kni.debug",
+                "callbacks",
+                "txt"
+            ).write(registry.callbacks.values.joinToString("\n").encodeToByteArray())
+
+            registry.nativeInstances.keys.joinToString { "\n" }
             when (platform) {
                 Platform.COMMON -> {
                     callbackProcessor.generateSuspendAdapters().write()
+                    callbackProcessor.generateCommon().write()
                     serializableProcessor.generateSerializers(serializables).write()
                     serializableProcessor.generateGenericSerializers()?.write()
                     flowProcessor.generateCommon().write()

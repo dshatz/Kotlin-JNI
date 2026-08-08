@@ -2,17 +2,13 @@ package com.dshatz.kni.flow
 
 import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.Registry
-import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeMapper
-import com.dshatz.kni.Types
-import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.flow.KSFlowProp
+import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
-import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.ParameterizedTypeName
 
 class FlowProcessor(
     override val registry: Registry,
@@ -21,59 +17,32 @@ class FlowProcessor(
 ) : BaseProcessor() {
 
     fun process() {
-        collectFlows()
         prepareFlowCallbacks()
     }
 
-    private fun collectFlows() {
-        val flowFields = registry.jniCalls
-            .map { it.parent }
-            .filterIsInstance<FunctionParent.Class>()
-            .groupBy { it }
-            .mapValues { (classLoc, _) ->
-                classLoc.props.filter {
-                    (it.type as? ParameterizedTypeName)?.rawType == Types.NativeBackedFlow
-                }.filter {
-                    if (it.isMutable) logger.error("com.dshatz.kni.flows.NativeBackedFlow<T> cannot be a mutable property")
-                    !it.isMutable
-                }.map {
-                    context(it.declaration) {
-                        val typeArg = (it.type as ParameterizedTypeName).typeArguments.first()
-                        KSFlowProp(
-                            name = it.name,
-                            innerType = mapper.mapType(typeArg),
-                            parent = classLoc
-                        )
-                    }
-                }
-            }
-        registry.flowFields.putAll(flowFields)
-    }
+    val flowProps: Sequence<KSFlowProp> get() = registry.nativeInstances.asSequence()
+        .flatMap { (_, instance) -> instance.flowProps }
 
     private fun prepareFlowCallbacks() {
-        registry.flowFields.map { (parentClass, fields) ->
-            val flowCallbacks = fields.map { flowProp ->
-                KSCallback(
-                    type = flowProp.baseCallbackClass,
-                    funs = listOf(flowProp.onValueFun),
-                    dependency = parentClass.declaration.containingFile!!,
-                    superType = null
-                )
-            }.associateBy { it.type }
-            registry.callbacks.putAll(flowCallbacks)
-        }
+        val callbacks = flowProps.map { flowProp ->
+            KSCallback(
+                type = flowProp.baseCallbackClass,
+                funs = listOf(flowProp.onValueFun),
+                superType = null
+            )
+        }.associateBy { it.type }
+        registry.callbacks.putAll(callbacks)
     }
 
     fun generateCommon(): List<FileSpec> {
-        return registry.flowFields.keys.map { parent ->
-            val fields = registry.flowFields[parent].orEmpty()
-            val fileClass = ClassName(
-                parent.className.packageName,
-                "${parent.className.simpleName}FlowCallbacks"
-            )
-            FileSpec.builder(fileClass)
-                .addTypes(fields.map(KSFlowProp::generateFlowCallbackCommon))
-                .build()
+        return registry.nativeInstances.mapNotNull { (_, parentInstance) ->
+            val props = parentInstance.flowProps
+            val fileClass = parentInstance.className.withSuffix("_FlowCallbacks")
+            if (props.isNotEmpty()) {
+                FileSpec.builder(fileClass)
+                    .addTypes(props.map(KSFlowProp::generateFlowCallbackCommon))
+                    .build()
+            } else null
         }
     }
 }

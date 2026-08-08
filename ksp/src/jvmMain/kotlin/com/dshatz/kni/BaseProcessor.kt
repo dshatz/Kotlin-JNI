@@ -1,5 +1,6 @@
 package com.dshatz.kni
 
+import com.dshatz.kni.jniCall.visibilityKModifier
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSConstructor
 import com.dshatz.kni.model.ParamInfo
@@ -38,7 +39,6 @@ abstract class BaseProcessor {
             val pkg = packageName.asString()
             val classname = ClassName(pkg, cls)
             FunctionParent.TopLevel(
-                this,
                 classNameKt = ClassName(pkg,clsKt),
                 className = classname,
             )
@@ -60,25 +60,16 @@ abstract class BaseProcessor {
                     ?.mapIndexed { idx, constructor ->
                         KSConstructor(
                             id = idx,
-                            params = constructor.parameters.toTypeInfos()
+                            params = constructor.parameters.toTypeInfos(),
+                            modifier = constructor.modifiers.visibilityKModifier
                         )
                     }?.toList().orEmpty()
                 FunctionParent.Class(
-                    declaration = this,
                     className = this.toClassName(),
-                    constructors = constructors,
-                    superTypes = superTypes.map { it.resolve().toTypeName() }.toList(),
-                    props = declarations.filterIsInstance<KSPropertyDeclaration>().map {
-                        PropInfo(
-                            it.simpleName.asString(),
-                            type = it.type.toTypeName(),
-                            isMutable = it.isMutable,
-                            declaration = it
-                        )
-                    }.toList()
+                    superTypes = superTypes.map { it.resolve().toTypeName() }.toList()
                 )
             }
-            ClassKind.OBJECT -> FunctionParent.Object(this, this.toClassName())
+            ClassKind.OBJECT -> FunctionParent.Object(this.toClassName())
             else -> error("Unsupported ClassKind: ${classKind}")
         }
         return type

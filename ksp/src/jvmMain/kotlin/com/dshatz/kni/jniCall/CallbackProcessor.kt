@@ -7,19 +7,12 @@ import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.Types.typeOf
 import com.dshatz.kni.annotations.JniCallback
+import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.KSCallbackFun
+import com.dshatz.kni.model.KSInstance
+import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.ParamInfo
-import com.dshatz.kni.needsIsNullParam
-import com.dshatz.kni.utils.addCode
-import com.dshatz.kni.utils.addReturn
-import com.dshatz.kni.utils.capitalized
-import com.dshatz.kni.utils.defineCommon
-import com.dshatz.kni.utils.defineNative
-import com.dshatz.kni.utils.jniClassName
-import com.dshatz.kni.utils.nonNullOrPlaceholder
-import com.dshatz.kni.utils.nullSafeCall
-import com.dshatz.kni.utils.returnType
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.KSPLogger
@@ -27,21 +20,14 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.Modifier
-import com.squareup.kotlinpoet.ANY
-import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.PropertySpec
-import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
-import com.squareup.kotlinpoet.joinToCode
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 
@@ -51,13 +37,11 @@ class CallbackProcessor(
     override val mapper: TypeMapper
 ): BaseProcessor() {
 
-    fun collectDeclarations(
+    private fun getDefinitions(
         resolver: Resolver
-    ) {
-        val clss = resolver.getSymbolsWithAnnotation(JniCallback::class.java.name).toList()
+    ): List<KSClassDeclaration> {
+        return resolver.getSymbolsWithAnnotation(JniCallback::class.java.name).toList()
             .filterIsInstance<KSClassDeclaration>().distinct()
-
-        val callbacks = clss
             .filter { declaration ->
                 if (declaration.getAllSuperTypes().none { it.toTypeName() typeOf Types.AutoCloseable }) {
                     logger.error("@JniCallback annotated interface should extend kotlin.AutoCloseable.", declaration)
@@ -65,6 +49,19 @@ class CallbackProcessor(
                 }
                 true
             }
+    }
+
+    fun collectCallbackClasses(
+        resolver: Resolver
+    ) {
+        val classes = getDefinitions(resolver).map { it.toClassName() }
+        registry.callbackClasses.addAll(classes)
+    }
+
+    fun collectDeclarations(
+        resolver: Resolver
+    ) {
+        val callbacks = getDefinitions(resolver)
             .associate { declaration ->
             val funDeclarations = declaration.declarations
                 .filterIsInstance<KSFunctionDeclaration>()
@@ -73,30 +70,42 @@ class CallbackProcessor(
                     // Remove close function, if defined (overridden). Call to it is already implemented in BaseCallback.
                     it.simpleName.asString() == "close" && it.parameters.isEmpty() && it.returnType?.toTypeName() == UNIT
                 }
-            val funs = funDeclarations.map { f ->
-                if (Modifier.SUSPEND in f.modifiers) {
+                val callbackClass = declaration.toClassName()
+                val funs = funDeclarations.map { f ->
+                /*if (Modifier.SUSPEND in f.modifiers) {
                     logger.error("suspend functions are not supported in @JniCallback.", f)
-                }
-                KSCallbackFun(
-                    name = f.simpleName.asString(),
-                    returnType = mapper.mapType(f.returnType!!),
-                    parameters = f.parameters.toTypeInfos(),
-                    parent = f.functionLocation()
-                )
+                }*/
+                    if (Modifier.SUSPEND in f.modifiers) {
+                        KSCallbackFun.Suspend(
+                            name = f.simpleName.asString(),
+                            returnType = mapper.mapType(f.returnType!!),
+                            parameters = f.parameters.toTypeInfos(),
+                            parent = f.functionLocation() as FunctionParent.Class,
+                            callbackClass = callbackClass
+                        )
+                    } else {
+                        KSCallbackFun.Blocking(
+                            name = f.simpleName.asString(),
+                            returnType = mapper.mapType(f.returnType!!),
+                            parameters = f.parameters.toTypeInfos(),
+                            parent = f.functionLocation() as FunctionParent.Class,
+                            callbackClass = callbackClass
+                        )
+                    }
+
             }.toList()
-            val callbackType = declaration.toClassName()
-            callbackType to KSCallback(
-                type = callbackType,
+            callbackClass to KSCallback(
+                type = callbackClass,
                 funs = funs,
-                dependency = declaration.containingFile!!,
                 superType = null
             )
         }
         registry.callbacks.putAll(callbacks)
+        registerSuspendAdapters()
     }
 
     fun generateNative(): List<FileSpec> {
-        return registry.callbacks.values.map(::generateNativeCallback)
+        return registry.callbacks.values.map(KSCallback::generateNative)
     }
 
     fun generateSuspendAdapters(): List<FileSpec> {
@@ -113,184 +122,65 @@ class CallbackProcessor(
                 .build()
         }
     }
-
-    private fun generateNativeCallback(callback: KSCallback): FileSpec {
-        val cls = callback.type
-        val implCls = cls.getNativeImplClass()
-
-        fun FunSpec.Builder.addParams(params: List<ParamInfo>): FunSpec.Builder {
-            params.forEach {
-                addParameter(it.paramSpecKotlin())
-            }
-            return this
-        }
-
-        val funs = callback.funs.map { f ->
-            val call = Def.callHelper(f.returnType)
-            val (callCode, jniResultRef) = CodeBlock.builder()
-                .defineNative(
-                    "jniCallResult",
-                    f.returnType,
-                    "env.%M(%N, %N, %N)",
-                    call,
-                    "adapterClassGlobal",
-                    f.name + "ID",
-                    "args",
-                )
-            val unpacked = jniResultRef.unpackCode()
-            val returnConverted = CodeBlock.builder()
-                .add(callCode.code)
-                .add(unpacked.code)
-                .build()
-            val params = f.parameters
-            FunSpec.builder(f.name)
-                .addParams(f.parameters)
-                .addKdoc(CodeBlock.of("@returns ${f.returnType.kotlinType} converted using ${f.returnType}"))
-                .addModifiers(KModifier.OVERRIDE)
-                .returns(f.returnType.kotlinType)
-                .addCode(CodeBlock.builder()
-                    .beginControlFlow("return runIfOpen")
-                    .add("%L", buildArgs(params, returnConverted))
-                    .endControlFlow()
-                    .build()
-                )
-                .build()
-        }
-
-        val methodIds = callback.funs.map { f ->
-            PropertySpec.builder("${f.name}ID", Types.JMethodID)
-                .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.name, f.getSignature()))
-                .build()
-        }
-
-        val constructor = FunSpec.constructorBuilder()
-            .addParameter(ParameterSpec("env", Types.Environment))
-            .addParameter(ParameterSpec("instance", Types.JObject))
-            .build()
-
-        val bridgeClass = TypeSpec.classBuilder(implCls)
-            .addFunctions(funs.toList())
-            .addProperties(methodIds.toList())
-            .superclass(Types.BaseCallback)
-            .primaryConstructor(constructor)
-            .apply {
-                callback.superType?.let(::addSuperinterface)
-            }
-            .addSuperclassConstructorParameter("%S", callback.type.jniClassName())
-            .addSuperclassConstructorParameter("%S", callback.jvmAdapterName().jniClassName())
-            .addSuperclassConstructorParameter("env")
-            .addSuperclassConstructorParameter("instance")
-            .addSuperinterface(cls)
-            .build()
-        val factory = FunSpec.builder("asNative${cls.simpleName.capitalized()}")
-            .receiver(Types.JObject)
-            .addParameter("env", Types.Environment)
-            .returns(cls.getNativeImplClass())
-            .addCode(CodeBlock.of("return %T(env, this)", cls.getNativeImplClass()))
-            .build()
-
-        val fileSpec = FileSpec.builder(implCls)
-            .addType(bridgeClass)
-            .addFunction(factory)
-            .addImport("kotlinx.cinterop", "get")
-            .addAnnotation(optin())
-            .build()
-        return fileSpec
-    }
-
     fun generateJvm(): List<FileSpec> {
-        return registry.callbacks.values.map(::generateJvmAdapter)
+        return registry.callbacks.values.map(KSCallback::generateJvmAdapter)
     }
 
-    private fun generateJvmAdapter(callback: KSCallback): FileSpec {
-        val file = callback.jvmAdapterName()
-        val funs = callback.funs.map { f ->
-            val fName = f.name
-            val paramsSpecs = f.parameters.map { it.paramSpecJvm() }
-            val isNullParamSpecs = f.parameters.filter { it.typeInfo.needsIsNullParam() }.map {
-                ParameterSpec("_${it.name}IsNull", Types.KBoolean)
-            }
-            val convertArgsCode = f.parameters.joinToCode(",\n") {
-                val unpackCode = it.refJvm.unpackCode().code
-                if (it.typeInfo.needsIsNullParam()) {
-                    CodeBlock.of("if (_%NIsNull) null else %L", it.name, unpackCode)
-                } else unpackCode
-            }
-            val builder = FunSpec.builder(fName)
-                .addParameter(ParameterSpec("instance", callback.type))
-                .addParameters(paramsSpecs)
-                .addParameters(isNullParamSpecs)
-                .addAnnotation(JvmStatic::class)
-            val makeCall = CodeBlock.of("%N.%N(%L)", "instance", fName, convertArgsCode)
-                .returnType(f.returnType.kotlinType)
+    fun generateCommon(): List<FileSpec> {
+        return registry.callbacks.values.flatMap { it.funs }.filterIsInstance<KSCallbackFun.Suspend>()
+            .map(KSCallbackFun.Suspend::generateSuspendAdapter)
+    }
 
-            if (f.returnType.kotlinType != Types.UnitOrVoid) {
-                val (getJvmResult, jvmResultRef) = CodeBlock.builder().defineCommon(
-                    "jvmResult",
-                    f.returnType,
-                    "%L",
-                    makeCall.code
+    private fun registerSuspendAdapters() {
+        val adapters = registry.callbacks.values.flatMap {
+            it.funs.filterIsInstance<KSCallbackFun.Suspend>().map { f ->
+                val instanceType = TypeInfo.NativeInstance(
+                    f.suspendAdapterClass,
+                    f.baseSuspendAdapterClass
                 )
-                builder
-                    .addCode(getJvmResult)
-                    .addKdoc("return type is ${f.returnType}")
-                    .addReturn(jvmResultRef.packToJvm())
-            } else {
-                builder.addStatement("%L", makeCall.code)
+                KSInstance(
+                    f.suspendAdapterClass,
+                    emptyList(),
+                    listOf(
+                        KSJniCall.Blocking(
+                            f.onValueFun,
+                            returnType = TypeInfo.Unit,
+                            parameters = listOf(ParamInfo("value", f.returnType)),
+                            parent = FunctionParent.Class(
+                                f.suspendAdapterClass,
+                                emptyList(),
+                                KModifier.PRIVATE
+                            ),
+                            modifiers = setOf(KModifier.OVERRIDE),
+                            nativeInstance = instanceType
+                        ),
+                        KSJniCall.Blocking(
+                            f.onFailureFun,
+                            returnType = TypeInfo.Unit,
+                            parameters = listOf(
+                                ParamInfo("message", TypeInfo.STRING),
+                                ParamInfo("stackTrace", TypeInfo.STRING)
+                            ),
+                            parent = FunctionParent.Class(
+                                f.suspendAdapterClass,
+                                emptyList(),
+                                KModifier.PRIVATE
+                            ),
+                            modifiers = setOf(KModifier.OVERRIDE),
+                            nativeInstance = instanceType
+                        )
+                    ),
+                    flowProps = emptyList(),
+                    superInterfaces = setOf(
+                        Types.SuspendCallback.parameterizedBy(f.returnType.kotlinType)
+                    ),
+                    baseClass = f.baseSuspendAdapterClass
+                )
             }
-
-            builder.build()
-        }.toList()
-        return FileSpec.builder(file)
-            .addType(
-                TypeSpec.objectBuilder(file)
-                    .addOriginatingKSFile(callback.dependency)
-                    .addFunctions(funs).build()
-            )
-            .build()
+        }
+        registry.nativeInstances.putAll(adapters.associateBy { it.className })
+        registry.callbackSuspendAdapters.addAll(adapters)
     }
-
-    private fun buildArgs(
-        args: List<ParamInfo>,
-        innerCode: CodeBlock,
-    ): CodeBlock {
-        return CodeBlock.builder()
-            .beginControlFlow("%M", Def.memScoped)
-            .addStatement("val args = %M<%T>(%L)", Def.allocArray, Types.JValue, args.size + 1)
-            .apply {
-                addStatement("args[0].l = ref.%M()", Def.reinterpret)
-                args.forEachIndexed { idx, arg ->
-                    val type = arg.typeInfo
-                    val argCode = CodeBlock.of("%N", arg.name).returnType(type.kotlinType).nonNullOrPlaceholder().copy(type = type.jniType.nativeType)
-                    val valueCode = type.packCode(argCode)
-                    val reinterpreted = if (type.jniType.jniField == "l") {
-                        valueCode.nullSafeCall(CodeBlock.of("%M()", Def.reinterpret).returnType(ANY))
-                    } else valueCode
-                    addStatement("args[%L].%L = %L", idx + 1, type.jniType.jniField, reinterpreted.code)
-                }
-                args.filter { it.typeInfo.needsIsNullParam() }.mapIndexed { idx, arg ->
-                    val globalIdx = idx + args.size + 1
-                    addStatement("args[%L].z = (%N == null).%M()", globalIdx, arg.name, Types.Method.ToJBoolean)
-                }
-            }
-            .add(innerCode)
-            .endControlFlow()
-            .build()
-    }
-}
-
-internal fun TypeName.getNativeImplClass(): ClassName {
-    val cls = this as ClassName
-    return ClassName(
-        packageName = cls.packageName,
-        "_" + cls.simpleName + "NativeImpl"
-    )
-}
-
-private fun optin(): AnnotationSpec {
-    return AnnotationSpec.builder(ClassName("kotlin", "OptIn"))
-        .addMember("%T::class", ClassName("kotlinx.cinterop", "ExperimentalForeignApi"))
-        .build()
 }
 
 internal object Def {

@@ -11,23 +11,25 @@ import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSNode
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
 import jdk.javadoc.internal.doclets.toolkit.util.DocPath.parent
 
 sealed class FunctionParent {
-    abstract val declaration: KSNode
     abstract val classNameKt: ClassName
     abstract val className: ClassName
 
+    interface WithVisibility {
+        val modifier: KModifier?
+    }
+
     abstract fun member(simpleName: String): MemberName
     data class Class(
-        override val declaration: KSClassDeclaration,
         override val className: ClassName,
-        val constructors: List<KSConstructor>,
         val superTypes: List<TypeName>,
-        val props: List<PropInfo>
-    ): FunctionParent() {
+        override val modifier: KModifier? = null
+    ): FunctionParent(), WithVisibility {
         override val classNameKt: ClassName = className
         override fun member(simpleName: String): MemberName {
             return MemberName(className, simpleName)
@@ -35,9 +37,9 @@ sealed class FunctionParent {
     }
 
     data class Object(
-        override val declaration: KSClassDeclaration,
-        override val className: ClassName
-    ): FunctionParent() {
+        override val className: ClassName,
+        override val modifier: KModifier? = null
+    ): FunctionParent(), WithVisibility {
         override val classNameKt: ClassName = className
         override fun member(simpleName: String): MemberName {
             return MemberName(className, simpleName)
@@ -45,7 +47,6 @@ sealed class FunctionParent {
     }
 
     data class TopLevel(
-        override val declaration: KSFunctionDeclaration,
         override val className: ClassName,
         override val classNameKt: ClassName
     ): FunctionParent() {
