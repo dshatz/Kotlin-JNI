@@ -4,6 +4,7 @@ on:
   pull_request_target:
     branches:
       - master
+      - dev
     paths-ignore:
       - 'doc/**'
       - '**.md'
@@ -11,6 +12,7 @@ on:
   push:
     branches:
       - master
+      - dev
     paths-ignore:
       - 'doc/**'
       - '**.md'
