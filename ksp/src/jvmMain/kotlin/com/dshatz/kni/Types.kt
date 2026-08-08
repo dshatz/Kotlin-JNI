@@ -70,8 +70,8 @@ internal object Types {
     val NativeInstanceJvm = ClassName("com.dshatz.kni", "NativeInstanceJvm")
     val SuspendCallback = ClassName("com.dshatz.kni.flows", "SuspendCallback")
     val SuspendCallback0 = ClassName("com.dshatz.kni.flows", "SuspendCallback0")
-    val JvmSuspendCallback = ClassName("com.dshatz.kni.flows", "JvmSuspendCallback")
-    val JvmSuspendCallback0 = ClassName("com.dshatz.kni.flows", "JvmSuspendCallback0")
+    val SuspendCallbackImpl = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl")
+    val SuspendCallbackImpl0 = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl0")
 
     val AtomicLong = ClassName("kotlin.concurrent.atomics", "AtomicLong")
 

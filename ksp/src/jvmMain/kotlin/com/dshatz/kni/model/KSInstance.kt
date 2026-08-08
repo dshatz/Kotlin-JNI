@@ -12,18 +12,23 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.joinToCode
 
 data class KSInstance(
     val className: ClassName,
     val constructors: List<KSConstructor>,
     val funs: List<KSJniCall>,
-    val flowProps: List<KSFlowProp>
+    val flowProps: List<KSFlowProp>,
+    val superInterfaces: Set<TypeName> = emptySet(),
+    val modifiers: Set<KModifier> = emptySet(),
+    val baseClass: TypeName? = null // in case it is not expect/actual, this is the class available in all targets.
 ) {
-    val typeInfo = TypeInfo.NativeInstance(className)
+    val typeInfo = TypeInfo.NativeInstance(className, baseClass)
 
     fun generateNative(): FileSpec {
         val funSpecs = funs.map(KSJniCall::generateCnameFunction)
@@ -94,7 +99,7 @@ data class KSInstance(
             .addCode(
                 CodeBlock.builder()
                     .addStatement("%L.close()", unpack.code)
-                    .addStatement("%N.%M<%T>()", "instance", Types.Method.ReleaseStableRef, className)
+                    .addStatement("%N.%M<%T>()", "instance", Types.Method.ReleaseStableRef, baseClass ?: className)
                     .build()
             )
             .build()

@@ -70,3 +70,10 @@ fun cnameFunBuilder(
         cname = jniCname
     ).addKdoc("Calling user function [$callFun]")
 }
+
+fun List<CodeBlock>.joinToString(separator: String = ", "): CodeBlock {
+    return CodeBlock.of(
+        generateSequence { "%L" }.take(size).joinToString(separator),
+        args = this.toTypedArray()
+    )
+}
