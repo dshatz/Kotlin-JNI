@@ -135,7 +135,8 @@ class SerializerProcessor(
                 .filterIsInstance<IncludedSerializers.Serializer.Generic>()
         }
 
-        val usedInCalls = registry.jniCalls.asSequence().flatMap {
+        val allCalls = registry.jniCalls.asSequence() + registry.nativeInstances.values.asSequence().flatMap { it.funs }
+        val usedInCalls = allCalls.flatMap {
             it.parameters.map { it.typeInfo } + it.returnType
         }.requiredSerializers()
 
