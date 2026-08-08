@@ -11,7 +11,7 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 @OptIn(ExperimentalAtomicApi::class)
-abstract class NativeInstanceJvm() : AutoCloseable {
+abstract class NativeInstanceJvm() : AsyncSafeCloseable() {
 
     constructor(nativeInstancePtr: Long) : this() {
         nativeInstance.store(nativeInstancePtr)
@@ -21,55 +21,35 @@ abstract class NativeInstanceJvm() : AutoCloseable {
 
     protected val nativeInstancePtr get() = nativeInstance.load()
 
-    // Tracks active operations to prevent close() from freeing memory early
-    val activeOperations = AtomicInt(0)
-
-    @Volatile
-    protected var isClosed: Boolean = false
-
     protected inline fun <T> withValidInstance(block: (Long) -> T): T {
-        activeOperations.incrementAndFetch()
+        acquire()
         try {
-            if (isClosed) {
-                error("${this::class.simpleName} is closed.")
-            }
             val handle = nativeInstance.load()
             if (handle == 0L) {
                 error("${this::class.simpleName} is closed.")
             }
             return block(handle)
         } finally {
-            activeOperations.decrementAndFetch()
+            release()
         }
     }
 
     protected suspend inline fun <T> withValidInstanceSuspend(crossinline block: suspend (Long) -> T): T {
-        activeOperations.incrementAndFetch()
+        acquire()
         try {
-            if (isClosed) {
-                error("${this::class.simpleName} is closed.")
-            }
             val handle = nativeInstance.load()
             if (handle == 0L) {
                 error("${this::class.simpleName} is closed.")
             }
             return block(handle)
         } finally {
-            activeOperations.decrementAndFetch()
+            release()
         }
     }
 
     public abstract fun disposeNative(instance: Long)
 
-    override fun close() {
-        if (isClosed) return
-
-        // Wait safely until all active sync and async operations finish
-        while (activeOperations.load() > 0) {
-            Thread.yield()
-        }
-        isClosed = true
-
+    override fun performCleanup() {
         val handleToDispose = nativeInstance.exchange(0L)
         if (handleToDispose != 0L) {
             disposeNative(handleToDispose)

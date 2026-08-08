@@ -19,6 +19,7 @@ val suspendTests by testSuite {
 
         }
         val obj = SuspendClass(callback)
-        obj.callToSuspendJvm() shouldBe data
+        obj.callToSuspendJvm().isSuccess shouldBe true
+        obj.callToSuspendJvm().getOrThrow() shouldBe data
     }
 }

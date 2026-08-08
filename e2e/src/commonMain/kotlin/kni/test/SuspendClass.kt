@@ -7,7 +7,10 @@ expect class SuspendClass(
 ): AutoCloseable {
 
     @JniCall
-    suspend fun callToSuspendJvm(): ByteArray
+    suspend fun callToSuspendJvm(): Result<ByteArray>
+
+    @JniCall
+    suspend fun doWork(): Result<Unit>
 
     override fun close()
 
