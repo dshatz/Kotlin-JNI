@@ -278,6 +278,21 @@ fun TestSuiteScope.bridgeTests() {
         job.join()
         job.isCancelled shouldBe true
     }
+
+    test("suspend callback") {
+        val data = ByteArray(10) { it.toByte() }
+        val suspendingCallback = object: SuspendingCallback {
+            override suspend fun getBlock(): ByteArray {
+                println("getBlock!")
+                return data
+            }
+            override fun close() {}
+
+        }
+        // This will call to native, native will call the callback above, and return here.
+        val result = SuspendClass(suspendingCallback).callToSuspendJvm()
+        result shouldBe data
+    }
 }
 
 class NoopCloseListener: CloseListener {

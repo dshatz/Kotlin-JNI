@@ -5,10 +5,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-val nativeScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+val suspendAdapterScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
 fun <T> SuspendCallback<T>.executeSuspend(block: suspend () -> T) {
-    nativeScope.launch {
+    suspendAdapterScope.launch {
         try {
             val result = block()
             onSuccess(result)
@@ -26,7 +26,7 @@ fun <T> SuspendCallback<T>.executeSuspend(block: suspend () -> T) {
 
 
 fun SuspendCallback0.executeSuspend(block: suspend () -> Unit) {
-    nativeScope.launch {
+    suspendAdapterScope.launch {
         try {
             block()
             onSuccess()

@@ -1,6 +1,5 @@
 package com.dshatz.kni.utils
 
-import com.dshatz.kni.jniCall.joinToString
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName

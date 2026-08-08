@@ -8,7 +8,3 @@ interface SuspendCallback<T>: AutoCloseable {
     fun onFailure(message: String, stackTrace: String)
 }
 
-interface SuspendCallback0: AutoCloseable {
-    fun onSuccess()
-    fun onFailure(message: String, stackTrace: String)
-}
