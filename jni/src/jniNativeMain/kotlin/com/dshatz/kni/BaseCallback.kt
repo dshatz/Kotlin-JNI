@@ -17,6 +17,7 @@ import com.dshatz.kni.utils.GetStaticMethodID
 import com.dshatz.kni.utils.NewGlobalRef
 import com.dshatz.kni.utils.getJavaVM
 import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
@@ -32,7 +33,6 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.value
 import kotlin.concurrent.Volatile
-import kotlin.native.concurrent.ThreadLocal
 
 @OptIn(ExperimentalForeignApi::class)
 open class BaseCallback(
@@ -40,17 +40,12 @@ open class BaseCallback(
     private val jvmAdapterClassName: String,
     env: CPointer<JNIEnvVar>,
     instance: jobject
-): AutoCloseable {
-
-    protected val lock = ReentrantLock()
-
-    @Volatile
-    var isClosed: Boolean = false
-        protected set
+): AutoCloseable, AsyncSafeCloseable() {
 
     private val javaVm: CPointer<JavaVMVar> = env.getJavaVM()
 
-    val env: CPointer<JNIEnvVar> get() {
+    val env: CPointer<JNIEnvVar>
+        get() {
         /*envCache?.let { return it }*/
 
         val nativeEnvPtr = nativeHeap.alloc<CPointerVar<JNIEnvVar>>()
@@ -90,8 +85,11 @@ open class BaseCallback(
     val ref: jobject = env.NewGlobalRef(instance)
 
     protected inline fun <T> runIfOpen(block: () -> T): T {
-        return lock.withLock {
-            if (isClosed) error("${this::class.simpleName} callback is closed.") else block()
+        acquire()
+        try {
+            return block()
+        } finally {
+            release()
         }
     }
 
@@ -121,27 +119,17 @@ open class BaseCallback(
         }
     }
 
-    override fun close() {
-        lock.withLock {
-            if (isClosed) return@withLock
-            isClosed = true
+    override fun performCleanup() {
+        runCatching {
+            callCloseOnJvm()
+        }.onFailure { it.printStackTrace() }
 
-            runCatching {
-                callCloseOnJvm()
-            }.onFailure { it.printStackTrace() }
-
-            runCatching {
-                env.DeleteGlobalRef(ref)
-                env.DeleteGlobalRef(jvmClassGlobal)
-                env.DeleteGlobalRef(adapterClassGlobal)
-            }.onFailure {
-                it.printStackTrace()
-            }
+        runCatching {
+            env.DeleteGlobalRef(ref)
+            env.DeleteGlobalRef(jvmClassGlobal)
+            env.DeleteGlobalRef(adapterClassGlobal)
+        }.onFailure {
+            it.printStackTrace()
         }
     }
 }
-
-/*
-@OptIn(ExperimentalForeignApi::class)
-@ThreadLocal
-private var envCache: CPointer<JNIEnvVar>? = null*/
