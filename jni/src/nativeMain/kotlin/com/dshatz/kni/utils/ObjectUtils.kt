@@ -43,6 +43,7 @@ fun CPointer<JNIEnvVar>.checkException(): String? {
     val check = ExceptionCheck()
     return if (check == 1.toUByte()) {
         val jexception = ExceptionOccurred()!!
+        ExceptionClear()
         val cls = GetObjectClass(jexception)
         val getMessage = GetMethodID(cls, "getMessage", "()Ljava/lang/String;")!!
         val messageStringObj = CallObjectMethodA(jexception, getMessage, null, noExceptionCheck = true)
@@ -55,7 +56,6 @@ fun CPointer<JNIEnvVar>.checkException(): String? {
         }
         val exceptionClassName = classNameObj?.toKString(this) ?: "UnknownJvmException"
         val message = messageStringObj.orEmpty()
-        ExceptionClear()
         throw JvmCallException(exceptionClassName, message)
     } else null
 }
