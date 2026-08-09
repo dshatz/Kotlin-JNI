@@ -47,6 +47,37 @@ kotlin {
         }
     }
 
+    applyHierarchyTemplate {
+        common {
+            group("androidNative") {
+                withAndroidNative()
+            }
+            group("jniJvm") {
+                withAndroidTarget()
+                withJvm()
+            }
+            group("jniNative") {
+                withLinux()
+                withMacos()
+                withMingw()
+                group("androidNative")
+            }
+            group("jniCommon") {
+                group("jniJvm")
+                group("jniNative")
+            }
+            group("nonJni") {
+                withIos()
+                withTvos()
+                withWatchos()
+                group("web") {
+                    withWasmJs()
+                    withJs()
+                }
+            }
+        }
+    }
+
     jvm()
 
     optionalTargets {
@@ -110,6 +141,9 @@ kotlin {
                 implementation(libs.coroutines.core)
             }
         }
+        commonMain.dependencies {
+            api(libs.coroutines.core)
+        }
 
         commonTest.dependencies {
             implementation(libs.test.core)
@@ -119,7 +153,6 @@ kotlin {
         val jniCommonMain by getting {
             dependencies {
                 implementation(project(":annotations"))
-                implementation(libs.coroutines.core)
             }
         }
 
