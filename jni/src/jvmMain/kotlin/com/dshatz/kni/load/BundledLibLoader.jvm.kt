@@ -6,8 +6,11 @@ import java.util.Locale
 import kotlin.io.path.createTempDirectory
 
 actual object BundledLibLoader {
+    val loaded: MutableSet<String> = mutableSetOf()
     actual fun loadBundledLibrary(name: String) {
+        if (name in loaded) return
         loadLibraryFromJar(name)
+        loaded += name
     }
 
     private val osName = System.getProperty("os.name").lowercase(Locale.ENGLISH)
