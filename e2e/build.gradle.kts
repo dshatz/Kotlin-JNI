@@ -4,6 +4,7 @@ import com.dshatz.kni.bundlesNatives
 import com.google.devtools.ksp.gradle.KspAATask
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinTest
@@ -19,6 +20,15 @@ plugins {
 kni {
     autoWire {
         kspDependency = project(":ksp")
+    }
+}
+
+fun KotlinNativeTarget.androidLinkerOpts() {
+    binaries.all {
+        // Force the linker to use 16KB alignment
+        linkerOpts("-z", "max-page-size=16384")
+        linkerOpts("-z", "common-page-size=16384")
+        linkerOpts("-Wl,--allow-shlib-undefined")
     }
 }
 
@@ -46,7 +56,10 @@ kotlin {
         )
     }
     desktopNativeTargets.forEach { it.binaries.sharedLib() }
-    androidNativeTargets.forEach { it.binaries.sharedLib() }
+    androidNativeTargets.forEach {
+        it.binaries.sharedLib()
+        it.androidLinkerOpts()
+    }
 
 
     jvm {

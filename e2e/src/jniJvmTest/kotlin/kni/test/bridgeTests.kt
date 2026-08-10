@@ -278,6 +278,13 @@ fun TestSuiteScope.bridgeTests() {
         job.join()
         job.isCancelled shouldBe true
     }
+
+    test("jobject array") {
+        val callbacks = Array(10) {
+            NoopCallback()
+        }
+        CommonCallable.manyObjects(callbacks.map { it as Callback }.toTypedArray()) shouldBe 10
+    }
 }
 
 class NoopCloseListener: CloseListener {
