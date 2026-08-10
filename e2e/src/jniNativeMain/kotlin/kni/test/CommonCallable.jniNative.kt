@@ -140,6 +140,11 @@ actual object CommonCallable {
         if (fail) error("Simulated error")
         return allocateBuffer(1)
     }
+
+    @JniCall
+    actual fun manyObjects(objs: Array<Callback>): Int {
+        return objs.size
+    }
 }
 
 @JniCall

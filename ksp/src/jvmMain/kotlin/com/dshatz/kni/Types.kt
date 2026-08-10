@@ -1,6 +1,7 @@
 package com.dshatz.kni
 
 import com.dshatz.kni.annotations.KniInternalApi
+import com.squareup.kotlinpoet.ARRAY
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -34,6 +35,7 @@ internal object Types {
     val KShort = Short::class.asTypeName()
     val KShortArray = ShortArray::class.asTypeName()
     val KString = String::class.asTypeName()
+    val KArray = ARRAY
     private const val TYPE_BINDING_PACKAGE = "com.dshatz.kni.binding"
 
     val KByteBuffer = ClassName("com.dshatz.kni.buffers", "ByteBuffer")
@@ -56,6 +58,7 @@ internal object Types {
     val JShortArray = ClassName(TYPE_BINDING_PACKAGE, "jshortArray")
     val JString = ClassName(TYPE_BINDING_PACKAGE, "jstring")
     val JObject = ClassName(TYPE_BINDING_PACKAGE, "jobject")
+    val JObjectArray = ClassName(TYPE_BINDING_PACKAGE, "jobjectArray")
     val JValue = ClassName("com.dshatz.kni", "jvalue")
     val JMethodID = ClassName("com.dshatz.kni.binding", "jmethodID")
     val BaseCallback = ClassName("com.dshatz.kni", "BaseCallback")
@@ -90,7 +93,7 @@ internal object Types {
         val ToJShortArray = MemberName("com.dshatz.kni.utils", "toJShortArray")
         val ToJString = MemberName("com.dshatz.kni.utils", "toJString")
 
-        val ToJByteBuffer = MemberName("com.dshatz.kni.utils", "toJByteBuffer")
+        val ToJoObjectArray = MemberName("com.dshatz.kni.utils", "toJObjectArray")
         val ToJNioByteBuffer = MemberName("com.dshatz.kni.utils", "toJNioByteBuffer")
 
         val ToKBoolean = MemberName("com.dshatz.kni.utils", "toKBoolean")
@@ -106,9 +109,8 @@ internal object Types {
         val ToKString = MemberName("com.dshatz.kni.utils", "toKString")
         val ToKDirectByteBuffer = MemberName("com.dshatz.kni.utils", "toKDirectByteBuffer")
         val ToKByteBuffer = MemberName("com.dshatz.kni.buffers", "toKByteBuffer")
+        val ToKoObjectArray = MemberName("com.dshatz.kni.utils", "toKObjectArray")
         val GetAndAttach = MemberName("com.dshatz.kni.utils", "GetAndAttach")
-        val Pack = MemberName("com.dshatz.kni.serialization", "pack")
-        val Unpack = MemberName("com.dshatz.kni.serialization", "unpack")
 
         val asStableRefLongPointer = MemberName("com.dshatz.kni.utils", "asStableRefLongPointer")
         val stableRefFromPointer = MemberName("com.dshatz.kni.utils", "stableRefFromPointer")
