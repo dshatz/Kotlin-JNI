@@ -124,6 +124,11 @@ jobs:
         with:
           name: test-report-macos-latest
           path: ./**/build/test-results/**/*.xml
+      - name: Upload crashdump
+        uses: actions/upload-artifact@v7
+        with:
+          name: crashdump-macos
+          path: ./**/hs_err_*.log
 
   test-android:
     needs: ["test-linux"]
