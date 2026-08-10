@@ -2,6 +2,7 @@ package com.dshatz.kni
 
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.TypedCode
+import com.dshatz.kni.utils.callFunction
 import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.notNullable
@@ -16,6 +17,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -84,6 +86,12 @@ class TypeMapper(
                     jniType = JNIType(jvmType = jvmType, nativeType, jniField)
                 )
             }
+        } else if (rawType == Types.KArray) {
+            (kotlinType as ParameterizedTypeName).typeArguments.first()
+            TypeInfo.Array(
+                innerType = mapType((kotlinType as ParameterizedTypeName).typeArguments.first()),
+                kotlinType
+            )
         } else if (rawType in registry.serializers || nonNull in registry.serializers) {
             // custom serializer defined
             val serializer = included.serializer(nonNull)
@@ -190,6 +198,42 @@ sealed class TypeInfo {
         }
     }
 
+    data class Array(
+        val innerType: TypeInfo,
+        override val kotlinType: TypeName = Types.KArray.parameterizedBy(innerType.kotlinType),
+    ): TypeInfo() {
+        override val jniType: JNIType = JNIType(kotlinType, Types.JObjectArray, "l")
+
+        override fun packCode(unpackedCode: TypedCode): TypedCode {
+            return unpackedCode.callFunction(Types.Method.ToJoObjectArray, Types.JObjectArray) {
+                named("env", CodeBlock.of("env"))
+                lambdaParam("convert", receiverType = innerType.kotlinType) {
+                    innerType.packCode(`this`).code
+                }
+            }
+        }
+
+        override fun unpackCode(packedCode: TypedCode): TypedCode {
+            return packedCode.callFunction(Types.Method.ToKoObjectArray, kotlinType) {
+                named("env", CodeBlock.of("env"))
+                lambdaParam("convert", receiverType = Types.JObject) {
+                    innerType.unpackCode(`this`).code
+                }
+            }
+        }
+
+        override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
+            return unpackedCode
+        }
+
+        override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
+            return packedCode
+        }
+
+        override fun describe(): String {
+            return "Array of $innerType"
+        }
+    }
     /**
      * jboolean, jchar, jstring, j*array
      */
