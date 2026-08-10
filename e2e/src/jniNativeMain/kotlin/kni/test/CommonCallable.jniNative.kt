@@ -142,7 +142,7 @@ actual object CommonCallable {
     }
 
     @JniCall
-    actual fun manyObjects(objs: Array<Callback>): Int {
+    actual fun manyObjects(objs: Array<out Callback>): Int {
         return objs.size
     }
 }

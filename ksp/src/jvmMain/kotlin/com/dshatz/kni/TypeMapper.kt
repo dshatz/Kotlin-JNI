@@ -42,12 +42,14 @@ class TypeMapper(
     fun mapType(
         type: KSType,
     ): TypeInfo {
-        return mapType(type.toTypeName())
+        val typeArguments = type.arguments.map { it.type!!.toTypeName() }
+        return mapType(type.toTypeName(), typeArguments)
     }
 
     context(decl: KSNode)
     fun mapType(
         kotlinType: TypeName,
+        typeArgs: List<TypeName> = emptyList()
     ): TypeInfo {
         val nonNull = kotlinType.copy(nullable = false)
         val nullable = kotlinType.isNullable
@@ -89,7 +91,7 @@ class TypeMapper(
         } else if (rawType == Types.KArray) {
             (kotlinType as ParameterizedTypeName).typeArguments.first()
             TypeInfo.Array(
-                innerType = mapType((kotlinType as ParameterizedTypeName).typeArguments.first()),
+                innerType = mapType(typeArgs.first(), emptyList()),
                 kotlinType
             )
         } else if (rawType in registry.serializers || nonNull in registry.serializers) {
