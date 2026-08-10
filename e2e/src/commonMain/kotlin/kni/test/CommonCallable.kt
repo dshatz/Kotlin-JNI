@@ -70,7 +70,7 @@ expect object CommonCallable {
     suspend fun doWork(fail: Boolean, orange: PolymorphicFruit): ByteBuffer
 
     @JniCall
-    fun manyObjects(objs: Array<Callback>): Int
+    fun manyObjects(objs: Array<out Callback>): Int
 }
 
 class NoopCallback: Callback {
