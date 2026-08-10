@@ -125,6 +125,7 @@ jobs:
           name: test-report-macos-latest
           path: ./**/build/test-results/**/*.xml
       - name: Upload crashdump
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: crashdump-macos
