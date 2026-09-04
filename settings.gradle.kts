@@ -6,6 +6,7 @@ if (!settings.extra.has("onlyDocs")) {
 //    include(":demo")
     include(":e2e")
     include(":ksp")
+    include(":wrappers")
     include(":serialization")
     include(":plugintest")
 }

@@ -1,9 +1,14 @@
 package com.dshatz.kni.utils
 
 import com.dshatz.kni.TypeInfo
+import com.dshatz.kni.processors.packMember
+import com.dshatz.kni.processors.packMemberJvm
+import com.dshatz.kni.processors.unpackMember
+import com.dshatz.kni.processors.unpackMemberJvm
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.TypeName
+import com.sun.tools.javac.tree.TreeInfo.types
 
 data class TypedCode(
     val code: CodeBlock,
@@ -30,8 +35,22 @@ sealed class TypedCodeMP {
         override val nullable: Boolean
     ): TypedCodeMP() {
         override val baseTypeName: TypeName = type.kotlinType
-        fun packToNative(): Native = Native(type.packCode(typed).code, type, nullable)
-        fun packToJvm(): JVM = JVM(type.packCodeJvm(typed).code, type, nullable)
+        fun packToNative(): Native {
+            val call = typed.nullSafeCall(type.packMember())
+            return Native(
+                code = call.code,
+                type = type,
+                nullable = nullable
+            )
+        }
+        fun packToJvm(): JVM {
+            val call = typed.nullSafeCall(type.packMemberJvm())
+            return JVM(
+                code = call.code,
+                type = type,
+                nullable = nullable
+            )
+        }
     }
 
     data class JVM(
@@ -40,7 +59,14 @@ sealed class TypedCodeMP {
         override val nullable: Boolean
     ): TypedCodeMP() {
         override val baseTypeName: TypeName = type.jniType.jvmType
-        fun unpackCode(): Common = Common(type.unpackCodeJvm(typed).code, type, nullable)
+        fun unpackCode(): Common {
+            val call = typed.nullSafeCall(type.unpackMemberJvm())
+            return Common(
+                code = call.code,
+                type = type,
+                nullable = nullable
+            )
+        }
     }
 
     data class Native(
@@ -50,7 +76,14 @@ sealed class TypedCodeMP {
     ): TypedCodeMP() {
         override val baseTypeName: TypeName = type.jniType.nativeType
 
-        fun unpackCode(): Common = Common(type.unpackCode(typed).code, type, nullable)
+        fun unpackCode(): Common {
+            val call = typed.nullSafeCall(type.unpackMember())
+            return Common(
+                code = call.code,
+                type = type,
+                nullable = nullable
+            )
+        }
     }
 }
 

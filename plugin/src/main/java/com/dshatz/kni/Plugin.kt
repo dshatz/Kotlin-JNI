@@ -97,7 +97,9 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
         if (groupName == null || dependOn == null) return@all
         kotlin.addJniSourceSets(it, groupName, dependOn, config)
         if (config.kspDependency.get().toString().isNotEmpty()) {
-            target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
+            if (it.name != "wasmJs" && it.name != "js") {
+                target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
+            }
         }
     }
     target.tasks.withType(KspAATask::class.java).configureEach {

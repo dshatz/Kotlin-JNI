@@ -7,8 +7,7 @@ import com.dshatz.kni.jniCall.constructNativeArgs
 import com.dshatz.kni.jniCall.toJniDescriptor
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.needsIsNullParam
-import com.dshatz.kni.utils.addCode
-import com.dshatz.kni.utils.addReturn
+import com.dshatz.kni.utils.TypedCodeMP
 import com.dshatz.kni.utils.defineCommon
 import com.dshatz.kni.utils.defineNative
 import com.dshatz.kni.utils.returnType
@@ -27,7 +26,7 @@ sealed class KSCallbackFun: WithParent {
     abstract val name: String
     abstract val returnType: TypeInfo
     abstract val parameters: List<ParamInfo>
-    abstract val callbackClass: ClassName
+    abstract val callbackType: TypeInfo.Callback
 
     open val modifiers: List<KModifier> = emptyList()
 
@@ -38,7 +37,7 @@ sealed class KSCallbackFun: WithParent {
         override val name: String,
         override val returnType: TypeInfo,
         override val parameters: List<ParamInfo>,
-        override val callbackClass: ClassName,
+        override val callbackType: TypeInfo.Callback,
         override val parent: FunctionParent
     ): KSCallbackFun() {
         override val jniReturn: TypeInfo = returnType
@@ -49,7 +48,7 @@ sealed class KSCallbackFun: WithParent {
         override val name: String,
         override val returnType: TypeInfo,
         override val parameters: List<ParamInfo>,
-        override val callbackClass: ClassName,
+        override val callbackType: TypeInfo.Callback,
         override val parent: FunctionParent,
         override val modifiers: List<KModifier> = listOf(KModifier.SUSPEND)
     ): KSCallbackFun() {
@@ -57,14 +56,15 @@ sealed class KSCallbackFun: WithParent {
         val onValueFun: String = "onSuccess"
         val onFailureFun: String = "onFailure"
 
-        val suspendAdapterClass = callbackClass.withSuffix("_${name}_SuspendAdapter")
-        val baseSuspendAdapterClass = callbackClass.withSuffix("_${name}_BaseSuspendAdapter")
+        val suspendAdapterClass = callbackType.commonKotlinType.withSuffix("_${name}_SuspendAdapter")
+        val baseSuspendAdapterClass = callbackType.commonKotlinType.withSuffix("_${name}_BaseSuspendAdapter")
 
         val suspendAdapter = TypeInfo.NativeInstance(suspendAdapterClass, baseSuspendAdapterClass)
         val suspendCallbackImpl = if (returnType == TypeInfo.Unit) Types.SuspendCallbackImpl0 else Types.SuspendCallbackImpl.parameterizedBy(returnType.kotlinType)
 
         fun generateSuspendAdapter(): FileSpec {
             val cls = TypeSpec.interfaceBuilder(baseSuspendAdapterClass)
+                .addKdoc("Callback for calling suspend function [%T.%N].", parent.className, name)
                 .addSuperinterface(Types.AutoCloseable)
                 .addSuperinterface(Types.SuspendCallback.parameterizedBy(returnType.kotlinType))
                 .build()
@@ -158,7 +158,7 @@ sealed class KSCallbackFun: WithParent {
             } else unpackCode
         }
         val builder = FunSpec.builder(fName)
-            .addParameter(ParameterSpec("instance", callbackClass))
+            .addParameter(ParameterSpec("instance", callbackType.commonKotlinType))
             .addParameters(paramsSpecs)
             .addParameters(isNullParamSpecs)
             .addAnnotation(JvmStatic::class)
@@ -174,8 +174,9 @@ sealed class KSCallbackFun: WithParent {
             )
 
         val code = if (this is Suspend) {
+            val suspendCallbackJvm = TypedCodeMP.JVM(CodeBlock.of("suspendCallback"), suspendAdapter, false)
             CodeBlock.builder()
-                .beginControlFlow("return %T(suspendCallback).%M", suspendAdapterClass, Types.Method.ExecuteSuspend)
+                .beginControlFlow("return %L.%M", suspendCallbackJvm.unpackCode().code, Types.Method.ExecuteSuspend)
                 .add(resultDef.code)
                 .add(resultRef.code)
                 .endControlFlow()

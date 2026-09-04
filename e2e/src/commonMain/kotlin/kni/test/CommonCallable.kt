@@ -73,6 +73,16 @@ expect object CommonCallable {
     fun manyObjects(objs: Array<out Callback>): Int
 }
 
+/*expect class BitmapWorker(bitmap: CommonBitmap): AutoCloseable {
+    @JniCall
+    fun eraseBitmap(actual: CommonBitmap): Int
+
+    @JniCall
+    fun returnBitmap(actual: CommonBitmap): CommonBitmap
+
+    override fun close()
+}*/
+
 class NoopCallback: Callback {
     override fun onComplete(result: Boolean): Result<String> {
         return Result.success("success")

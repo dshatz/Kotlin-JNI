@@ -22,7 +22,6 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -58,7 +57,7 @@ class CallbackProcessor(
         registry.callbackClasses.addAll(classes)
     }
 
-    fun collectDeclarations(
+    fun collectCallbacks(
         resolver: Resolver
     ) {
         val callbacks = getDefinitions(resolver)
@@ -71,17 +70,15 @@ class CallbackProcessor(
                     it.simpleName.asString() == "close" && it.parameters.isEmpty() && it.returnType?.toTypeName() == UNIT
                 }
                 val callbackClass = declaration.toClassName()
+                val callbackType = TypeInfo.Callback(callbackClass)
                 val funs = funDeclarations.map { f ->
-                /*if (Modifier.SUSPEND in f.modifiers) {
-                    logger.error("suspend functions are not supported in @JniCallback.", f)
-                }*/
                     if (Modifier.SUSPEND in f.modifiers) {
                         KSCallbackFun.Suspend(
                             name = f.simpleName.asString(),
                             returnType = mapper.mapType(f.returnType!!),
                             parameters = f.parameters.toTypeInfos(),
                             parent = f.functionLocation() as FunctionParent.Class,
-                            callbackClass = callbackClass
+                            callbackType = callbackType
                         )
                     } else {
                         KSCallbackFun.Blocking(
@@ -89,7 +86,7 @@ class CallbackProcessor(
                             returnType = mapper.mapType(f.returnType!!),
                             parameters = f.parameters.toTypeInfos(),
                             parent = f.functionLocation() as FunctionParent.Class,
-                            callbackClass = callbackClass
+                            callbackType = callbackType
                         )
                     }
 
@@ -97,7 +94,7 @@ class CallbackProcessor(
             callbackClass to KSCallback(
                 type = callbackClass,
                 funs = funs,
-                superType = null
+                baseClass = callbackClass
             )
         }
         registry.callbacks.putAll(callbacks)
@@ -114,7 +111,7 @@ class CallbackProcessor(
                 .addAnnotation(JniCallback::class)
                 .addSuperinterface(Types.AutoCloseable)
                 .apply {
-                    a.superType?.let(::addSuperinterface)
+                    a.baseClass?.let(::addSuperinterface)
                 }
                 .build()
             FileSpec.builder(a.type)
@@ -126,18 +123,21 @@ class CallbackProcessor(
         return registry.callbacks.values.map(KSCallback::generateJvmAdapter)
     }
 
-    fun generateCommon(): List<FileSpec> {
-        return registry.callbacks.values.flatMap { it.funs }.filterIsInstance<KSCallbackFun.Suspend>()
+    fun generateBaseSuspendAdapters(): List<FileSpec> {
+        val callbacks = registry.callbacks.values.flatMap(KSCallback::funs).filterIsInstance<KSCallbackFun.Suspend>()
             .map(KSCallbackFun.Suspend::generateSuspendAdapter)
+
+        val instances = registry.nativeInstances.values.flatMap(KSInstance::funs).filterIsInstance<KSJniCall.Suspend>()
+            .map(KSJniCall.Suspend::generateBaseSuspendAdapter)
+
+        val calls = registry.jniCalls.filterIsInstance<KSJniCall.Suspend>()
+            .map(KSJniCall.Suspend::generateBaseSuspendAdapter)
+        return callbacks + instances + calls
     }
 
     private fun registerSuspendAdapters() {
         val adapters = registry.callbacks.values.flatMap {
             it.funs.filterIsInstance<KSCallbackFun.Suspend>().map { f ->
-                val instanceType = TypeInfo.NativeInstance(
-                    f.suspendAdapterClass,
-                    f.baseSuspendAdapterClass
-                )
                 KSInstance(
                     f.suspendAdapterClass,
                     emptyList(),
@@ -152,7 +152,7 @@ class CallbackProcessor(
                                 KModifier.PRIVATE
                             ),
                             modifiers = setOf(KModifier.OVERRIDE),
-                            nativeInstance = instanceType
+                            nativeInstance = f.suspendAdapter
                         ),
                         KSJniCall.Blocking(
                             f.onFailureFun,
@@ -167,7 +167,7 @@ class CallbackProcessor(
                                 KModifier.PRIVATE
                             ),
                             modifiers = setOf(KModifier.OVERRIDE),
-                            nativeInstance = instanceType
+                            nativeInstance = f.suspendAdapter
                         )
                     ),
                     flowProps = emptyList(),
