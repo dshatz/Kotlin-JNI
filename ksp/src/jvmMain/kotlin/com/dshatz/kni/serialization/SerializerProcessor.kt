@@ -1,7 +1,6 @@
 package com.dshatz.kni.serialization
 
 import com.dshatz.kni.Registry
-import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniSerializable
@@ -10,14 +9,13 @@ import com.dshatz.kni.kspfix.findAnnotation
 import com.dshatz.kni.kspfix.getClassArgument
 import com.dshatz.kni.model.KSDefinedSerializer
 import com.dshatz.kni.utils.dereferenceTypeAlias
-import com.dshatz.kni.utils.originatesFrom
+import com.dshatz.kni.utils.genericClassName
 import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSFile
 import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.Modifier
@@ -32,7 +30,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 
@@ -43,7 +40,18 @@ class SerializerProcessor(
 
     private val included = IncludedSerializers(registry, logger)
 
-    fun findSerializables(
+
+    /*fun findSerializableClasses(
+        resolver: Resolver
+    ) {
+        val classes = resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name)
+            .filterIsInstance<KSClassDeclaration>()
+            .map { it.toClassName() }
+            .toList()
+        registry.serializers.putAll(classes.associateWith { KSDefinedSerializer(it, it.serializerClass()) })
+    }*/
+
+    fun processSerializables(
         resolver: Resolver
     ): Sequence<SerialClass> {
         fun collectSerialProps(decl: KSClassDeclaration): SerialClass.DataClass {
@@ -108,7 +116,6 @@ class SerializerProcessor(
     fun collectDefinedSerializers(resolver: Resolver) {
         val serializers = resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
-        logger.info("Found ${serializers.toList().size} @JniSerializerFor declarations.")
         val defined = serializers.mapNotNull {
             if (it.classKind != ClassKind.OBJECT && it.classKind != ClassKind.CLASS) {
                 logger.error("@JniSerializerFor must be applied to a class/object.", it)
@@ -150,7 +157,10 @@ class SerializerProcessor(
             return when (this) {
                 is SerialClass.DataClass -> properties.map {
                     context(it.declaration) {
-                        included.serializer(it.type)
+                        val isExpect = Modifier.EXPECT in (it.declaration as KSPropertyDeclaration).type.resolve().declaration.modifiers
+                        val override = if (isExpect) it.type.serializerClass() else null
+                        if (isExpect) logger.warn("Type: ${it.type}")
+                        included.serializer(it.type, override, isExpect = isExpect)
                     }
                 }
                 is SerialClass.EnumClass -> emptyList()
@@ -435,10 +445,10 @@ class SerializerProcessor(
 
 }
 
-private val pkg = "com.dshatz.kni.generated"
+private val pkg = "kni.generated.serializers"
 
 fun ParameterizedTypeName.genericSerializerName(): ClassName {
-    val name = "SerializerFor_${rawType.simpleName}_Of_${typeArguments.joinToString("_") { (it as ClassName).simpleName }}"
+    val name = "SerializerFor_${genericClassName()}"
     return ClassName(pkg, name)
 }
 

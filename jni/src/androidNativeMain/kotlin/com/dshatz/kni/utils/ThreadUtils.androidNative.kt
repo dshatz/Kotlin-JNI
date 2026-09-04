@@ -21,3 +21,8 @@ actual fun CPointer<JavaVMVar>.AttachCurrentThread(
 ): jint {
     return pointed.pointed!!.AttachCurrentThread!!.invoke(this, envOut.ptr, null)
 }
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun CPointer<JavaVMVar>.DetachCurrentThread(): jint {
+    return pointed.pointed!!.DetachCurrentThread!!.invoke(this)
+}

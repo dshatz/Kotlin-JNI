@@ -2,12 +2,14 @@ package com.dshatz.kni
 
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.TypedCode
+import com.dshatz.kni.utils.addStatement
 import com.dshatz.kni.utils.callFunction
 import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.notNullable
 import com.dshatz.kni.utils.nullSafeCall
 import com.dshatz.kni.utils.returnType
+import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSType
@@ -49,14 +51,15 @@ class TypeMapper(
     context(decl: KSNode)
     fun mapType(
         kotlinType: TypeName,
-        typeArgs: List<TypeName> = emptyList()
+        typeArgs: List<TypeName> = emptyList(),
+        allowSelf: Boolean = false,
     ): TypeInfo {
         val nonNull = kotlinType.copy(nullable = false)
         val nullable = kotlinType.isNullable
         val rawType = (nonNull as? ParameterizedTypeName)?.rawType ?: nonNull
 
         val jniField = Types.jniFields[nonNull] ?: "l"
-        return if (nonNull in Types.jTypes) {
+        val mapped = if (nonNull in Types.jTypes) {
             // has an existing j type
             val jType = Types.jTypes[nonNull]!!
             if (nonNull in Types.toJTypes && jType in Types.toKTypes) {
@@ -107,10 +110,10 @@ class TypeMapper(
                 serializer = serializer,
             )
         } else if (registry.isCallback(nonNull)) {
-            TypeInfo.Callback(kotlinType)
-        } else if (nonNull in registry.nativeInstances) {
+            TypeInfo.Callback(kotlinType as ClassName)
+        } else if (nonNull in registry.nativeInstanceClasses) {
             val baseClass = registry.nativeInstances[nonNull]?.baseClass
-            TypeInfo.NativeInstance(kotlinType, baseClass)
+            TypeInfo.NativeInstance(kotlinType as ClassName, baseClass)
         } else if (nonNull == Types.KByteBuffer) {
             TypeInfo.ByteBuffer(nullable = nullable)
         } else if (nonNull == UNIT) {
@@ -118,12 +121,28 @@ class TypeMapper(
                 kotlinType = kotlinType,
                 jniType = JNIType(kotlinType, kotlinType, jniField)
             )
+        } else if (nonNull in registry.jniAdapters) {
+            val adapter = registry.jniAdapterTypes[nonNull]
+            if (adapter != null) {
+                val inner = mapType(adapter.inner, allowSelf = true)
+                TypeInfo.JniAdapter(kotlinType, inner, adapter.adapterCls)
+            } else {
+                /*
+                 This source set does not define a JvmJniAdapter or NativeJniAdapter.
+                 */
+                logger.info("Wrapping $kotlinType as a TypeInfo.Simple in current sourceset.")
+                TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
+            }
         } else {
-            val typeStr = if (kotlinType is ParameterizedTypeName)
-                "$kotlinType (raw: ${kotlinType.rawType})"
-            else kotlinType.toString()
+            if (allowSelf) {
+                // JniAdapter class, pass class as it appears in kotlin code if not found
+                TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
+            } else {
+                val typeStr = if (kotlinType is ParameterizedTypeName)
+                    "$kotlinType (raw: ${kotlinType.rawType})"
+                else kotlinType.toString()
 
-            val error = """
+                val error = """
                 Unknown type $typeStr - don't know how to pass to JNI.
                 
                 ===
@@ -133,10 +152,17 @@ class TypeMapper(
                 ===
                 
                 ${registry.nativeInstancesToString()}
-            """.trimIndent()
-            logger.error(error)
-            error("JNI type mapping failed - see above for errors.")
+                
+                ===
+                
+                ${registry.jniAdaptersToString()}
+            """
+                logger.error(error)
+                error("JNI type mapping failed - see above for errors.")
+            }
         }
+        registry.allTypes.add(mapped.notNullable())
+        return mapped
     }
 }
 
@@ -145,7 +171,11 @@ data class JNIType(
     val jvmType: TypeName,
     val nativeType: TypeName,
     val jniField: String
-)
+) {
+    fun notNullable(): JNIType {
+        return copy(jvmType = jvmType.notNullable(), nativeType = nativeType.notNullable())
+    }
+}
 
 fun TypeInfo.needsIsNullParam(): Boolean {
     return kotlinType.needsIsNullParam()
@@ -159,6 +189,8 @@ sealed class TypeInfo {
     abstract val kotlinType: TypeName
     abstract val jniType: JNIType
 
+    open val commonKotlinType: TypeName by lazy { kotlinType }
+
     abstract fun packCode(unpackedCode: TypedCode): TypedCode
     abstract fun unpackCode(packedCode: TypedCode): TypedCode
     abstract fun packCodeJvm(unpackedCode: TypedCode): TypedCode
@@ -166,13 +198,11 @@ sealed class TypeInfo {
 
     abstract fun describe(): String
 
-    val nullCheck get() = if (kotlinType.isNullable && kotlinType.notNullable() !in Types.boxedWhenNullable) {
-        CodeBlock.of("?.")
-    } else CodeBlock.of(".")
+    abstract fun notNullable(): TypeInfo
 
     companion object {
-        val Unit = TypeInfo.Simple(UNIT, JNIType(UNIT, UNIT, "l"))
-        val STRING = TypeInfo.Convertible(
+        val Unit = Simple(UNIT, JNIType(UNIT, UNIT, "l"))
+        val STRING = Convertible(
             Types.KString,
             JNIType(Types.KString, Types.JString, "l"),
             toJni = Types.toJTypes[Types.KString]!!,
@@ -197,6 +227,10 @@ sealed class TypeInfo {
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode = packedCode
         override fun describe(): String {
             return ""
+        }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable(), jniType = jniType.notNullable())
         }
     }
 
@@ -235,6 +269,10 @@ sealed class TypeInfo {
         override fun describe(): String {
             return "Array of $innerType"
         }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable())
+        }
     }
     /**
      * jboolean, jchar, jstring, j*array
@@ -260,6 +298,67 @@ sealed class TypeInfo {
         override fun describe(): String {
             return ""
         }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable(), jniType = jniType.notNullable())
+        }
+    }
+
+    data class JniAdapter(
+        override val kotlinType: TypeName,
+        val innerType: TypeInfo,
+        private val adapterClassName: TypeName,
+        override val jniType: JNIType = innerType.jniType
+    ): TypeInfo() {
+        override fun packCode(unpackedCode: TypedCode): TypedCode {
+            val converted = unpackedCode.nullSafeCall(
+                CodeBlock.builder()
+                    .beginControlFlow("let")
+                    .addStatement("%T.toJni(env, it)", adapterClassName)
+                    .endControlFlow()
+                    .build()
+                    .returnType(jniType.nativeType)
+            )
+            return innerType.packCode(converted)
+        }
+
+        override fun unpackCode(packedCode: TypedCode): TypedCode {
+            val unpacked = innerType.unpackCode(packedCode)
+            return unpacked.nullSafeCall(
+                CodeBlock.builder()
+                    .beginControlFlow("let")
+                    .add("%T.fromJni(env, it)", adapterClassName)
+                    .endControlFlow()
+                    .build()
+                    .returnType(kotlinType)
+            )
+        }
+
+        override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
+            val jniValue = unpackedCode.nullSafeCall(
+                CodeBlock.of("let(%T::getJniValue)", adapterClassName).returnType(jniType.jvmType)
+            )
+            return innerType.packCodeJvm(jniValue)
+        }
+
+        override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
+            val unpacked = innerType.unpackCodeJvm(packedCode)
+            return unpacked.nullSafeCall(
+                CodeBlock.builder()
+                    .add("let(%T::fromJniValue)", adapterClassName)
+                    .build()
+                    .returnType(kotlinType)
+            )
+        }
+
+        override fun describe(): String {
+            return "Wrapper"
+        }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable(), jniType = jniType.notNullable())
+        }
+
     }
 
     data class Serializable(
@@ -298,6 +397,10 @@ sealed class TypeInfo {
         override fun describe(): String {
             return kotlinType.toString()
         }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable(), jniType = jniType.notNullable())
+        }
     }
 
     data class ByteBuffer(
@@ -333,13 +436,17 @@ sealed class TypeInfo {
         override fun describe(): String {
             return ""
         }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable(), jniType = jniType.notNullable())
+        }
     }
 
     data class NativeInstance(
-        override val kotlinType: TypeName,
-        private val baseType: TypeName? = null
+        override val kotlinType: ClassName,
+        private val baseType: ClassName? = null
     ): TypeInfo() {
-        val commonType = baseType ?: kotlinType
+        override val commonKotlinType: ClassName = baseType ?: kotlinType
         override val jniType: JNIType = JNIType(
             LONG.copy(nullable = kotlinType.isNullable),
             Types.JLong.copy(nullable = kotlinType.isNullable),
@@ -357,18 +464,20 @@ sealed class TypeInfo {
         override fun unpackCode(packedCode: TypedCode): TypedCode {
             assert(packedCode.type.notNullable() == Types.KLong)
             return packedCode.nullSafeCall(
-                CodeBlock.of("%M<%T>()", Types.Method.valueFromStableRefPointer, commonType)
+                CodeBlock.of("%M<%T>()", Types.Method.valueFromStableRefPointer, commonKotlinType)
                     .returnType(kotlinType)
             )
         }
 
         override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
-            return unpackedCode
+            val asLong = MemberName(commonKotlinType.packageName, "asLong")
+            return unpackedCode.nullSafeCall(CodeBlock.of("%M()", asLong).returnType(jniType.jvmType))
         }
 
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
+            val member = MemberName(kotlinType.packageName, "as${kotlinType.simpleName}")
             return packedCode.nullSafeCall(
-                CodeBlock.of("as%L()", (commonType as ClassName).simpleName)
+                CodeBlock.of("%M()", member)
                     .returnType(kotlinType)
             )
         }
@@ -376,13 +485,19 @@ sealed class TypeInfo {
         override fun describe(): String {
             return "jobject instance"
         }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable() as ClassName)
+        }
     }
 
     data class Callback(
-        override val kotlinType: TypeName,
+        override val kotlinType: ClassName,
+        private val commonBaseClass: ClassName? = null
     ): TypeInfo() {
+        override val commonKotlinType: ClassName = commonBaseClass ?: kotlinType
         override val jniType: JNIType = JNIType(
-            jvmType = kotlinType,
+            jvmType = commonKotlinType,
             nativeType = Types.JObject.copy(nullable = kotlinType.isNullable),
             "l"
         )
@@ -392,7 +507,14 @@ sealed class TypeInfo {
         }
 
         override fun packCode(unpackedCode: TypedCode): TypedCode {
-            error("Passing @Callback objects is only allowed in JVM->Native direction, not back.")
+            return unpackedCode.nullSafeCall(
+                CodeBlock.builder()
+                    .beginControlFlow("let")
+                    .addStatement("(it as %T).ref", (kotlinType as ClassName).withSuffix("_Native"))
+                    .endControlFlow()
+                    .build()
+                    .returnType(jniType.nativeType)
+            )
         }
 
         override fun unpackCode(packedCode: TypedCode): TypedCode {
@@ -411,6 +533,10 @@ sealed class TypeInfo {
 
         override fun describe(): String {
             return "@JniCallback annotated jobject"
+        }
+
+        override fun notNullable(): TypeInfo {
+            return copy(kotlinType = kotlinType.notNullable())
         }
     }
 }
