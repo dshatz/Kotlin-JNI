@@ -99,7 +99,8 @@ open class BaseCallback(
             val instanceParam = "L${className}"
             val returnType = signature.substringAfterLast(')')
             val adapterSignature = "($instanceParam;$params)$returnType"
-            env.GetStaticMethodID(adapterClassGlobal, name, adapterSignature) ?: error("$name method not found $adapterSignature")
+            env.GetStaticMethodID(adapterClassGlobal, name, adapterSignature)
+                ?: error("method $name $adapterSignature not found in $jvmAdapterClassName.")
         }
     }
 

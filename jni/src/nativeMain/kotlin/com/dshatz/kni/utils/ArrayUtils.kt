@@ -58,7 +58,7 @@ fun jobjectArray.SetObjectArrayElement(
 inline fun <reified T> Array<T>.toJObjectArray(
     env: CPointer<JNIEnvVar>,
     convert: T.() -> jobject
-) {
+): jobjectArray {
     val cls = T::class.qualifiedName?.let { qualified ->
         env.FindClass(qualified.replace('.', '/')) ?: error("Could not find class name $qualified")
     } ?: error("Cannot convert local or anonymous class ${T::class} to jclass.")
@@ -66,5 +66,5 @@ inline fun <reified T> Array<T>.toJObjectArray(
     forEachIndexed { index, t ->
         arr.SetObjectArrayElement(env, index, convert(t))
     }
-
+    return arr
 }
