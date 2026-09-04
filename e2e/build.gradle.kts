@@ -20,6 +20,7 @@ plugins {
 kni {
     autoWire {
         kspDependency = project(":ksp")
+        createSourceSets = false
     }
 }
 
@@ -34,7 +35,33 @@ fun KotlinNativeTarget.androidLinkerOpts() {
 
 kotlin {
 
-    applyDefaultHierarchyTemplate()
+    applyHierarchyTemplate {
+        common {
+            group("androidNative") {
+                withAndroidNative()
+            }
+            group("desktopNative") {
+                withLinux()
+                withMingw()
+                withMacos()
+            }
+            group("android") {
+                withAndroidTarget()
+            }
+            group("jniJvm") {
+                group("android")
+                withJvm()
+            }
+            group("jniNative") {
+                group("androidNative")
+                group("desktopNative")
+            }
+            group("jniCommon") {
+                group("jniNative")
+                group("jniJvm")
+            }
+        }
+    }
 
     jvmToolchain(21)
 
@@ -59,6 +86,13 @@ kotlin {
     androidNativeTargets.forEach {
         it.binaries.sharedLib()
         it.androidLinkerOpts()
+    }
+
+    optionalTargets {
+        wasmJs {
+            binaries.executable()
+            browser()
+        }
     }
 
 
@@ -97,13 +131,21 @@ kotlin {
             dependencies {
                 implementation(project(":annotations"))
                 implementation(project(":serialization"))
+            }
+        }
+        val jniCommonMain by getting {
+            dependencies {
                 implementation(project(":jni"))
             }
         }
-        val androidDeviceTest by getting
+        val androidDeviceTest by getting {
+            dependsOn(getByName("jniJvmTest"))
+        }
 
-        val jniJvmMain by getting {
-            println("Got jniJvmMain")
+        val jniJvmMain by getting
+
+        androidMain.configure {
+            dependsOn(jniJvmMain)
         }
 
         androidDeviceTest.dependencies {
@@ -118,6 +160,16 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":buffers"))
             implementation(project(":flows"))
+            implementation(project(":wrappers"))
+        }
+        val desktopNativeMain by getting {
+            dependencies {
+                implementation(libs.skiko)
+            }
+        }
+        jvmMain.dependencies {
+            implementation(libs.skiko)
+            implementation(libs.skiko.linuxX64)
         }
     }
     compilerOptions {

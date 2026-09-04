@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
@@ -76,7 +77,8 @@ internal object Types {
     val SuspendCallbackImpl = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl")
     val SuspendCallbackImpl0 = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl0")
 
-    val AtomicLong = ClassName("kotlin.concurrent.atomics", "AtomicLong")
+    val JvmJniAdapter = ClassName("com.dshatz.kni.wrapper", "JvmJniAdapter")
+    val NativeJniAdapter = ClassName("com.dshatz.kni.wrapper", "NativeJniAdapter")
 
 
     object Method {
@@ -294,6 +296,7 @@ internal object Types {
         this == expected -> true
         this.copy(nullable = false) == expected.copy(nullable = false) -> true
         this.copy(nullable = true) == expected.copy(nullable = true) -> true
+        (this as? ParameterizedTypeName)?.rawType == expected -> true
         else -> false
     }
 

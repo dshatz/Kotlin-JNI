@@ -7,7 +7,6 @@ import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 
 class FlowProcessor(
@@ -26,9 +25,9 @@ class FlowProcessor(
     private fun prepareFlowCallbacks() {
         val callbacks = flowProps.map { flowProp ->
             KSCallback(
-                type = flowProp.baseCallbackClass,
+                type = flowProp.callbackClassName,
                 funs = listOf(flowProp.onValueFun),
-                superType = null
+                baseClass = flowProp.baseCallbackClass
             )
         }.associateBy { it.type }
         registry.callbacks.putAll(callbacks)

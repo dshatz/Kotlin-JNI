@@ -53,9 +53,9 @@ class IncludedSerializers(
 ) {
     @Throws(NoSerializerException::class)
     context(decl: KSNode)
-    fun serializer(type: TypeName, overrideSerializer: ClassName? = null): Serializer {
+    fun serializer(type: TypeName, overrideSerializer: ClassName? = null, isExpect: Boolean = false): Serializer {
         if (overrideSerializer != null) {
-            return Serializer.StaticObject(type, overrideSerializer)
+            return Serializer.StaticObject(type, overrideSerializer, isExpect)
         }
         return when (type) {
             is ParameterizedTypeName -> {
@@ -97,7 +97,7 @@ class IncludedSerializers(
             in registry.serializers -> {
                 Serializer.StaticObject(type as ClassName, registry.serializers[type]!!.serializer)
             }
-            else -> throw NoSerializerException(type)
+            else -> throw NoSerializerException(type, registry.serializersToString())
         }
     }
 
@@ -123,7 +123,8 @@ class IncludedSerializers(
 
         data class StaticObject(
             override val type: TypeName,
-            val serializer: ClassName = type.serializerClass()
+            val serializer: ClassName = type.serializerClass(),
+            val isExpect: Boolean = false,
         ): Serializer() {
 
             override fun readCodeInternal(buffer: TypedCode): CodeBlock {
@@ -335,4 +336,4 @@ class IncludedSerializers(
     }
 }
 
-class NoSerializerException(type: TypeName): Exception("No serializer defined for $type")
+class NoSerializerException(type: TypeName, defined: String): Exception("No serializer defined for $type. $defined")

@@ -21,6 +21,10 @@ abstract class NativeInstanceJvm() : AsyncSafeCloseable() {
 
     protected val nativeInstancePtr get() = nativeInstance.load()
 
+    fun asLong(): Long {
+        return nativeInstancePtr
+    }
+
     protected inline fun <T> withValidInstance(block: (Long) -> T): T {
         acquire()
         try {

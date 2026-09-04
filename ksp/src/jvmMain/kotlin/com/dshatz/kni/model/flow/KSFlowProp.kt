@@ -8,7 +8,6 @@ import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.ParamInfo
-import com.dshatz.kni.model.WithClassParent
 import com.dshatz.kni.utils.add
 import com.dshatz.kni.utils.addCode
 import com.dshatz.kni.utils.addReturn
@@ -17,7 +16,6 @@ import com.dshatz.kni.utils.cnameFunBuilder
 import com.dshatz.kni.utils.defineCommon
 import com.dshatz.kni.utils.defineJvm
 import com.dshatz.kni.utils.nativeCode
-import com.dshatz.kni.utils.originatesFrom
 import com.dshatz.kni.utils.withSuffix
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -29,7 +27,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
-import jdk.javadoc.internal.doclets.toolkit.util.DocPath.parent
 
 data class KSFlowProp(
     val name: String,
@@ -40,22 +37,22 @@ data class KSFlowProp(
 
     val initFunction: MemberName = MemberName(instanceClass, "${name}InitJNI")
 
+    val callbackClassName = ClassName(instanceClass.packageName, instanceClass.simpleName, "${name.capitalized()}_FlowCallback")
     val callbackClass: FunctionParent.Class = FunctionParent.Class(
-        className = instanceClass.withSuffix("_${name}_FlowCallback"),
+        className = callbackClassName,
         superTypes = listOf(Types.FlowCallback.parameterizedBy(innerType.kotlinType)),
     )
 
-    val baseCallbackClass: ClassName = ClassName(
-        callbackClass.className.packageName,
-        "Base" + callbackClass.className.simpleName.capitalized()
-    )
+    val baseCallbackClass: ClassName = callbackClassName.withSuffix("Base")
+
+    val callbackType = TypeInfo.Callback(callbackClassName, baseCallbackClass)
 
     val onValueFun: KSCallbackFun = KSCallbackFun.Blocking(
         name = "onValue",
         returnType = TypeInfo.Unit,
         parameters = listOf(ParamInfo("value", innerType)),
         parent = callbackClass,
-        callbackClass = baseCallbackClass
+        callbackType = callbackType
     )
 
     private fun onValueFunBuilder() : FunSpec.Builder {
@@ -70,7 +67,7 @@ data class KSFlowProp(
             .addAnnotation(Types.Annotations.Optin.KniInternalOptIn)
             .build()
 
-        return TypeSpec.classBuilder(callbackClass.className)
+        return TypeSpec.classBuilder(callbackClassName)
             .addModifiers(KModifier.INNER)
             .addSuperinterface(baseCallbackClass)
             .addFunction(onValue)
@@ -133,7 +130,6 @@ data class KSFlowProp(
     }
 
     fun generateNativeFlowInit(): FunSpec {
-        val callbackType = TypeInfo.Callback(baseCallbackClass)
         val callback = CodeBlock.of("callback").nativeCode(callbackType)
 
         val (initCallback, callbackRef) = CodeBlock.builder()

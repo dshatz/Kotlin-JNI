@@ -29,6 +29,7 @@ version = libVersion
 kni {
     autoWire {
         kspDependency = project(":ksp")
+        createSourceSets = false
     }
 }
 
@@ -52,9 +53,12 @@ kotlin {
             group("androidNative") {
                 withAndroidNative()
             }
+            group("jvm") {
+                withJvm()
+            }
             group("jniJvm") {
                 withAndroidTarget()
-                withJvm()
+                group("jvm")
             }
             group("jniNative") {
                 withLinux()
@@ -160,6 +164,10 @@ kotlin {
             implementation(libs.android.runner)
             implementation(libs.test.core)
             implementation(libs.junit4)
+        }
+
+        androidMain.configure {
+            dependsOn(getByName("jniJvmMain"))
         }
     }
 
