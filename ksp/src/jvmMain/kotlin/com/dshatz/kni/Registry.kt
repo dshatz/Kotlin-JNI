@@ -1,23 +1,14 @@
 package com.dshatz.kni
 
-import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallback
-import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.KSDefinedSerializer
 import com.dshatz.kni.model.KSInstance
 import com.dshatz.kni.model.KSJniCall
-import com.dshatz.kni.model.flow.KSFlowProp
+import com.dshatz.kni.model.KSWrapper
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.serialization.SerializerProcessor
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSDeclaration
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.TypeSpec
 
 class Registry {
     val jniCalls: MutableSet<KSJniCall> = mutableSetOf()
@@ -35,9 +26,15 @@ class Registry {
     val callbackClasses: MutableSet<ClassName> = mutableSetOf()
 
     val nativeInstances: MutableMap<ClassName, KSInstance> = mutableMapOf()
+    val nativeInstanceClasses: MutableSet<ClassName> = mutableSetOf()
 
     val jniCallSuspendAdapters: MutableSet<KSCallback> = mutableSetOf()
     val callbackSuspendAdapters: MutableSet<KSInstance> = mutableSetOf()
+
+    val jniAdapters: MutableSet<TypeName> = mutableSetOf()
+    val jniAdapterTypes: MutableMap<ClassName, KSWrapper> = mutableMapOf()
+
+    val allTypes: MutableSet<TypeInfo> = mutableSetOf<TypeInfo>()
 
     enum class Platform {
         COMMON,
@@ -60,4 +57,11 @@ class Registry {
         Registered native instances:
         ${nativeInstances.keys.joinToString("\n")}
     """.trimIndent()
+
+    fun jniAdaptersToString(): String = """
+        Registered JniAdapters: 
+        $jniAdapterTypes
+    """.trimIndent()
 }
+
+typealias PlatformSet = Set<String>

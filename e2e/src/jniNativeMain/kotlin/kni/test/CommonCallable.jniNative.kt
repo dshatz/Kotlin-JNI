@@ -6,7 +6,6 @@ import com.dshatz.kni.buffers.allocateBuffer
 import kni.test.serializable.ColorfulObject
 import kni.test.serializable.PolymorphicFruit
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 actual object CommonCallable {
@@ -146,6 +145,25 @@ actual object CommonCallable {
         return objs.size
     }
 }
+
+/*actual class BitmapWorker actual constructor(private val bitmap: CommonBitmap): AutoCloseable {
+    @JniCall
+    actual fun eraseBitmap(actual: CommonBitmap): Int {
+        println("Native received bitmap $actual, width: ${actual.width} px")
+        actual.erase(0xFFFF0000u)
+        return actual.width
+    }
+
+    @JniCall
+    actual fun returnBitmap(actual: CommonBitmap): CommonBitmap {
+        return actual
+    }
+
+    actual override fun close() {
+
+    }
+
+}*/
 
 @JniCall
 actual fun topLevelFun(): ByteBuffer {
