@@ -5,6 +5,7 @@ import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
+import com.dshatz.kni.annotations.TypeMarker
 import com.dshatz.kni.utils.decapitalized
 import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.safeQualifiedName
@@ -17,8 +18,10 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.WildcardTypeName
+import com.sun.tools.javac.tree.TreeInfo.types
 
 class ConverterProcessor(
     override val mapper: TypeMapper,
@@ -26,23 +29,31 @@ class ConverterProcessor(
     override val registry: Registry
 ) : BaseProcessor() {
 
+    /**
+     * Given a generic receiver type with varied type arguments, moves those type arguments
+     * to function reified type parameters and makes the function inline.
+     *
+     * In other cases, just applies the receiver as usual.
+     */
     private fun FunSpec.Builder.buildGenericFunction(receiver: TypeName): FunSpec.Builder {
         val needsReified = receiver is ParameterizedTypeName && receiver.typeArguments.any { it is WildcardTypeName }
         return if (needsReified) {
-            val typeParams = receiver.typeArguments
+            // for example, receiver = Array<out Callback>
+            val typeParams = receiver.typeArguments // e.g. 'out Callback'
             val typeParamsWithBounds = typeParams.map {
                 if (it is WildcardTypeName) {
-                    it.outTypes
+                    it.outTypes // 'Callback' - variance removed.
                 } else {
                     listOf(it)
                 }
             }
             val typeVariables = typeParamsWithBounds.mapIndexed { index, bounds ->
                 TypeVariableName("T$index", bounds).copy(reified = true)
+                // reified T0: Callback
             }
             val receiverWithT: ParameterizedTypeName = receiver.copy(
                 typeArguments = typeVariables
-            )
+            ) // Array<T0>
             receiver(
                 receiverWithT
             ).addTypeVariables(typeVariables)
@@ -59,15 +70,16 @@ class ConverterProcessor(
             registry.allTypes +
                     registry.nativeInstances.values.map { it.typeInfo } +
                     registry.callbackSuspendAdapters.map {
-                        logger.info("Adding suspend adapter ${it.typeInfo}")
                         it.typeInfo
                     } +
                     registry.jniCallSuspendAdapters.map {
-                        logger.info("Adding suspend adapter ${it.typeInfo}")
                         it.typeInfo
                     } +
                     registry.nativeInstances.values.flatMap {
                         it.flowProps.map { it.callbackType }
+                    } +
+                    registry.jniAdapterTypes.values.map {
+                        it.type
                     }
         return types.groupBy { it.converterFile() }.mapValues { (fileCls, types) ->
             val file = FileSpec.builder(fileCls)
@@ -118,14 +130,18 @@ class ConverterProcessor(
 }
 
 private fun TypeInfo.converterPackage(): String {
-    return "kni.generated.converters." + commonKotlinType.safeQualifiedName().split('.').joinToString(".") {
-        it.decapitalized()
-    }
+    return commonKotlinType.converterPackage()
 }
 
 private fun TypeInfo.converterFile(): ClassName {
     val name = "converters"
     return ClassName(converterPackage(), name)
+}
+
+fun TypeName.converterPackage(): String {
+    return "kni.generated.converters." + safeQualifiedName().split('.').joinToString(".") {
+        it.decapitalized()
+    }
 }
 
 fun TypeInfo.packMember(): TypedMember {

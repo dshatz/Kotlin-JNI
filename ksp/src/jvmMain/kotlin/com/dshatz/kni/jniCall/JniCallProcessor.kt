@@ -20,9 +20,6 @@ import com.dshatz.kni.model.KSWrapper
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.model.PropInfo
 import com.dshatz.kni.model.flow.KSFlowProp
-import com.dshatz.kni.needsIsNullParam
-import com.dshatz.kni.utils.nonNullOrPlaceholder
-import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAllSuperTypes
@@ -36,19 +33,12 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.UNIT
-import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import kotlin.collections.orEmpty
 
 class JniCallProcessor(
     override val registry: Registry,
@@ -86,8 +76,8 @@ class JniCallProcessor(
             .filterIsInstance<KSClassDeclaration>()
             .filter { Modifier.DATA in it.modifiers }
             .associate {
-                val wrapperClass = it.findAnnotation<JniAdapter>()!!.getClassArgument("adapter")!!
-                val declaration = resolver.getClassDeclarationByName(wrapperClass.canonicalName)
+                val adapterCls = it.findAnnotation<JniAdapter>()!!.getClassArgument("adapter")!!
+                val declaration = resolver.getClassDeclarationByName(adapterCls.canonicalName)
                 val expectedSupertype = when (platform) {
                     Registry.Platform.COMMON -> error("Platform wrappers called from common code")
                     Registry.Platform.NATIVE -> Types.NativeJniAdapter
@@ -100,12 +90,18 @@ class JniCallProcessor(
                 }
                 val actualType = (superType.toTypeName() as ParameterizedTypeName).typeArguments[1]
                 logger.info("Type ${it.toClassName()} will be passed as $actualType for $platform")
+
+                val typeInfo = TypeInfo.JniAdapter(
+                    it.toClassName(),
+                    context(superType) { mapper.mapType(actualType, resolver) },
+                    adapterClassName = adapterCls
+                )
                 it.toClassName() to KSWrapper(
-                    adapterCls = wrapperClass,
-                    inner = actualType
+                    adapterCls = adapterCls,
+                    inner = actualType,
+                    type = typeInfo
                 )
             }
-
         registry.jniAdapterTypes.putAll(types)
     }
 
@@ -134,13 +130,13 @@ class JniCallProcessor(
             .groupBy { it.parentDeclaration!! }
             .map { (parentDeclaration, funs) ->
 
-                val parent = (parentDeclaration as KSClassDeclaration).innerFunLocation()
+                val parent = (parentDeclaration as KSClassDeclaration).innerFunLocation(resolver)
 
                 val constructors = parentDeclaration.getConstructors()
                     .mapIndexed { idx, constructor ->
                         KSConstructor(
                             id = idx,
-                            params = constructor.parameters.toTypeInfos(),
+                            params = constructor.parameters.toTypeInfos(resolver),
                             modifier = constructor.modifiers.visibilityKModifier
                         )
                     }.toList()
@@ -165,7 +161,7 @@ class JniCallProcessor(
                             val typeArg = (it.type as ParameterizedTypeName).typeArguments.first()
                             KSFlowProp(
                                 name = it.name,
-                                innerType = mapper.mapType(typeArg),
+                                innerType = mapper.mapType(typeArg, resolver),
                                 instanceClass = parent.className
                             )
                         }
@@ -175,7 +171,7 @@ class JniCallProcessor(
                 KSInstance(
                     className = parent.className,
                     constructors = constructors,
-                    funs = funs.map { it.createJniCall(parent) },
+                    funs = funs.map { it.createJniCall(resolver, parent) },
                     flowProps = flowProps,
                     superInterfaces = parentDeclaration.superTypes.map { it.toTypeName() }.toSet(),
                     modifiers = setOfNotNull(parentDeclaration.modifiers.actualModifier)
@@ -184,9 +180,9 @@ class JniCallProcessor(
         registry.nativeInstances.putAll(instances.associateBy { it.className })
     }
 
-    fun KSFunctionDeclaration.createJniCall(parent: FunctionParent): KSJniCall {
-        val returnType = mapper.mapType(returnType!!)
-        val params = parameters.toTypeInfos()
+    fun KSFunctionDeclaration.createJniCall(resolver: Resolver, parent: FunctionParent): KSJniCall {
+        val returnType = mapper.mapType(returnType!!, resolver)
+        val params = parameters.toTypeInfos(resolver)
         val name = simpleName.asString()
         val actualModifier = if (parent is FunctionParent.TopLevel) {
             modifiers.actualModifier
@@ -208,7 +204,7 @@ class JniCallProcessor(
             KSJniCall.Blocking(
                 name = simpleName.asString(),
                 returnType = returnType,
-                parameters = parameters.toTypeInfos(),
+                parameters = parameters.toTypeInfos(resolver),
                 parent = parent,
                 modifiers = setOfNotNull(
                     modifiers.visibilityKModifier,
@@ -225,10 +221,10 @@ class JniCallProcessor(
     ) {
         val funs = getAnnotatedJniCalls(resolver)
         val jniCalls = funs.groupBy {
-            it.functionLocation()
+            it.functionLocation(resolver)
         }.filter { it.key !is FunctionParent.Class }.flatMap { (parent, funs) ->
             funs.map { f ->
-                f.createJniCall(parent)
+                f.createJniCall(resolver, parent)
             }
         }
         registry.jniCalls.addAll(jniCalls)
