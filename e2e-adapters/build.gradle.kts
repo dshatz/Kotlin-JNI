@@ -24,15 +24,6 @@ kni {
     }
 }
 
-fun KotlinNativeTarget.androidLinkerOpts() {
-    binaries.all {
-        // Force the linker to use 16KB alignment
-        linkerOpts("-z", "max-page-size=16384")
-        linkerOpts("-z", "common-page-size=16384")
-        linkerOpts("-Wl,--allow-shlib-undefined")
-    }
-}
-
 kotlin {
 
     applyHierarchyTemplate {
@@ -83,10 +74,7 @@ kotlin {
         )
     }
     desktopNativeTargets.forEach { it.binaries.sharedLib() }
-    androidNativeTargets.forEach {
-        it.binaries.sharedLib()
-        it.androidLinkerOpts()
-    }
+    androidNativeTargets.forEach { it.binaries.sharedLib() }
 
     optionalTargets {
         wasmJs {
@@ -131,6 +119,7 @@ kotlin {
             dependencies {
                 implementation(project(":annotations"))
                 implementation(project(":serialization"))
+                implementation(project(":wrappers"))
             }
         }
         val jniCommonMain by getting {
@@ -159,7 +148,6 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(project(":buffers"))
-            implementation(project(":e2e-adapters"))
             implementation(project(":flows"))
             implementation(project(":wrappers"))
         }
@@ -168,9 +156,11 @@ kotlin {
                 implementation(libs.skiko)
             }
         }
-        jvmMain.dependencies {
-            implementation(libs.skiko)
-            implementation(libs.skiko.linuxX64)
+        jvmMain.configure {
+            dependencies {
+                implementation(libs.skiko)
+                implementation(libs.skiko.linuxX64)
+            }
         }
     }
     compilerOptions {

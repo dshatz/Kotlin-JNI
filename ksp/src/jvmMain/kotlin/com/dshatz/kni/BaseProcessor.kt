@@ -10,6 +10,7 @@ import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
@@ -25,9 +26,9 @@ abstract class BaseProcessor {
     abstract val logger: KSPLogger
     abstract val registry: Registry
 
-    protected fun List<KSValueParameter>.toTypeInfos(): List<ParamInfo> {
+    protected fun List<KSValueParameter>.toTypeInfos(resolver: Resolver): List<ParamInfo> {
         return map {
-            ParamInfo(it.name!!.asString(), mapper.mapType(it.type))
+            ParamInfo(it.name!!.asString(), mapper.mapType(it.type, resolver))
         }
     }
 
@@ -46,13 +47,13 @@ abstract class BaseProcessor {
     }
 
     @OptIn(KspExperimental::class)
-    fun KSFunctionDeclaration.functionLocation(): FunctionParent {
-        return closestClassDeclaration()?.innerFunLocation()
+    fun KSFunctionDeclaration.functionLocation(resolver: Resolver): FunctionParent {
+        return closestClassDeclaration()?.innerFunLocation(resolver)
             ?: topLevelFunLocation()
             ?: error("Could not derive classname")
     }
 
-    fun KSClassDeclaration.innerFunLocation(): FunctionParent {
+    fun KSClassDeclaration.innerFunLocation(resolver: Resolver): FunctionParent {
         val type = when (classKind) {
             ClassKind.CLASS, ClassKind.INTERFACE -> {
                 val constructors = takeIf { it.classKind == ClassKind.CLASS }
@@ -60,7 +61,7 @@ abstract class BaseProcessor {
                     ?.mapIndexed { idx, constructor ->
                         KSConstructor(
                             id = idx,
-                            params = constructor.parameters.toTypeInfos(),
+                            params = constructor.parameters.toTypeInfos(resolver),
                             modifier = constructor.modifiers.visibilityKModifier
                         )
                     }?.toList().orEmpty()
