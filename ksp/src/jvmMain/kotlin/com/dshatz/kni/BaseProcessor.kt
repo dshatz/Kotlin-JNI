@@ -4,19 +4,16 @@ import com.dshatz.kni.jniCall.visibilityKModifier
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSConstructor
 import com.dshatz.kni.model.ParamInfo
-import com.dshatz.kni.model.PropInfo
+import com.dshatz.kni.utils.ProcessorContext
 import com.dshatz.kni.utils.capitalized
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
-import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -26,9 +23,10 @@ abstract class BaseProcessor {
     abstract val logger: KSPLogger
     abstract val registry: Registry
 
-    protected fun List<KSValueParameter>.toTypeInfos(resolver: Resolver): List<ParamInfo> {
+    context(ctx: ProcessorContext)
+    protected fun List<KSValueParameter>.toTypeInfos(): List<ParamInfo> {
         return map {
-            ParamInfo(it.name!!.asString(), mapper.mapType(it.type, resolver))
+            ParamInfo(it.name!!.asString(), mapper.mapType(it.type))
         }
     }
 
@@ -47,13 +45,15 @@ abstract class BaseProcessor {
     }
 
     @OptIn(KspExperimental::class)
-    fun KSFunctionDeclaration.functionLocation(resolver: Resolver): FunctionParent {
-        return closestClassDeclaration()?.innerFunLocation(resolver)
+    context(ctx: ProcessorContext)
+    fun KSFunctionDeclaration.functionLocation(): FunctionParent {
+        return closestClassDeclaration()?.innerFunLocation()
             ?: topLevelFunLocation()
             ?: error("Could not derive classname")
     }
 
-    fun KSClassDeclaration.innerFunLocation(resolver: Resolver): FunctionParent {
+    context(ctx: ProcessorContext)
+    fun KSClassDeclaration.innerFunLocation(): FunctionParent {
         val type = when (classKind) {
             ClassKind.CLASS, ClassKind.INTERFACE -> {
                 val constructors = takeIf { it.classKind == ClassKind.CLASS }
@@ -61,7 +61,7 @@ abstract class BaseProcessor {
                     ?.mapIndexed { idx, constructor ->
                         KSConstructor(
                             id = idx,
-                            params = constructor.parameters.toTypeInfos(resolver),
+                            params = constructor.parameters.toTypeInfos(),
                             modifier = constructor.modifiers.visibilityKModifier
                         )
                     }?.toList().orEmpty()

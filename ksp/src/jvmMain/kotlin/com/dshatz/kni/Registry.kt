@@ -63,5 +63,3 @@ class Registry {
         $jniAdapterTypes
     """.trimIndent()
 }
-
-typealias PlatformSet = Set<String>
