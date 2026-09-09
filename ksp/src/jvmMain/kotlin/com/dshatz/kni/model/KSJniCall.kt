@@ -94,15 +94,19 @@ sealed class KSJniCall: WithParent {
         override val modifiers: Set<KModifier> = additionalModifiers + KModifier.SUSPEND
 
         val callbackType = TypeInfo.Callback(baseSuspendCallback)
-        private val jvmSuspendAdapter: TypeName = if (returnType == TypeInfo.Unit) {
+        private val suspendCallbackImpl: TypeName = if (returnType == TypeInfo.Unit) {
             Types.SuspendCallbackImpl0
         } else Types.SuspendCallbackImpl.parameterizedBy(returnType.kotlinType)
+
+        private val suspendCallbackInterface: TypeName = if (returnType == TypeInfo.Unit) {
+            Types.SuspendCallback0
+        } else Types.SuspendCallback.parameterizedBy(returnType.kotlinType)
 
         fun generateBaseSuspendAdapter(): FileSpec {
             val cls = TypeSpec.interfaceBuilder(baseSuspendCallback)
                 .addKdoc("Callback for calling suspend function [%T.%N].", parent.className, name)
                 .addSuperinterface(Types.AutoCloseable)
-                .addSuperinterface(Types.SuspendCallback.parameterizedBy(returnType.kotlinType))
+                .addSuperinterface(suspendCallbackInterface)
                 .build()
             return FileSpec.builder(baseSuspendCallback)
                 .addType(cls)
@@ -112,7 +116,7 @@ sealed class KSJniCall: WithParent {
         fun externalAsyncSpec(): FunSpec {
             val anonCallback = TypeSpec.anonymousClassBuilder()
                 .addSuperinterface(baseSuspendCallback)
-                .superclass(jvmSuspendAdapter)
+                .superclass(suspendCallbackImpl)
                 .addSuperclassConstructorParameter("it")
                 .build()
             val params = jniParams.map {

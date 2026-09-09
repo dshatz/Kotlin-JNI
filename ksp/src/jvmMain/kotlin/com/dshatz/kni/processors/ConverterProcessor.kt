@@ -69,11 +69,11 @@ class ConverterProcessor(
         val types =
             registry.allTypes +
                     registry.nativeInstances.values.map { it.typeInfo } +
-                    registry.callbackSuspendAdapters.map {
-                        it.typeInfo
+                    registry.callbackSuspendAdapters.flatMap {
+                        it.funs.flatMap { it.parameters.map { it.typeInfo } + it.returnType } + it.typeInfo
                     } +
-                    registry.jniCallSuspendAdapters.map {
-                        it.typeInfo
+                    registry.jniCallSuspendAdapters.flatMap {
+                        it.funs.flatMap { it.parameters.map { it.typeInfo } + it.returnType } + it.typeInfo
                     } +
                     registry.nativeInstances.values.flatMap {
                         it.flowProps.map { it.callbackType }
