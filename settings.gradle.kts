@@ -5,6 +5,7 @@ if (!settings.extra.has("onlyDocs")) {
     include(":annotations")
 //    include(":demo")
     include(":e2e")
+    include(":e2e-adapters")
     include(":ksp")
     include(":wrappers")
     include(":serialization")
