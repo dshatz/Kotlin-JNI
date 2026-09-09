@@ -8,6 +8,7 @@ import com.dshatz.kni.annotations.JniSerializerFor
 import com.dshatz.kni.kspfix.findAnnotation
 import com.dshatz.kni.kspfix.getClassArgument
 import com.dshatz.kni.model.KSDefinedSerializer
+import com.dshatz.kni.utils.ProcessorContext
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.genericClassName
 import com.dshatz.kni.utils.returnType
@@ -40,20 +41,8 @@ class SerializerProcessor(
 
     private val included = IncludedSerializers(registry, logger)
 
-
-    /*fun findSerializableClasses(
-        resolver: Resolver
-    ) {
-        val classes = resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name)
-            .filterIsInstance<KSClassDeclaration>()
-            .map { it.toClassName() }
-            .toList()
-        registry.serializers.putAll(classes.associateWith { KSDefinedSerializer(it, it.serializerClass()) })
-    }*/
-
-    fun processSerializables(
-        resolver: Resolver
-    ): Sequence<SerialClass> {
+    context(ctx: ProcessorContext)
+    fun processSerializables(): Sequence<SerialClass> {
         fun collectSerialProps(decl: KSClassDeclaration): SerialClass.DataClass {
             val valParams = decl.primaryConstructor!!.parameters.map {
                 it.name!!.asString()
@@ -71,7 +60,7 @@ class SerializerProcessor(
             return SerialClass.DataClass(decl.toClassName(), props)
         }
 
-        val declarations = resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name)
+        val declarations = ctx.resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
         val sealed = declarations.filter { d ->
             Modifier.SEALED in d.modifiers
@@ -113,8 +102,9 @@ class SerializerProcessor(
     /**
      * Find all defined serializers, annotated with [JniSerializerFor] and save to registry as [KSDefinedSerializer].
      */
-    fun collectDefinedSerializers(resolver: Resolver) {
-        val serializers = resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
+    context(ctx: ProcessorContext)
+    fun collectDefinedSerializers() {
+        val serializers = ctx.resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
         val defined = serializers.mapNotNull {
             if (it.classKind != ClassKind.OBJECT && it.classKind != ClassKind.CLASS) {
