@@ -1,24 +1,24 @@
 package com.dshatz.kni
 
 import com.dshatz.kni.Registry.Platform
+import com.dshatz.kni.annotations.JniAdapter
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.annotations.JniSerializable
 import com.dshatz.kni.annotations.JniSerializerFor
-import com.dshatz.kni.annotations.JniAdapter
+import com.dshatz.kni.annotations.TypeMarker
 import com.dshatz.kni.flow.FlowProcessor
 import com.dshatz.kni.jniCall.CallbackProcessor
 import com.dshatz.kni.jniCall.JniCallProcessor
 import com.dshatz.kni.model.KSDefinedSerializer
-import com.dshatz.kni.model.KSWrapper
 import com.dshatz.kni.processors.ConverterProcessor
+import com.dshatz.kni.processors.converterPackage
 import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
+import com.dshatz.kni.utils.safeQualifiedName
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.containingFile
-import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
@@ -26,9 +26,11 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFile
+import com.squareup.kotlinpoet.AnnotationSpec
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 
 class NativeKommons : SymbolProcessorProvider {
@@ -90,7 +92,7 @@ class NativeKommons : SymbolProcessorProvider {
             callbackProcessor.collectCallbackClasses(resolver)
             jniCallProcessor.collectNativeInstanceClasses(resolver)
 
-            collectWrappers(resolver, registry)
+            collectAdapters(resolver, registry)
 
             callbackProcessor.collectCallbacks(resolver)
             jniCallProcessor.collectNativeInstances(resolver)
@@ -101,6 +103,7 @@ class NativeKommons : SymbolProcessorProvider {
                 Platform.COMMON -> {
                     callbackProcessor.generateBaseSuspendAdapters().write()
                     flowProcessor.generateCommon().write()
+                    generateAdapterMarkers()?.write()
                 }
                 else -> {
                     serializableProcessor.collectGenericSerializers()
@@ -136,61 +139,36 @@ class NativeKommons : SymbolProcessorProvider {
                     resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name) +
                     resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
             val originatingFiles = allSymbols.mapNotNull { it.containingFile }.toList()
-            try {
-                return doProcess(resolver, originatingFiles, platform)
-            } finally {
-                val deps = Dependencies(true, sources = originatingFiles.toTypedArray())
-                codeGenerator.createNewFile(
-                    deps,
-                    "com.dshatz.kni.debug",
-                    "nativeInstances",
-                    "txt"
-                ).write(registry.nativeInstances.values.joinToString("\n").encodeToByteArray())
-
-                codeGenerator.createNewFile(
-                    deps,
-                    "com.dshatz.kni.debug",
-                    "callbacks",
-                    "txt"
-                ).write(registry.callbacks.values.joinToString("\n").encodeToByteArray())
-
-                codeGenerator.createNewFile(
-                    deps,
-                    "com.dshatz.kni.debug",
-                    "serializables",
-                    "txt"
-                ).write(registry.serializersToString().encodeToByteArray())
-
-                codeGenerator.createNewFile(
-                    deps,
-                    "com.dshatz.kni.debug",
-                    "platformWrappers",
-                    "txt"
-                ).write(registry.jniAdaptersToString().encodeToByteArray())
-            }
+            return doProcess(resolver, originatingFiles, platform)
         }
 
         @OptIn(KspExperimental::class)
-        fun collectWrappers(resolver: Resolver, registry: Registry) {
-
+        fun collectAdapters(resolver: Resolver, registry: Registry) {
             val wrappers = resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
                 .filterIsInstance<KSClassDeclaration>()
                 .map { it.toClassName() }
             registry.jniAdapters.addAll(wrappers)
+        }
 
-            /*resolver.getFunctionDeclarationsByName("com.dshatz.kni.generated.jniadapters._getAdapter", true)
-                .forEach {
-                    env.logger.warn("Found adapter ${it.simpleName.asString()}")
-                    val rawType = it.extensionReceiver?.resolve()?.toClassName()!!
-                    val inner = it.parameters.first().type.toTypeName()
-                    val returnType = it.returnType!!.resolve()
-                    env.logger.info("Found jni adapter marker for $rawType, adapted as $inner using ${returnType.toClassName()}")
-                    registry.jniAdapterTypes[rawType] = KSWrapper(
-                        returnType.toClassName(),
-                        inner
-                    )
-                    registry.jniAdapters.add(rawType)
-                }*/
+        fun generateAdapterMarkers(): List<FileSpec>? {
+            if (registry.jniAdapters.isEmpty()) return null
+            val markers = registry.jniAdapters.map {
+                val className = ClassName(
+                    "kni.generated.adapters",
+                    "Marker${it.safeQualifiedName().replace('.', '_')}"
+                )
+                val file = FileSpec.builder(
+                    className
+                )
+                val marker = TypeSpec.classBuilder(
+                    className
+                )
+                    .addAnnotation(AnnotationSpec.builder(TypeMarker::class).addMember("%S", it.converterPackage()).build())
+                    .build()
+                file.addType(marker)
+                    .build()
+            }
+            return markers
         }
     }
 }

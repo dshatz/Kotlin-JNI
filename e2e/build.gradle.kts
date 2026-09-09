@@ -159,6 +159,7 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(project(":buffers"))
+            implementation(project(":e2e-adapters"))
             implementation(project(":flows"))
             implementation(project(":wrappers"))
         }

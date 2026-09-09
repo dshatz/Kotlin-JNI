@@ -75,17 +75,17 @@ class CallbackProcessor(
                     if (Modifier.SUSPEND in f.modifiers) {
                         KSCallbackFun.Suspend(
                             name = f.simpleName.asString(),
-                            returnType = mapper.mapType(f.returnType!!),
-                            parameters = f.parameters.toTypeInfos(),
-                            parent = f.functionLocation() as FunctionParent.Class,
+                            returnType = mapper.mapType(f.returnType!!, resolver),
+                            parameters = f.parameters.toTypeInfos(resolver),
+                            parent = f.functionLocation(resolver) as FunctionParent.Class,
                             callbackType = callbackType
                         )
                     } else {
                         KSCallbackFun.Blocking(
                             name = f.simpleName.asString(),
-                            returnType = mapper.mapType(f.returnType!!),
-                            parameters = f.parameters.toTypeInfos(),
-                            parent = f.functionLocation() as FunctionParent.Class,
+                            returnType = mapper.mapType(f.returnType!!, resolver),
+                            parameters = f.parameters.toTypeInfos(resolver),
+                            parent = f.functionLocation(resolver) as FunctionParent.Class,
                             callbackType = callbackType
                         )
                     }

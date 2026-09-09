@@ -1,16 +1,22 @@
 package com.dshatz.kni
 
+import com.dshatz.kni.annotations.TypeMarker
+import com.dshatz.kni.kspfix.findAnnotation
+import com.dshatz.kni.kspfix.getArgumentValueByName
 import com.dshatz.kni.serialization.IncludedSerializers
 import com.dshatz.kni.utils.TypedCode
-import com.dshatz.kni.utils.addStatement
 import com.dshatz.kni.utils.callFunction
 import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.dereferenceTypeAlias
 import com.dshatz.kni.utils.notNullable
 import com.dshatz.kni.utils.nullSafeCall
 import com.dshatz.kni.utils.returnType
+import com.dshatz.kni.utils.safeQualifiedName
 import com.dshatz.kni.utils.withSuffix
+import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
@@ -26,34 +32,37 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 
 class TypeMapper(
     private val registry: Registry,
-    private val logger: KSPLogger
+    private val logger: KSPLogger,
 ) {
 
     private val included = IncludedSerializers(registry, logger)
 
     fun mapType(
-        typeRef: KSTypeReference
+        typeRef: KSTypeReference,
+        resolver: Resolver
     ): TypeInfo {
         val type = typeRef.dereferenceTypeAlias()
         context(typeRef) {
-            return mapType(type)
+            return mapType(type, resolver = resolver)
         }
     }
 
     context(decl: KSNode)
     fun mapType(
         type: KSType,
+        resolver: Resolver,
     ): TypeInfo {
         val typeArguments = type.arguments.map { it.type!!.toTypeName() }
-        return mapType(type.toTypeName(), typeArguments)
+        return mapType(type.toTypeName(), resolver, typeArguments)
     }
 
     context(decl: KSNode)
     fun mapType(
         kotlinType: TypeName,
-        typeArgs: List<TypeName> = emptyList(),
-        allowSelf: Boolean = false,
+        resolver: Resolver,
+        typeArgs: List<TypeName> = emptyList()
     ): TypeInfo {
+//        findMarkers(resolver, kotlinType)
         val nonNull = kotlinType.copy(nullable = false)
         val nullable = kotlinType.isNullable
         val rawType = (nonNull as? ParameterizedTypeName)?.rawType ?: nonNull
@@ -94,7 +103,11 @@ class TypeMapper(
         } else if (rawType == Types.KArray) {
             (kotlinType as ParameterizedTypeName).typeArguments.first()
             TypeInfo.Array(
-                innerType = mapType(typeArgs.first(), emptyList()),
+                innerType = mapType(
+                    kotlinType = typeArgs.first(),
+                    typeArgs = emptyList(),
+                    resolver = resolver
+                ),
                 kotlinType
             )
         } else if (rawType in registry.serializers || nonNull in registry.serializers) {
@@ -124,7 +137,10 @@ class TypeMapper(
         } else if (nonNull in registry.jniAdapters) {
             val adapter = registry.jniAdapterTypes[nonNull]
             if (adapter != null) {
-                val inner = mapType(adapter.inner, allowSelf = true)
+                val inner = mapType(
+                    kotlinType = adapter.inner,
+                    resolver = resolver
+                )
                 TypeInfo.JniAdapter(kotlinType, inner, adapter.adapterCls)
             } else {
                 /*
@@ -133,36 +149,73 @@ class TypeMapper(
                 logger.info("Wrapping $kotlinType as a TypeInfo.Simple in current sourceset.")
                 TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
             }
+        } else if (markerClass(resolver, kotlinType) != null) {
+            val markers = asConvertibleOrNull(resolver, kotlinType)
+            markers ?: TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
         } else {
-            if (allowSelf) {
-                // JniAdapter class, pass class as it appears in kotlin code if not found
-                TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
-            } else {
-                val typeStr = if (kotlinType is ParameterizedTypeName)
-                    "$kotlinType (raw: ${kotlinType.rawType})"
-                else kotlinType.toString()
+            val typeStr = if (kotlinType is ParameterizedTypeName)
+                "$kotlinType (raw: ${kotlinType.rawType})"
+            else kotlinType.toString()
 
-                val error = """
-                Unknown type $typeStr - don't know how to pass to JNI.
-                
-                ===
-                
-                ${registry.serializersToString()}
-                
-                ===
-                
-                ${registry.nativeInstancesToString()}
-                
-                ===
-                
-                ${registry.jniAdaptersToString()}
-            """
-                logger.error(error)
-                error("JNI type mapping failed - see above for errors.")
+            val error = """
+            Unknown type $typeStr - don't know how to pass to JNI.
+            
+            ===
+            
+            ${registry.serializersToString()}
+            
+            ===
+            
+            ${registry.nativeInstancesToString()}
+            
+            ===
+            
+            ${registry.jniAdaptersToString()}
+        """
+            logger.error(error)
+            error("JNI type mapping failed - see above for errors.")
+        }
+        if (markerClass(resolver, kotlinType) == null) {
+            registry.allTypes.add(mapped.notNullable())
+        }
+        return mapped
+    }
+
+    private fun asConvertibleOrNull(
+        resolver: Resolver,
+        kotlinType: TypeName
+    ): TypeInfo.Convertible? {
+        val markerCls = markerClass(resolver, kotlinType)
+        if (markerCls != null) {
+            val packages = markerCls.findAnnotation<TypeMarker>()!!.getArgumentValueByName<List<String>>("packages")
+            val pkg = packages?.firstOrNull()
+            if (pkg != null) {
+                logger.warn("Found adapter package for $kotlinType: $pkg")
+                val toJni = MemberName(pkg, "toJni")
+                val fromJni = MemberName(pkg, "fromJni")
+                val toJniF = resolver.getFunctionDeclarationsByName(toJni.canonicalName, true).firstOrNull()
+                val fromJniF = resolver.getFunctionDeclarationsByName(fromJni.canonicalName, true).firstOrNull()
+                if (toJniF != null && fromJniF != null) {
+                    val jniType = toJniF.returnType!!.toTypeName()
+                    return TypeInfo.Convertible(
+                        kotlinType = kotlinType.notNullable(),
+                        jniType = JNIType(jniType, jniType, "l"),
+                        toJni = toJni,
+                        fromJni = fromJni
+                    ).also { logger.warn("Using $it for $kotlinType") }
+                }
             }
         }
-        registry.allTypes.add(mapped.notNullable())
-        return mapped
+        return null
+    }
+
+    private fun markerClass(
+        resolver: Resolver,
+        kotlinType: TypeName
+    ): KSClassDeclaration? {
+        val name = "Marker${kotlinType.safeQualifiedName().replace('.', '_')}"
+        val ksName = resolver.getKSNameFromString("kni.generated.adapters.$name")
+        return resolver.getClassDeclarationByName(ksName)
     }
 }
 
@@ -539,4 +592,33 @@ sealed class TypeInfo {
             return copy(kotlinType = kotlinType.notNullable())
         }
     }
+
+    /*data class External(
+        override val kotlinType: TypeName,
+        override val jniType: JNIType,
+    ): TypeInfo() {
+        override fun packCode(unpackedCode: TypedCode): TypedCode {
+            TODO("Not yet implemented")
+        }
+
+        override fun unpackCode(packedCode: TypedCode): TypedCode {
+            TODO("Not yet implemented")
+        }
+
+        override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
+            TODO("Not yet implemented")
+        }
+
+        override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {
+            TODO("Not yet implemented")
+        }
+
+        override fun describe(): String {
+            TODO("Not yet implemented")
+        }
+
+        override fun notNullable(): TypeInfo {
+            TODO("Not yet implemented")
+        }
+    }*/
 }

@@ -6,6 +6,7 @@ import com.dshatz.kni.Types
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.needsIsNullParam
 import com.dshatz.kni.processors.packMember
+import com.dshatz.kni.utils.TypedCodeMP
 import com.dshatz.kni.utils.cnameFunBuilder
 import com.dshatz.kni.utils.commonCode
 import com.dshatz.kni.utils.defineCommon
@@ -246,11 +247,16 @@ sealed class KSJniCall: WithParent {
                     paramPacking + isNullParams + CodeBlock.of("it").returnType(instance.typeInfo.jniType.nativeType)
                 }
                 val paramsCode = params.joinToCode(prefix = "\n", separator = ",\n", suffix = "\n") { it.code }
-                val callExternalCode = CodeBlock.of("%L(%L)", f.callToExternal.simpleName, paramsCode).returnType(f.returnType.jniType.jvmType)
+//                val callExternalCode = CodeBlock.of("%L(%L)", f.callToExternal.simpleName, paramsCode).returnType(f.returnType.jniType.jvmType)
+                val callExternalCode = TypedCodeMP.JVM(
+                    CodeBlock.of("%L(%L)", f.callToExternal.simpleName, paramsCode),
+                    f.returnType,
+                    f.returnType.jniType.jvmType.isNullable
+                )
                 val returnValue = if (f is KSJniCall.Suspend) {
                     callExternalCode // No need to convert, callback already converted.
                 } else {
-                    f.returnType.unpackCodeJvm(callExternalCode)
+                    callExternalCode.unpackCode()
                 }
 
                 if (instance != null) {

@@ -1,6 +1,7 @@
 package kni.test
 
 import com.dshatz.kni.annotations.JniCall
+import kni.CommonExternalBitmap
 
 actual class BitmapWorker actual constructor(bitmap: CommonBitmap) : AutoCloseable {
     @JniCall
@@ -15,5 +16,10 @@ actual class BitmapWorker actual constructor(bitmap: CommonBitmap) : AutoCloseab
     }
 
     actual override fun close() {
+    }
+
+    @JniCall
+    actual fun returnExternalBitmap(bitmap: CommonExternalBitmap): CommonExternalBitmap {
+        return bitmap
     }
 }

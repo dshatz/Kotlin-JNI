@@ -2,6 +2,7 @@ package kni.test
 
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
+import kni.CommonExternalBitmap
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorInfo
@@ -34,6 +35,17 @@ val BridgeTest by testSuite {
 
         val worker = BitmapWorker(common)
         val same = worker.returnBitmap(common)
+        same.pixmap.addr shouldBe pixmap.addr
+    }
+
+    test("return via external adapter") {
+        val bitmap = createBitmap()
+        val pixmap = bitmap.peekPixels()!!
+        val commonExternal = CommonExternalBitmap(pixmap)
+        val common = CommonBitmap(pixmap)
+
+        val worker = BitmapWorker(common)
+        val same = worker.returnExternalBitmap(commonExternal)
         same.pixmap.addr shouldBe pixmap.addr
     }
 }
