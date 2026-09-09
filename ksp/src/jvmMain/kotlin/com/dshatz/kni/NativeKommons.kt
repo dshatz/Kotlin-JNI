@@ -15,6 +15,7 @@ import com.dshatz.kni.processors.ConverterProcessor
 import com.dshatz.kni.processors.converterPackage
 import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
+import com.dshatz.kni.utils.ProcessorContext
 import com.dshatz.kni.utils.safeQualifiedName
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.containingFile
@@ -81,46 +82,49 @@ class NativeKommons : SymbolProcessorProvider {
                 }
             }
 
-            val serializables = serializableProcessor.processSerializables(resolver).also {
-                registry.generatedSerializers.addAll(it)
-                registry.serializers.putAll(it.associate { it.cls to KSDefinedSerializer(it.cls, it.cls.serializerClass()) })
-            }
+            context(ProcessorContext(resolver, platform)) {
 
-            jniCallProcessor.processJniAdapters(resolver, platform)
-
-            serializableProcessor.collectDefinedSerializers(resolver)
-            callbackProcessor.collectCallbackClasses(resolver)
-            jniCallProcessor.collectNativeInstanceClasses(resolver)
-
-            collectAdapters(resolver, registry)
-
-            callbackProcessor.collectCallbacks(resolver)
-            jniCallProcessor.collectNativeInstances(resolver)
-            jniCallProcessor.collectJniCalls(resolver)
-            flowProcessor.process()
-
-            when (platform) {
-                Platform.COMMON -> {
-                    callbackProcessor.generateBaseSuspendAdapters().write()
-                    flowProcessor.generateCommon().write()
-                    generateAdapterMarkers()?.write()
+                val serializables = serializableProcessor.processSerializables().also {
+                    registry.generatedSerializers.addAll(it)
+                    registry.serializers.putAll(it.associate { it.cls to KSDefinedSerializer(it.cls, it.cls.serializerClass()) })
                 }
-                else -> {
-                    serializableProcessor.collectGenericSerializers()
 
-                    serializableProcessor.generateSerializers(serializables).write()
-                    serializableProcessor.generateGenericSerializers()?.write()
-                    when (platform) {
-                        Platform.NATIVE -> {
-                            jniCallProcessor.generateNative().write()
-                            callbackProcessor.generateNative().write()
-                        }
-                        Platform.JVM -> {
-                            jniCallProcessor.generateJvm().write()
-                            callbackProcessor.generateJvm().write()
-                        }
+                jniCallProcessor.processJniAdapters()
+
+                serializableProcessor.collectDefinedSerializers()
+                callbackProcessor.collectCallbackClasses()
+                jniCallProcessor.collectNativeInstanceClasses()
+
+                collectAdapters(registry)
+
+                callbackProcessor.collectCallbacks()
+                jniCallProcessor.collectNativeInstances()
+                jniCallProcessor.collectJniCalls()
+                flowProcessor.process()
+
+                when (platform) {
+                    Platform.COMMON -> {
+                        callbackProcessor.generateBaseSuspendAdapters().write()
+                        flowProcessor.generateCommon().write()
+                        generateAdapterMarkers()?.write()
                     }
-                    converterProcessor.generateConverters(platform).write()
+                    else -> {
+                        serializableProcessor.collectGenericSerializers()
+
+                        serializableProcessor.generateSerializers(serializables).write()
+                        serializableProcessor.generateGenericSerializers()?.write()
+                        when (platform) {
+                            Platform.NATIVE -> {
+                                jniCallProcessor.generateNative().write()
+                                callbackProcessor.generateNative().write()
+                            }
+                            Platform.JVM -> {
+                                jniCallProcessor.generateJvm().write()
+                                callbackProcessor.generateJvm().write()
+                            }
+                        }
+                        converterProcessor.generateConverters(platform).write()
+                    }
                 }
             }
 
@@ -143,8 +147,9 @@ class NativeKommons : SymbolProcessorProvider {
         }
 
         @OptIn(KspExperimental::class)
-        fun collectAdapters(resolver: Resolver, registry: Registry) {
-            val wrappers = resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
+        context(ctx: ProcessorContext)
+        fun collectAdapters(registry: Registry) {
+            val wrappers = ctx.resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
                 .filterIsInstance<KSClassDeclaration>()
                 .map { it.toClassName() }
             registry.jniAdapters.addAll(wrappers)

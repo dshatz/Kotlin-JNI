@@ -13,6 +13,7 @@ import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.KSInstance
 import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.ParamInfo
+import com.dshatz.kni.utils.ProcessorContext
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.KSPLogger
@@ -50,17 +51,15 @@ class CallbackProcessor(
             }
     }
 
-    fun collectCallbackClasses(
-        resolver: Resolver
-    ) {
-        val classes = getDefinitions(resolver).map { it.toClassName() }
+    context(ctx: ProcessorContext)
+    fun collectCallbackClasses() {
+        val classes = getDefinitions(ctx.resolver).map { it.toClassName() }
         registry.callbackClasses.addAll(classes)
     }
 
-    fun collectCallbacks(
-        resolver: Resolver
-    ) {
-        val callbacks = getDefinitions(resolver)
+    context(ctx: ProcessorContext)
+    fun collectCallbacks() {
+        val callbacks = getDefinitions(ctx.resolver)
             .associate { declaration ->
             val funDeclarations = declaration.declarations
                 .filterIsInstance<KSFunctionDeclaration>()
@@ -75,17 +74,17 @@ class CallbackProcessor(
                     if (Modifier.SUSPEND in f.modifiers) {
                         KSCallbackFun.Suspend(
                             name = f.simpleName.asString(),
-                            returnType = mapper.mapType(f.returnType!!, resolver),
-                            parameters = f.parameters.toTypeInfos(resolver),
-                            parent = f.functionLocation(resolver) as FunctionParent.Class,
+                            returnType = mapper.mapType(f.returnType!!),
+                            parameters = f.parameters.toTypeInfos(),
+                            parent = f.functionLocation() as FunctionParent.Class,
                             callbackType = callbackType
                         )
                     } else {
                         KSCallbackFun.Blocking(
                             name = f.simpleName.asString(),
-                            returnType = mapper.mapType(f.returnType!!, resolver),
-                            parameters = f.parameters.toTypeInfos(resolver),
-                            parent = f.functionLocation(resolver) as FunctionParent.Class,
+                            returnType = mapper.mapType(f.returnType!!),
+                            parameters = f.parameters.toTypeInfos(),
+                            parent = f.functionLocation() as FunctionParent.Class,
                             callbackType = callbackType
                         )
                     }
