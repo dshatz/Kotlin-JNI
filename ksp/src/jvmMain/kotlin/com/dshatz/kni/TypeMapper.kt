@@ -4,6 +4,8 @@ import com.dshatz.kni.annotations.TypeMarker
 import com.dshatz.kni.kspfix.findAnnotation
 import com.dshatz.kni.kspfix.getArgumentValueByName
 import com.dshatz.kni.serialization.IncludedSerializers
+import com.dshatz.kni.utils.ProcessorContext
+import com.dshatz.kni.utils.TypeMappingContext
 import com.dshatz.kni.utils.TypedCode
 import com.dshatz.kni.utils.callFunction
 import com.dshatz.kni.utils.capitalized
@@ -37,32 +39,29 @@ class TypeMapper(
 
     private val included = IncludedSerializers(registry, logger)
 
+    context(ctx: ProcessorContext)
     fun mapType(
         typeRef: KSTypeReference,
-        resolver: Resolver
     ): TypeInfo {
         val type = typeRef.dereferenceTypeAlias()
-        context(typeRef) {
-            return mapType(type, resolver = resolver)
+        context(ctx.forDeclaration(typeRef)) {
+            return mapType(type)
         }
     }
 
-    context(decl: KSNode)
+    context(decl: TypeMappingContext)
     fun mapType(
         type: KSType,
-        resolver: Resolver,
     ): TypeInfo {
         val typeArguments = type.arguments.map { it.type!!.toTypeName() }
-        return mapType(type.toTypeName(), resolver, typeArguments)
+        return mapType(type.toTypeName(), typeArguments)
     }
 
-    context(decl: KSNode)
+    context(ctx: TypeMappingContext)
     fun mapType(
         kotlinType: TypeName,
-        resolver: Resolver,
         typeArgs: List<TypeName> = emptyList()
     ): TypeInfo {
-//        findMarkers(resolver, kotlinType)
         val nonNull = kotlinType.copy(nullable = false)
         val nullable = kotlinType.isNullable
         val rawType = (nonNull as? ParameterizedTypeName)?.rawType ?: nonNull
@@ -105,14 +104,13 @@ class TypeMapper(
             TypeInfo.Array(
                 innerType = mapType(
                     kotlinType = typeArgs.first(),
-                    typeArgs = emptyList(),
-                    resolver = resolver
+                    typeArgs = emptyList()
                 ),
                 kotlinType
             )
         } else if (rawType in registry.serializers || nonNull in registry.serializers) {
             // custom serializer defined
-            val serializer = included.serializer(nonNull)
+            val serializer = context(ctx.decl) { included.serializer(nonNull) }
             TypeInfo.Serializable(
                 kotlinType = kotlinType,
                 jniType = JNIType(
@@ -138,8 +136,7 @@ class TypeMapper(
             val adapter = registry.jniAdapterTypes[nonNull]
             if (adapter != null) {
                 val inner = mapType(
-                    kotlinType = adapter.inner,
-                    resolver = resolver
+                    kotlinType = adapter.inner
                 )
                 TypeInfo.JniAdapter(kotlinType, inner, adapter.adapterCls)
             } else {
@@ -149,8 +146,8 @@ class TypeMapper(
                 logger.info("Wrapping $kotlinType as a TypeInfo.Simple in current sourceset.")
                 TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
             }
-        } else if (markerClass(resolver, kotlinType) != null) {
-            val markers = asConvertibleOrNull(resolver, kotlinType)
+        } else if (markerClass(kotlinType) != null) {
+            val markers = asConvertibleOrNull(kotlinType)
             markers ?: TypeInfo.Simple(kotlinType, JNIType(kotlinType, kotlinType, "l"))
         } else {
             val typeStr = if (kotlinType is ParameterizedTypeName)
@@ -175,17 +172,17 @@ class TypeMapper(
             logger.error(error)
             error("JNI type mapping failed - see above for errors.")
         }
-        if (markerClass(resolver, kotlinType) == null) {
+        if (markerClass(kotlinType) == null) {
             registry.allTypes.add(mapped.notNullable())
         }
         return mapped
     }
 
+    context(ctx: ProcessorContext)
     private fun asConvertibleOrNull(
-        resolver: Resolver,
         kotlinType: TypeName
     ): TypeInfo.Convertible? {
-        val markerCls = markerClass(resolver, kotlinType)
+        val markerCls = markerClass(kotlinType)
         if (markerCls != null) {
             val packages = markerCls.findAnnotation<TypeMarker>()!!.getArgumentValueByName<List<String>>("packages")
             val pkg = packages?.firstOrNull()
@@ -193,8 +190,8 @@ class TypeMapper(
                 logger.warn("Found adapter package for $kotlinType: $pkg")
                 val toJni = MemberName(pkg, "toJni")
                 val fromJni = MemberName(pkg, "fromJni")
-                val toJniF = resolver.getFunctionDeclarationsByName(toJni.canonicalName, true).firstOrNull()
-                val fromJniF = resolver.getFunctionDeclarationsByName(fromJni.canonicalName, true).firstOrNull()
+                val toJniF = ctx.resolver.getFunctionDeclarationsByName(toJni.canonicalName, true).firstOrNull()
+                val fromJniF = ctx.resolver.getFunctionDeclarationsByName(fromJni.canonicalName, true).firstOrNull()
                 if (toJniF != null && fromJniF != null) {
                     val jniType = toJniF.returnType!!.toTypeName()
                     return TypeInfo.Convertible(
@@ -209,13 +206,13 @@ class TypeMapper(
         return null
     }
 
+    context(ctx: ProcessorContext)
     private fun markerClass(
-        resolver: Resolver,
         kotlinType: TypeName
     ): KSClassDeclaration? {
         val name = "Marker${kotlinType.safeQualifiedName().replace('.', '_')}"
-        val ksName = resolver.getKSNameFromString("kni.generated.adapters.$name")
-        return resolver.getClassDeclarationByName(ksName)
+        val ksName = ctx.resolver.getKSNameFromString("kni.generated.adapters.$name")
+        return ctx.resolver.getClassDeclarationByName(ksName)
     }
 }
 

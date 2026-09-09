@@ -20,6 +20,7 @@ import com.dshatz.kni.model.KSWrapper
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.model.PropInfo
 import com.dshatz.kni.model.flow.KSFlowProp
+import com.dshatz.kni.utils.ProcessorContext
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAllSuperTypes
@@ -71,29 +72,30 @@ class JniCallProcessor(
 
     }
 
-    fun processJniAdapters(resolver: Resolver, platform: Registry.Platform) {
-        val types = resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
+    context(ctx: ProcessorContext)
+    fun processJniAdapters() {
+        val types = ctx.resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
             .filter { Modifier.DATA in it.modifiers }
             .associate {
                 val adapterCls = it.findAnnotation<JniAdapter>()!!.getClassArgument("adapter")!!
-                val declaration = resolver.getClassDeclarationByName(adapterCls.canonicalName)
-                val expectedSupertype = when (platform) {
+                val declaration = ctx.resolver.getClassDeclarationByName(adapterCls.canonicalName)
+                val expectedSupertype = when (ctx.platform) {
                     Registry.Platform.COMMON -> error("Platform wrappers called from common code")
                     Registry.Platform.NATIVE -> Types.NativeJniAdapter
                     Registry.Platform.JVM -> Types.JvmJniAdapter
                 }
 
                 val superType = declaration?.superTypes?.singleOrNull { it.toTypeName() typeOf expectedSupertype } ?: run {
-                    logger.error("Expected PlatformWrapper to extend $expectedSupertype for platform $platform, found: ${declaration?.superTypes?.joinToString { it.toTypeName().toString() }}", declaration)
+                    logger.error("Expected PlatformWrapper to extend $expectedSupertype for platform $ctx.platform, found: ${declaration?.superTypes?.joinToString { it.toTypeName().toString() }}", declaration)
                     error("Failed to process platform wrappers")
                 }
                 val actualType = (superType.toTypeName() as ParameterizedTypeName).typeArguments[1]
-                logger.info("Type ${it.toClassName()} will be passed as $actualType for $platform")
+                logger.info("Type ${it.toClassName()} will be passed as $actualType for $ctx.platform")
 
                 val typeInfo = TypeInfo.JniAdapter(
                     it.toClassName(),
-                    context(superType) { mapper.mapType(actualType, resolver) },
+                    context(ctx.forDeclaration(superType)) { mapper.mapType(actualType) },
                     adapterClassName = adapterCls
                 )
                 it.toClassName() to KSWrapper(
@@ -105,10 +107,9 @@ class JniCallProcessor(
         registry.jniAdapterTypes.putAll(types)
     }
 
-    fun collectNativeInstanceClasses(
-        resolver: Resolver
-    ) {
-        val instanceClasses = getAnnotatedJniCalls(resolver)
+    context(ctx: ProcessorContext)
+    fun collectNativeInstanceClasses() {
+        val instanceClasses = getAnnotatedJniCalls(ctx.resolver)
             .map { it.parentDeclaration }
             .filterIsInstance<KSClassDeclaration>()
             .filter { it.classKind == ClassKind.CLASS }
@@ -119,10 +120,9 @@ class JniCallProcessor(
         registry.nativeInstanceClasses.addAll(instanceClasses)
     }
 
-    fun collectNativeInstances(
-        resolver: Resolver
-    ) {
-        val instances = getAnnotatedJniCalls(resolver)
+    context(ctx: ProcessorContext)
+    fun collectNativeInstances() {
+        val instances = getAnnotatedJniCalls(ctx.resolver)
             .filter {
                 it.parentDeclaration is KSClassDeclaration
                         && (it.parentDeclaration as KSClassDeclaration).classKind == ClassKind.CLASS
@@ -130,13 +130,13 @@ class JniCallProcessor(
             .groupBy { it.parentDeclaration!! }
             .map { (parentDeclaration, funs) ->
 
-                val parent = (parentDeclaration as KSClassDeclaration).innerFunLocation(resolver)
+                val parent = (parentDeclaration as KSClassDeclaration).innerFunLocation()
 
                 val constructors = parentDeclaration.getConstructors()
                     .mapIndexed { idx, constructor ->
                         KSConstructor(
                             id = idx,
-                            params = constructor.parameters.toTypeInfos(resolver),
+                            params = constructor.parameters.toTypeInfos(),
                             modifier = constructor.modifiers.visibilityKModifier
                         )
                     }.toList()
@@ -157,11 +157,11 @@ class JniCallProcessor(
                         if (it.isMutable) logger.error("com.dshatz.kni.flows.NativeBackedFlow<T> cannot be a mutable property")
                         !it.isMutable
                     }.map {
-                        context(it.declaration) {
+                        context(ctx.forDeclaration(it.declaration)) {
                             val typeArg = (it.type as ParameterizedTypeName).typeArguments.first()
                             KSFlowProp(
                                 name = it.name,
-                                innerType = mapper.mapType(typeArg, resolver),
+                                innerType = mapper.mapType(typeArg),
                                 instanceClass = parent.className
                             )
                         }
@@ -171,7 +171,7 @@ class JniCallProcessor(
                 KSInstance(
                     className = parent.className,
                     constructors = constructors,
-                    funs = funs.map { it.createJniCall(resolver, parent) },
+                    funs = funs.map { it.createJniCall(parent) },
                     flowProps = flowProps,
                     superInterfaces = parentDeclaration.superTypes.map { it.toTypeName() }.toSet(),
                     modifiers = setOfNotNull(parentDeclaration.modifiers.actualModifier)
@@ -180,9 +180,10 @@ class JniCallProcessor(
         registry.nativeInstances.putAll(instances.associateBy { it.className })
     }
 
-    fun KSFunctionDeclaration.createJniCall(resolver: Resolver, parent: FunctionParent): KSJniCall {
-        val returnType = mapper.mapType(returnType!!, resolver)
-        val params = parameters.toTypeInfos(resolver)
+    context(ctx: ProcessorContext)
+    fun KSFunctionDeclaration.createJniCall(parent: FunctionParent): KSJniCall {
+        val returnType = mapper.mapType(returnType!!)
+        val params = parameters.toTypeInfos()
         val name = simpleName.asString()
         val actualModifier = if (parent is FunctionParent.TopLevel) {
             modifiers.actualModifier
@@ -204,7 +205,7 @@ class JniCallProcessor(
             KSJniCall.Blocking(
                 name = simpleName.asString(),
                 returnType = returnType,
-                parameters = parameters.toTypeInfos(resolver),
+                parameters = parameters.toTypeInfos(),
                 parent = parent,
                 modifiers = setOfNotNull(
                     modifiers.visibilityKModifier,
@@ -216,15 +217,15 @@ class JniCallProcessor(
         }
     }
 
+    context(ctx: ProcessorContext)
     fun collectJniCalls(
-        resolver: Resolver
     ) {
-        val funs = getAnnotatedJniCalls(resolver)
+        val funs = getAnnotatedJniCalls(ctx.resolver)
         val jniCalls = funs.groupBy {
-            it.functionLocation(resolver)
+            it.functionLocation()
         }.filter { it.key !is FunctionParent.Class }.flatMap { (parent, funs) ->
             funs.map { f ->
-                f.createJniCall(resolver, parent)
+                f.createJniCall(parent)
             }
         }
         registry.jniCalls.addAll(jniCalls)
