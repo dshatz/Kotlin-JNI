@@ -2,6 +2,7 @@ package com.dshatz.kni.jniCall
 
 import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.Registry
+import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
@@ -20,7 +21,14 @@ import com.dshatz.kni.model.KSWrapper
 import com.dshatz.kni.model.ParamInfo
 import com.dshatz.kni.model.PropInfo
 import com.dshatz.kni.model.flow.KSFlowProp
+import com.dshatz.kni.model.getSignature
+import com.dshatz.kni.utils.SymbolContext
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
+import com.dshatz.kni.utils.PlatformContext
 import com.dshatz.kni.utils.ProcessorContext
+import com.dshatz.kni.utils.ResolverContext
+import com.dshatz.kni.utils.SymContext
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAllSuperTypes
@@ -37,6 +45,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterizedTypeName
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -76,14 +85,14 @@ class JniCallProcessor(
     fun processJniAdapters() {
         val types = ctx.resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
             .filterIsInstance<KSClassDeclaration>()
-            .filter { Modifier.DATA in it.modifiers }
+            .filterNot { it.isExpect }
             .associate {
                 val adapterCls = it.findAnnotation<JniAdapter>()!!.getClassArgument("adapter")!!
                 val declaration = ctx.resolver.getClassDeclarationByName(adapterCls.canonicalName)
                 val expectedSupertype = when (ctx.platform) {
-                    Registry.Platform.COMMON -> error("Platform wrappers called from common code")
-                    Registry.Platform.NATIVE -> Types.NativeJniAdapter
-                    Registry.Platform.JVM -> Types.JvmJniAdapter
+                    Platform.COMMON -> error("Platform wrappers called from common code")
+                    Platform.NATIVE -> Types.NativeJniAdapter
+                    Platform.JVM -> Types.JvmJniAdapter
                 }
 
                 val superType = declaration?.superTypes?.singleOrNull { it.toTypeName() typeOf expectedSupertype } ?: run {
@@ -95,7 +104,7 @@ class JniCallProcessor(
 
                 val typeInfo = TypeInfo.JniAdapter(
                     it.toClassName(),
-                    context(ctx.forDeclaration(superType)) { mapper.mapType(actualType) },
+                    context(ctx.forDeclaration(superType).copy(forAdapter = true)) { mapper.mapType(actualType) },
                     adapterClassName = adapterCls
                 )
                 it.toClassName() to KSWrapper(
@@ -120,7 +129,14 @@ class JniCallProcessor(
         registry.nativeInstanceClasses.addAll(instanceClasses)
     }
 
-    context(ctx: ProcessorContext)
+    context(decl: SymbolContext, res: ResolverContext)
+    private fun TypeName.jvmType(): TypeInfo {
+        return ProcessorContext(res.resolver, Platform.JVM, res.moduleName).runAsJvm {
+            mapper.mapType(this, saveType = false)
+        }
+    }
+
+    context(ctx: ResolverContext, p: PlatformContext)
     fun collectNativeInstances() {
         val instances = getAnnotatedJniCalls(ctx.resolver)
             .filter {
@@ -157,12 +173,16 @@ class JniCallProcessor(
                         if (it.isMutable) logger.error("com.dshatz.kni.flows.NativeBackedFlow<T> cannot be a mutable property")
                         !it.isMutable
                     }.map {
-                        context(ctx.forDeclaration(it.declaration)) {
+                        val ctx = SymContext(it.declaration)
+                        context(ctx) {
                             val typeArg = (it.type as ParameterizedTypeName).typeArguments.first()
+                            val jvmTypeString = typeArg.jvmType()
                             KSFlowProp(
                                 name = it.name,
                                 innerType = mapper.mapType(typeArg),
-                                instanceClass = parent.className
+                                instanceClass = parent.className,
+                                platform = p.platform,
+                                jvmInnerType = jvmTypeString
                             )
                         }
                     }
@@ -174,15 +194,34 @@ class JniCallProcessor(
                     funs = funs.map { it.createJniCall(parent) },
                     flowProps = flowProps,
                     superInterfaces = parentDeclaration.superTypes.map { it.toTypeName() }.toSet(),
-                    modifiers = setOfNotNull(parentDeclaration.modifiers.actualModifier)
+                    modifiers = setOfNotNull(parentDeclaration.modifiers.actualModifier),
+                    platform = p.platform
                 )
             }
         registry.nativeInstances.putAll(instances.associateBy { it.className })
     }
 
-    context(ctx: ProcessorContext)
+    context(res: ResolverContext)
+    private fun KSFunctionDeclaration.jvmSignature(): String {
+        return res.runAsJvm {
+            val params = parameters.toTypeInfos(saveTypes = false)
+            val returnType = mapper.mapType(returnType!!, saveType = false)
+            getSignature(params, returnType)
+        }
+    }
+
+    context(res: ResolverContext)
+    private fun KSFunctionDeclaration.jvmReturnType(): TypeInfo {
+        return res.runAsJvm {
+            mapper.mapType(returnType!!, saveType = false)
+        }
+    }
+
+    context(ctx: PlatformContext, res: ResolverContext)
     fun KSFunctionDeclaration.createJniCall(parent: FunctionParent): KSJniCall {
-        val returnType = mapper.mapType(returnType!!)
+        val returnType = context(SymContext(returnType!!)) {
+            mapper.mapType(returnType!!)
+        }
         val params = parameters.toTypeInfos()
         val name = simpleName.asString()
         val actualModifier = if (parent is FunctionParent.TopLevel) {
@@ -199,7 +238,12 @@ class JniCallProcessor(
                     actualModifier
                 ),
                 parent = parent,
-                nativeInstance = (parent as? FunctionParent.Class)?.className?.let(TypeInfo::NativeInstance)
+                nativeInstance = (parent as? FunctionParent.Class)?.className?.let {
+                    TypeInfo.nativeInstance(it)
+                },
+                platform = ctx.platform,
+                jvmSignature = jvmSignature(),
+                jvmReturnType = jvmReturnType()
             )
         } else {
             KSJniCall.Blocking(
@@ -212,7 +256,11 @@ class JniCallProcessor(
                     modifiers.overrideKModifier,
                     actualModifier
                 ),
-                nativeInstance = (parent as? FunctionParent.Class)?.className?.let(TypeInfo::NativeInstance)
+                nativeInstance = (parent as? FunctionParent.Class)?.className?.let {
+                    TypeInfo.nativeInstance(it)
+                },
+                platform = ctx.platform,
+                jvmSignature = jvmSignature()
             )
         }
     }
@@ -232,6 +280,7 @@ class JniCallProcessor(
         registerSuspendAdapters()
     }
 
+    context(ctx: PlatformContext)
     private fun registerSuspendAdapters() {
         val calls = registry.jniCalls
 
@@ -242,46 +291,53 @@ class JniCallProcessor(
                 type = f.suspendCallbackClass,
                 funs = listOf(
                     KSCallbackFun.Blocking(
-                        f.onValueFun,
+                        f.onSuccessFun,
                         returnType = TypeInfo.Unit,
-                        parameters = if (f.returnType != TypeInfo.Unit) listOf(
-                            ParamInfo("value", f.returnType)
-                        ) else emptyList(),
+                        parameters = f.onSuccessParams,
                         parent = f.parent,
-                        callbackType = f.callbackType
-                        // ?
+                        callbackType = f.callbackType,
+                        platform = ctx.platform,
+                        jvmSignature = f.onSuccessSignature
                     ),
                     KSCallbackFun.Blocking(
                         f.onFailureFun,
                         returnType = TypeInfo.Unit,
                         parameters = listOf(
-                            ParamInfo("message", TypeInfo.STRING),
-                            ParamInfo("stackTrace", TypeInfo.STRING)
+                            ParamInfo("message", TypeInfo.PlatformString),
+                            ParamInfo("stackTrace", TypeInfo.PlatformString)
                         ),
                         parent = f.parent,
-                        callbackType = f.callbackType
-                        // ?
+                        callbackType = f.callbackType,
+                        platform = ctx.platform,
+                        jvmSignature = getSignature(
+                            listOf(
+                                ParamInfo("message", context(JvmContext()) { TypeInfo.PlatformString }),
+                                ParamInfo("stackTrace", context(JvmContext()) { TypeInfo.PlatformString })
+                            ),
+                            TypeInfo.Unit
+                        )
                     )
                 ),
-                baseClass = f.baseSuspendCallback/*if (f.returnType == TypeInfo.Unit)
-                    Types.SuspendCallback0
-                else Types.SuspendCallback.parameterizedBy(f.returnType.kotlinType)*/
+                baseClass = f.baseSuspendCallback,
+                platform = ctx.platform
             )
             registry.callbacks[f.baseSuspendCallback] = callback
             registry.jniCallSuspendAdapters.add(callback)
         }
     }
 
+    context(_: NativeContext, c: ResolverContext)
     fun generateNative(): List<FileSpec> {
         val instances = registry.nativeInstances.values.map { it.generateNative() }
         return registry.jniCalls.groupBy { it.parent }.map { (parent, functions) ->
             val fileClass = parent.classNameKt.withSuffix("_jniCalls")
             FileSpec.builder(fileClass)
-                .addFunctions(functions.map(KSJniCall::generateCnameFunction))
+                .addFunctions(functions.map { it.generateCnameFunction() })
                 .build()
         } + instances
     }
 
+    context(_: JvmContext, _: ResolverContext)
     fun generateJvm(): List<FileSpec> {
         // top level
         val fileSpecs = generateNonInstanceJvm()
@@ -291,6 +347,7 @@ class JniCallProcessor(
         return fileSpecs.values.map { it.build() }
     }
 
+    context(_: JvmContext, _: ResolverContext)
     private fun generateNonInstanceJvm(): MutableMap<ClassName, FileSpec.Builder> {
         val fileSpecs = mutableMapOf<ClassName, FileSpec.Builder>()
         registry.jniCalls.groupBy { it.parent }.map { (parent, funs) ->

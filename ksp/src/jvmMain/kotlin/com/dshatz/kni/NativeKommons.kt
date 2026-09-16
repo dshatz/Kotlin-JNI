@@ -15,7 +15,11 @@ import com.dshatz.kni.processors.ConverterProcessor
 import com.dshatz.kni.processors.converterPackage
 import com.dshatz.kni.serialization.SerializerProcessor
 import com.dshatz.kni.serialization.serializerClass
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
 import com.dshatz.kni.utils.ProcessorContext
+import com.dshatz.kni.utils.ResolverContext
+import com.dshatz.kni.utils.addCode
 import com.dshatz.kni.utils.safeQualifiedName
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.containingFile
@@ -30,6 +34,10 @@ import com.google.devtools.ksp.symbol.KSFile
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
@@ -82,20 +90,20 @@ class NativeKommons : SymbolProcessorProvider {
                 }
             }
 
-            context(ProcessorContext(resolver, platform)) {
-
+            val moduleName = env.options["kni_module"]?.replace('-', '_') ?: error("module name not provided")
+            context(ProcessorContext(resolver, platform, moduleName)) {
                 val serializables = serializableProcessor.processSerializables().also {
                     registry.generatedSerializers.addAll(it)
                     registry.serializers.putAll(it.associate { it.cls to KSDefinedSerializer(it.cls, it.cls.serializerClass()) })
                 }
 
+                registry.allTypes.clear()
+                collectAdapters(registry)
                 jniCallProcessor.processJniAdapters()
 
                 serializableProcessor.collectDefinedSerializers()
                 callbackProcessor.collectCallbackClasses()
                 jniCallProcessor.collectNativeInstanceClasses()
-
-                collectAdapters(registry)
 
                 callbackProcessor.collectCallbacks()
                 jniCallProcessor.collectNativeInstances()
@@ -115,15 +123,19 @@ class NativeKommons : SymbolProcessorProvider {
                         serializableProcessor.generateGenericSerializers()?.write()
                         when (platform) {
                             Platform.NATIVE -> {
-                                jniCallProcessor.generateNative().write()
-                                callbackProcessor.generateNative().write()
+                                context(NativeContext()) {
+                                    jniCallProcessor.generateNative().write()
+                                    callbackProcessor.generateNative().write()
+                                }
                             }
                             Platform.JVM -> {
-                                jniCallProcessor.generateJvm().write()
-                                callbackProcessor.generateJvm().write()
+                                context(JvmContext()) {
+                                    jniCallProcessor.generateJvm().write()
+                                    callbackProcessor.generateJvm().write()
+                                }
                             }
                         }
-                        converterProcessor.generateConverters(platform).write()
+                        converterProcessor.generateConverters().write()
                     }
                 }
             }
@@ -147,7 +159,7 @@ class NativeKommons : SymbolProcessorProvider {
         }
 
         @OptIn(KspExperimental::class)
-        context(ctx: ProcessorContext)
+        context(ctx: ResolverContext)
         fun collectAdapters(registry: Registry) {
             val wrappers = ctx.resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
                 .filterIsInstance<KSClassDeclaration>()
@@ -155,6 +167,7 @@ class NativeKommons : SymbolProcessorProvider {
             registry.jniAdapters.addAll(wrappers)
         }
 
+        context(_: ResolverContext)
         fun generateAdapterMarkers(): List<FileSpec>? {
             if (registry.jniAdapters.isEmpty()) return null
             val markers = registry.jniAdapters.map {

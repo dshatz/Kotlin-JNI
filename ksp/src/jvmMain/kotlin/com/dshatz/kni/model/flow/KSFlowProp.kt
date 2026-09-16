@@ -2,12 +2,18 @@ package com.dshatz.kni.model.flow
 
 import com.dshatz.kni.CNameUtils.cname
 import com.dshatz.kni.CNameUtils.cnameFunName
+import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.ParamInfo
+import com.dshatz.kni.model.getSignature
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
+import com.dshatz.kni.utils.PlatformContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.add
 import com.dshatz.kni.utils.addCode
 import com.dshatz.kni.utils.addReturn
@@ -31,7 +37,9 @@ import com.squareup.kotlinpoet.TypeSpec
 data class KSFlowProp(
     val name: String,
     val innerType: TypeInfo,
-    val instanceClass: ClassName
+    val instanceClass: ClassName,
+    private val platform: Registry.Platform,
+    private val jvmInnerType: TypeInfo
 ) {
     val fullType: TypeName = Types.NativeBackedFlow.parameterizedBy(innerType.kotlinType)
 
@@ -45,14 +53,16 @@ data class KSFlowProp(
 
     val baseCallbackClass: ClassName = callbackClassName.withSuffix("Base")
 
-    val callbackType = TypeInfo.Callback(callbackClassName, baseCallbackClass)
+    val callbackType = context(PlatformContext(platform)) { TypeInfo.callback(callbackClassName, baseCallbackClass) }
 
     val onValueFun: KSCallbackFun = KSCallbackFun.Blocking(
         name = "onValue",
         returnType = TypeInfo.Unit,
         parameters = listOf(ParamInfo("value", innerType)),
         parent = callbackClass,
-        callbackType = callbackType
+        callbackType = callbackType,
+        platform = platform,
+        jvmSignature = getSignature(listOf(ParamInfo("value", jvmInnerType)), TypeInfo.Unit)
     )
 
     private fun onValueFunBuilder() : FunSpec.Builder {
@@ -82,9 +92,10 @@ data class KSFlowProp(
             .build()
     }
 
+    context(_: JvmContext)
     fun generateGetValueFun(): FunSpec {
         return FunSpec.builder(initFunction)
-            .returns(innerType.jniType.jvmType)
+            .returns(innerType.jniType.jniType)
             .addParameter(
                 ParameterSpec.builder("instance", Types.KLong).defaultValue("nativeInstancePtr")
                     .build()
@@ -100,6 +111,7 @@ data class KSFlowProp(
 
     }
 
+    context(_: JvmContext, _: ResolverContext)
     fun generateFlowProp(): PropertySpec {
         val (initCall, defaultValue) = CodeBlock.builder()
             .defineJvm(
@@ -129,6 +141,7 @@ data class KSFlowProp(
             .build()
     }
 
+    context(_: NativeContext, _: ResolverContext)
     fun generateNativeFlowInit(): FunSpec {
         val callback = CodeBlock.of("callback").nativeCode(callbackType)
 
