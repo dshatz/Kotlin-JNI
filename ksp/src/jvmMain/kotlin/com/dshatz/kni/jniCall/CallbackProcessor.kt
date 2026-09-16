@@ -2,6 +2,7 @@ package com.dshatz.kni.jniCall
 
 import com.dshatz.kni.BaseProcessor
 import com.dshatz.kni.Registry
+import com.dshatz.kni.Registry.Platform
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
@@ -13,7 +14,13 @@ import com.dshatz.kni.model.KSCallbackFun
 import com.dshatz.kni.model.KSInstance
 import com.dshatz.kni.model.KSJniCall
 import com.dshatz.kni.model.ParamInfo
+import com.dshatz.kni.model.getSignature
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
+import com.dshatz.kni.utils.PlatformContext
 import com.dshatz.kni.utils.ProcessorContext
+import com.dshatz.kni.utils.ResolverContext
+import com.dshatz.kni.utils.SymContext
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.processing.KSPLogger
@@ -57,7 +64,33 @@ class CallbackProcessor(
         registry.callbackClasses.addAll(classes)
     }
 
-    context(ctx: ProcessorContext)
+
+    context(res: ResolverContext)
+    private fun KSFunctionDeclaration.getJvmSignature(): String {
+        return res.runAsJvm {
+            val jvmParams = parameters.toTypeInfos(saveTypes = false)
+            val jvmReturn = mapper.mapType(returnType!!, saveType = false)
+            getSignature(jvmParams, jvmReturn)
+        }
+    }
+
+    context(res: ResolverContext)
+    private fun KSFunctionDeclaration.getJvmReturnType(): TypeInfo {
+        return res.runAsJvm {
+            context(SymContext(returnType!!)) {
+                mapper.mapType(returnType!!, saveType = false)
+            }
+        }
+    }
+
+    context(res: ResolverContext)
+    private fun KSFunctionDeclaration.getJvmParameters(): List<ParamInfo> {
+        return res.runAsJvm {
+            parameters.toTypeInfos(saveTypes = false)
+        }
+    }
+
+    context(ctx: ResolverContext, p: PlatformContext)
     fun collectCallbacks() {
         val callbacks = getDefinitions(ctx.resolver)
             .associate { declaration ->
@@ -69,15 +102,19 @@ class CallbackProcessor(
                     it.simpleName.asString() == "close" && it.parameters.isEmpty() && it.returnType?.toTypeName() == UNIT
                 }
                 val callbackClass = declaration.toClassName()
-                val callbackType = TypeInfo.Callback(callbackClass)
+                val callbackType = TypeInfo.callback(callbackClass)
                 val funs = funDeclarations.map { f ->
+                    val jvmSignature = f.getJvmSignature()
                     if (Modifier.SUSPEND in f.modifiers) {
                         KSCallbackFun.Suspend(
                             name = f.simpleName.asString(),
                             returnType = mapper.mapType(f.returnType!!),
                             parameters = f.parameters.toTypeInfos(),
                             parent = f.functionLocation() as FunctionParent.Class,
-                            callbackType = callbackType
+                            callbackType = callbackType,
+                            platform = p.platform,
+                            jvmReturnType = f.getJvmReturnType(),
+                            jvmParameters = f.getJvmParameters()
                         )
                     } else {
                         KSCallbackFun.Blocking(
@@ -85,7 +122,9 @@ class CallbackProcessor(
                             returnType = mapper.mapType(f.returnType!!),
                             parameters = f.parameters.toTypeInfos(),
                             parent = f.functionLocation() as FunctionParent.Class,
-                            callbackType = callbackType
+                            callbackType = callbackType,
+                            platform = p.platform,
+                            jvmSignature = jvmSignature
                         )
                     }
 
@@ -93,15 +132,17 @@ class CallbackProcessor(
             callbackClass to KSCallback(
                 type = callbackClass,
                 funs = funs,
-                baseClass = callbackClass
+                baseClass = callbackClass,
+                platform = p.platform
             )
         }
         registry.callbacks.putAll(callbacks)
         registerSuspendAdapters()
     }
 
+    context(_: NativeContext, _: ResolverContext)
     fun generateNative(): List<FileSpec> {
-        return registry.callbacks.values.map(KSCallback::generateNative)
+        return registry.callbacks.values.map { it.generateNative() }
     }
 
     fun generateSuspendAdapters(): List<FileSpec> {
@@ -118,8 +159,10 @@ class CallbackProcessor(
                 .build()
         }
     }
+
+    context(_: JvmContext, _: ResolverContext)
     fun generateJvm(): List<FileSpec> {
-        return registry.callbacks.values.map(KSCallback::generateJvmAdapter)
+        return registry.callbacks.values.map { it.generateJvmAdapter() }
     }
 
     fun generateBaseSuspendAdapters(): List<FileSpec> {
@@ -134,6 +177,7 @@ class CallbackProcessor(
         return callbacks + instances + calls
     }
 
+    context(ctx: PlatformContext)
     private fun registerSuspendAdapters() {
         val adapters = registry.callbacks.values.flatMap {
             it.funs.filterIsInstance<KSCallbackFun.Suspend>().map { f ->
@@ -151,14 +195,19 @@ class CallbackProcessor(
                                 KModifier.PRIVATE
                             ),
                             modifiers = setOf(KModifier.OVERRIDE),
-                            nativeInstance = f.suspendAdapter
+                            nativeInstance = f.suspendAdapter,
+                            platform = ctx.platform,
+                            jvmSignature = getSignature(
+                                listOf(ParamInfo("value", f.jvmReturnType)),
+                                TypeInfo.Unit
+                            )
                         ),
                         KSJniCall.Blocking(
                             f.onFailureFun,
                             returnType = TypeInfo.Unit,
                             parameters = listOf(
-                                ParamInfo("message", TypeInfo.STRING),
-                                ParamInfo("stackTrace", TypeInfo.STRING)
+                                ParamInfo("message", TypeInfo.PlatformString),
+                                ParamInfo("stackTrace", TypeInfo.PlatformString)
                             ),
                             parent = FunctionParent.Class(
                                 f.suspendAdapterClass,
@@ -166,14 +215,17 @@ class CallbackProcessor(
                                 KModifier.PRIVATE
                             ),
                             modifiers = setOf(KModifier.OVERRIDE),
-                            nativeInstance = f.suspendAdapter
+                            nativeInstance = f.suspendAdapter,
+                            platform = ctx.platform,
+                            jvmSignature = f.jvmSignature
                         )
                     ),
                     flowProps = emptyList(),
                     superInterfaces = setOf(
                         Types.SuspendCallback.parameterizedBy(f.returnType.kotlinType)
                     ),
-                    baseClass = f.baseSuspendAdapterClass
+                    baseClass = f.baseSuspendAdapterClass,
+                    platform = ctx.platform
                 )
             }
         }
@@ -191,8 +243,9 @@ internal object Def {
     val allocArray = MemberName("kotlinx.cinterop", "allocArray")
     val reinterpret = MemberName("kotlinx.cinterop", "reinterpret")
 
+    context(_: NativeContext)
     internal fun callHelper(typeInfo: TypeInfo): MemberName {
-        val type = typeInfo.jniType.nativeType
+        val type = typeInfo.jniType.jniType
         return when(type.copy(nullable = false)) {
             Types.JObject,
             Types.JByteArray,

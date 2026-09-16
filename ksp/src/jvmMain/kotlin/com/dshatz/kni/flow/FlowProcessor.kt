@@ -5,6 +5,7 @@ import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.flow.KSFlowProp
+import com.dshatz.kni.utils.PlatformContext
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.FileSpec
@@ -15,6 +16,7 @@ class FlowProcessor(
     override val mapper: TypeMapper
 ) : BaseProcessor() {
 
+    context(ctx: PlatformContext)
     fun process() {
         prepareFlowCallbacks()
     }
@@ -22,12 +24,14 @@ class FlowProcessor(
     val flowProps: Sequence<KSFlowProp> get() = registry.nativeInstances.asSequence()
         .flatMap { (_, instance) -> instance.flowProps }
 
+    context(ctx: PlatformContext)
     private fun prepareFlowCallbacks() {
         val callbacks = flowProps.map { flowProp ->
             KSCallback(
                 type = flowProp.callbackClassName,
                 funs = listOf(flowProp.onValueFun),
-                baseClass = flowProp.baseCallbackClass
+                baseClass = flowProp.baseCallbackClass,
+                platform = ctx.platform
             )
         }.associateBy { it.type }
         registry.callbacks.putAll(callbacks)

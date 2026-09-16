@@ -1,5 +1,7 @@
 package com.dshatz.kni.utils
 
+import com.dshatz.kni.JNIType
+import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.processors.packMember
 import com.dshatz.kni.processors.packMemberJvm
@@ -18,6 +20,7 @@ data class TypedCode(
 }
 
 fun CodeBlock.returnType(type: TypeName) = TypedCode(this, type)
+fun CodeBlock.returnType(jni: JNIType) = TypedCode(this, jni.jniType)
 
 sealed class TypedCodeMP {
     abstract val code: CodeBlock
@@ -35,6 +38,8 @@ sealed class TypedCodeMP {
         override val nullable: Boolean
     ): TypedCodeMP() {
         override val baseTypeName: TypeName = type.kotlinType
+
+        context(_: ResolverContext)
         fun packToNative(): Native {
             val call = typed.nullSafeCall(type.packMember())
             return Native(
@@ -43,6 +48,7 @@ sealed class TypedCodeMP {
                 nullable = nullable
             )
         }
+        context(_: ResolverContext)
         fun packToJvm(): JVM {
             val call = typed.nullSafeCall(type.packMemberJvm())
             return JVM(
@@ -58,7 +64,8 @@ sealed class TypedCodeMP {
         override val type: TypeInfo,
         override val nullable: Boolean
     ): TypedCodeMP() {
-        override val baseTypeName: TypeName = type.jniType.jvmType
+        override val baseTypeName: TypeName = type.jniType.jniType
+        context(_: ResolverContext)
         fun unpackCode(): Common {
             val call = typed.nullSafeCall(type.unpackMemberJvm())
             return Common(
@@ -74,8 +81,9 @@ sealed class TypedCodeMP {
         override val type: TypeInfo,
         override val nullable: Boolean
     ): TypedCodeMP() {
-        override val baseTypeName: TypeName = type.jniType.nativeType
+        override val baseTypeName: TypeName = type.jniType.jniType
 
+        context(_: ResolverContext)
         fun unpackCode(): Common {
             val call = typed.nullSafeCall(type.unpackMember())
             return Common(
@@ -94,10 +102,13 @@ fun FunSpec.Builder.addCode(code: TypedCodeMP) = addCode(code.code)
 fun FunSpec.Builder.addReturn(code: TypedCode) = addStatement("return %L", code.code).returns(code.type)
 fun FunSpec.Builder.addReturn(code: TypedCodeMP) = addStatement("return %L", code.code).returns(code.baseTypeName)
 
-fun CodeBlock.jvmCode(type: TypeInfo, nullable: Boolean = type.jniType.jvmType.isNullable): TypedCodeMP.JVM {
+context(_: JvmContext)
+fun CodeBlock.jvmCode(type: TypeInfo, nullable: Boolean = type.jniType.jniType.isNullable): TypedCodeMP.JVM {
     return TypedCodeMP.JVM(this, type, nullable)
 }
-fun CodeBlock.nativeCode(type: TypeInfo, nullable: Boolean = type.jniType.nativeType.isNullable): TypedCodeMP.Native {
+
+context(_: NativeContext)
+fun CodeBlock.nativeCode(type: TypeInfo, nullable: Boolean = type.jniType.jniType.isNullable): TypedCodeMP.Native {
     return TypedCodeMP.Native(this, type, nullable)
 }
 fun CodeBlock.commonCode(type: TypeInfo, nullable: Boolean = type.kotlinType.isNullable): TypedCodeMP.Common {

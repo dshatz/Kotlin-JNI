@@ -4,7 +4,7 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlin.coroutines.resume
 
-open class SuspendCallbackImpl<T>(private val continuation: CancellableContinuation<T>): SuspendCallback<T> {
+open class SuspendCallbackImpl<T>(protected val continuation: CancellableContinuation<T>): SuspendCallback<T> {
     override fun onSuccess(value: T) {
         continuation.resume(value)
     }

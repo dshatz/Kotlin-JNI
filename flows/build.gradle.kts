@@ -157,6 +157,7 @@ kotlin {
         val jniCommonMain by getting {
             dependencies {
                 implementation(project(":annotations"))
+                api(project(":jni"))
             }
         }
 

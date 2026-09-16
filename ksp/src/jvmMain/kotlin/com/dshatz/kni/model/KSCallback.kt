@@ -1,7 +1,12 @@
 package com.dshatz.kni.model
 
+import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
+import com.dshatz.kni.utils.PlatformContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.capitalized
 import com.dshatz.kni.utils.jniClassName
 import com.dshatz.kni.utils.withSuffix
@@ -17,8 +22,9 @@ data class KSCallback(
     val type: ClassName,
     val funs: List<KSCallbackFun>,
     val baseClass: ClassName?,
+    val platform: Registry.Platform
 ) {
-    val typeInfo = TypeInfo.Callback(type, commonBaseClass = baseClass)
+    val typeInfo get() = context(PlatformContext(platform)) { TypeInfo.callback(type, baseClass = baseClass) }
     val jvmAdapterName: ClassName
         get() {
             return type.withSuffix("_JvmAdapter")
@@ -26,12 +32,13 @@ data class KSCallback(
 
     val nativeImplClass = type.withSuffix("_Native")
 
+    context(_: NativeContext, _: ResolverContext)
     fun generateNative(): FileSpec {
-        val funs = funs.map(KSCallbackFun::generateNative)
+        val funs = funs.map { it.generateNative() }
 
         val methodIds = this.funs.map { f ->
             PropertySpec.builder("${f.name}ID", Types.JMethodID)
-                .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.name, f.getSignature()))
+                .delegate(CodeBlock.of("lazyMethodId(%S, %S)", f.name, f.jvmSignature))
                 .build()
         }
 
@@ -67,9 +74,10 @@ data class KSCallback(
         return fileSpec
     }
 
+    context(_: JvmContext, _: ResolverContext)
     fun generateJvmAdapter(): FileSpec {
         val file = jvmAdapterName
-        val funs = funs.map(KSCallbackFun::generateJvm)
+        val funs = funs.map { it.generateJvm() }
         return FileSpec.builder(file)
             .addType(
                 TypeSpec.objectBuilder(file)

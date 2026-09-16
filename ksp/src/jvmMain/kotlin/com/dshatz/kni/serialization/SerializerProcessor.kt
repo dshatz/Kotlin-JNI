@@ -149,7 +149,6 @@ class SerializerProcessor(
                     context(it.declaration) {
                         val isExpect = Modifier.EXPECT in (it.declaration as KSPropertyDeclaration).type.resolve().declaration.modifiers
                         val override = if (isExpect) it.type.serializerClass() else null
-                        if (isExpect) logger.warn("Type: ${it.type}")
                         included.serializer(it.type, override, isExpect = isExpect)
                     }
                 }
