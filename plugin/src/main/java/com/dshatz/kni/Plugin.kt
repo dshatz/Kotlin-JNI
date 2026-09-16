@@ -2,7 +2,9 @@ package com.dshatz.kni
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.android.build.gradle.internal.tasks.MergeNativeLibsTask
+import com.android.tools.r8.internal.kn
 import com.google.devtools.ksp.gradle.KspAATask
+import com.google.devtools.ksp.gradle.KspExtension
 import org.gradle.api.Action
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
@@ -16,6 +18,7 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.internal.extensions.stdlib.capitalized
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
+import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames
 import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames.FqNames.target
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -31,7 +34,12 @@ class Plugin: Plugin<Project> {
     override fun apply(target: Project) {
         val kotlin = target.extensions.getByType(KotlinMultiplatformExtension::class.java)
         kotlin.extensions.create("optionalTargets", OptionalTargetsExtension::class.java, kotlin)
-        target.extensions.create("kni", KniExtension::class.java, target.objects)
+        val kni = target.extensions.create("kni", KniExtension::class.java, target.objects)
+        target.pluginManager.withPlugin("com.google.devtools.ksp") {
+            target.extensions.getByType(KspExtension::class.java).apply {
+                arg("kni_module", target.name)
+            }
+        }
     }
 }
 

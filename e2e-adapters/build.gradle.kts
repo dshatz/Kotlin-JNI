@@ -119,7 +119,7 @@ kotlin {
             dependencies {
                 implementation(project(":annotations"))
                 implementation(project(":serialization"))
-                implementation(project(":wrappers"))
+                implementation(project(":adapters"))
             }
         }
         val jniCommonMain by getting {
@@ -149,7 +149,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":buffers"))
             implementation(project(":flows"))
-            implementation(project(":wrappers"))
+            implementation(project(":adapters"))
         }
         val desktopNativeMain by getting {
             dependencies {

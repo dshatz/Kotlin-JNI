@@ -6,10 +6,17 @@ import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.Types
 import com.dshatz.kni.annotations.TypeMarker
+import com.dshatz.kni.model.KSCallbackFun
+import com.dshatz.kni.model.KSJniCall
+import com.dshatz.kni.utils.PlatformContext
+import com.dshatz.kni.utils.ProcessorContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.decapitalized
 import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.safeQualifiedName
+import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
@@ -63,62 +70,79 @@ class ConverterProcessor(
         }
     }
 
-    fun generateConverters(
-        platform: Registry.Platform
-    ): Collection<FileSpec> {
+    private fun KSJniCall.collectTypes(): List<TypeInfo> {
+        return parameters.map { it.typeInfo.notNullable() } + returnType.notNullable()
+    }
+
+    private fun KSCallbackFun.collectTypes(): List<TypeInfo> {
+        return parameters.map { it.typeInfo.notNullable() } + returnType.notNullable()
+    }
+
+    context(ctx: ProcessorContext)
+    fun generateConverters(): Collection<FileSpec> {
         val types =
             registry.allTypes +
                     registry.nativeInstances.values.map { it.typeInfo } +
-                    registry.callbackSuspendAdapters.flatMap {
-                        it.funs.flatMap { it.parameters.map { it.typeInfo } + it.returnType } + it.typeInfo
+                    registry.callbackSuspendAdapters.map {
+                        it.typeInfo
                     } +
-                    registry.jniCallSuspendAdapters.flatMap {
-                        it.funs.flatMap { it.parameters.map { it.typeInfo } + it.returnType } + it.typeInfo
+                    registry.jniCallSuspendAdapters.map {
+                        it.typeInfo
                     } +
                     registry.nativeInstances.values.flatMap {
                         it.flowProps.map { it.callbackType }
                     } +
                     registry.jniAdapterTypes.values.map {
                         it.type
-                    }
+                    } + TypeInfo.PlatformString
         return types.groupBy { it.converterFile() }.mapValues { (fileCls, types) ->
             val file = FileSpec.builder(fileCls)
 
             val thiss = CodeBlock.of("this")
+
             types.forEach { type ->
-               when (platform) {
+                if (type is TypeInfo.Convertible) {
+                    type.aliasedImports.forEach { (cls, name) ->
+                        file.addAliasedImport(cls, name)
+                    }
+                }
+               when (ctx.platform) {
                    Registry.Platform.COMMON -> {}
                    Registry.Platform.NATIVE -> {
                         val fromJni = FunSpec.builder("fromJni")
-                            .receiver(type.jniType.nativeType)
+                            .receiver(type.jniType.jniType)
                             .returns(type.commonKotlinType)
                             .addParameter("env", Types.Environment)
                             .addAnnotation(Types.Annotations.Optin.NativeOptIn)
-                            .addCode("return %L", type.unpackCode(thiss.returnType(type.jniType.nativeType)).code)
+                            .addCode("return %L", type.unpackCode(thiss.returnType(type.jniType.jniType)).code)
+                            .addKdoc("$type")
                             .build()
                        file.addFunction(fromJni)
 
                        val toJni = FunSpec.builder("toJni")
                            .buildGenericFunction(type.commonKotlinType)
-                           .returns(type.jniType.nativeType)
+                           .returns(type.jniType.jniType)
                            .addParameter("env", Types.Environment)
                            .addAnnotation(Types.Annotations.Optin.NativeOptIn)
                            .addCode("return %L", type.packCode(thiss.returnType(type.kotlinType)).code)
+                           .addKdoc("$type")
                            .build()
                        file.addFunction(toJni)
                    }
                    Registry.Platform.JVM -> {
                        val toJni = FunSpec.builder("toJni")
                            .receiver(type.commonKotlinType)
-                           .returns(type.jniType.jvmType)
+                           .returns(type.jniType.jniType)
                            .addCode("return %L", type.packCodeJvm(thiss.returnType(type.kotlinType)).code)
+                           .addKdoc("$type")
                            .build()
                        file.addFunction(toJni)
 
                        val fromJni = FunSpec.builder("fromJni")
-                           .receiver(type.jniType.jvmType)
+                           .receiver(type.jniType.jniType)
                            .returns(type.commonKotlinType)
-                           .addCode("return %L", type.unpackCodeJvm(thiss.returnType(type.jniType.jvmType)).code)
+                           .addCode("return %L", type.unpackCodeJvm(thiss.returnType(type.jniType.jniType)).code)
+                           .addKdoc("$type")
                            .build()
                        file.addFunction(fromJni)
                    }
@@ -129,30 +153,37 @@ class ConverterProcessor(
     }
 }
 
-private fun TypeInfo.converterPackage(): String {
+context(resolverContext: ResolverContext)
+fun TypeInfo.converterPackage(): String {
     return commonKotlinType.converterPackage()
 }
 
+context(_: ResolverContext)
 private fun TypeInfo.converterFile(): ClassName {
     val name = "converters"
     return ClassName(converterPackage(), name)
 }
 
+
+context(ctx: ResolverContext)
 fun TypeName.converterPackage(): String {
-    return "kni.generated.converters." + safeQualifiedName().split('.').joinToString(".") {
+    val moduleName = ctx.moduleName
+    return "kni.${moduleName}.generated.converters." + safeQualifiedName().split('.').joinToString(".") {
         it.decapitalized()
     }
 }
 
+context(resolverContext: ResolverContext)
 fun TypeInfo.packMember(): TypedMember {
     val member = MemberName(converterPackage(), "toJni", isExtension = true)
     return TypedMember(
         memberName = member,
         params = CodeBlock.of("env"),
-        type = jniType.nativeType
+        type = jniType.jniType
     )
 }
 
+context(resolverContext: ResolverContext)
 fun TypeInfo.unpackMember(): TypedMember {
     val member = MemberName(converterPackage(), "fromJni", isExtension = true)
     return TypedMember(
@@ -162,15 +193,17 @@ fun TypeInfo.unpackMember(): TypedMember {
     )
 }
 
+context(resolverContext: ResolverContext)
 fun TypeInfo.packMemberJvm(): TypedMember {
     val member = MemberName(converterPackage(), "toJni", isExtension = true)
     return TypedMember(
         memberName = member,
         params = CodeBlock.of(""),
-        type = jniType.jvmType
+        type = jniType.jniType
     )
 }
 
+context(resolverContext: ResolverContext)
 fun TypeInfo.unpackMemberJvm(): TypedMember {
     val member = MemberName(converterPackage(), "fromJni", isExtension = true)
     return TypedMember(

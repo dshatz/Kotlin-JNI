@@ -194,21 +194,17 @@ mavenPublishing {
 
 tasks.withType<Test>().configureEach {
     outputs.upToDateWhen { false }
-    /*reports {
-        junitXml.required.set(true)
-    }*/
     failOnNoDiscoveredTests = false
 }
 
 tasks.withType<KotlinNativeTest>().configureEach {
     outputs.upToDateWhen { false }
-    /*reports {
-        junitXml.required.set(true)
-    }*/
+    failOnNoDiscoveredTests = false
 }
 
 tasks.withType<KotlinTest>().configureEach {
     outputs.upToDateWhen { false }
+    failOnNoDiscoveredTests = false
 }
 
 dokka {

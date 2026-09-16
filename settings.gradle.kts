@@ -7,7 +7,7 @@ if (!settings.extra.has("onlyDocs")) {
     include(":e2e")
     include(":e2e-adapters")
     include(":ksp")
-    include(":wrappers")
+    include(":adapters")
     include(":serialization")
     include(":plugintest")
 }
