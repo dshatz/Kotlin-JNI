@@ -1,10 +1,15 @@
 package com.dshatz.kni.model
 
 import com.dshatz.kni.CNameUtils
+import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.needsIsNullParam
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
+import com.dshatz.kni.utils.PlatformContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.cnameFunBuilder
 import com.dshatz.kni.utils.commonCode
 import com.dshatz.kni.utils.nativeCode
@@ -32,12 +37,14 @@ data class KSInstance(
     val flowProps: List<KSFlowProp>,
     val superInterfaces: Set<TypeName> = emptySet(),
     val modifiers: Set<KModifier> = emptySet(),
-    val baseClass: ClassName? = null // in case it is not expect/actual, this is the class available in all targets.
+    val baseClass: ClassName? = null, // in case it is not expect/actual, this is the class available in all targets.
+    private val platform: Registry.Platform
 ) {
-    val typeInfo = TypeInfo.NativeInstance(className, baseClass)
+    val typeInfo = context(PlatformContext(platform)) { TypeInfo.nativeInstance(className, baseClass) }
 
+    context(_: NativeContext, _: ResolverContext)
     fun generateNative(): FileSpec {
-        val funSpecs = funs.map(KSJniCall::generateCnameFunction)
+        val funSpecs = funs.map { it.generateCnameFunction() }
         val constructors = generateNativeConstructors()
         val dispose = generateNativeDispose()
 
@@ -54,6 +61,7 @@ data class KSInstance(
             .build()
     }
 
+    context(_: NativeContext, _: ResolverContext)
     private fun generateNativeConstructors(
     ): List<FunSpec> {
         val returnTypeInfo = typeInfo
@@ -63,7 +71,7 @@ data class KSInstance(
                 className = className.simpleName,
                 functionName = "initNative${constructor.id}"
             )
-            val paramSpecs = constructor.params.map(ParamInfo::paramSpecNative)
+            val paramSpecs = constructor.params.map { it.paramSpecNative() }
             val paramConversion = constructor.params.map {
                 it.refNative.unpackCode()
             }.joinToCode { it.code }
@@ -88,6 +96,7 @@ data class KSInstance(
         }
     }
 
+    context(_: NativeContext, _: ResolverContext)
     private fun generateNativeDispose(): FunSpec {
         val jniCname = CNameUtils.jniFunctionCName(
             packageName = className.packageName,
@@ -100,7 +109,7 @@ data class KSInstance(
             MemberName(className, "disposeNative"),
             jniCname
         ).addParameter(
-            ParameterSpec("instance", instanceType.jniType.nativeType)
+            ParameterSpec("instance", instanceType.jniType.jniType)
         )
             .addCode(
                 CodeBlock.builder()
@@ -114,6 +123,7 @@ data class KSInstance(
     // JVM
 
 
+    context(_: JvmContext, _: ResolverContext)
     private fun generateJvmActualConstructors(cl: KSInstance): List<FunSpec> {
         return cl.constructors.map { constructor ->
             val params = constructor.params.map {
@@ -134,11 +144,11 @@ data class KSInstance(
     private fun generateJvmExternalConstructors(cl: KSInstance): List<FunSpec> {
         return cl.constructors.map { constructor ->
             val params = constructor.params.map {
-                ParameterSpec.builder(it.name, it.typeInfo.jniType.jvmType).build()
+                ParameterSpec.builder(it.name, it.typeInfo.jniType.jniType).build()
             }
             FunSpec.builder("initNative${constructor.id}")
                 .addParameters(params)
-                .returns(cl.typeInfo.jniType.jvmType)
+                .returns(cl.typeInfo.jniType.jniType)
                 .addModifiers(KModifier.EXTERNAL, KModifier.PRIVATE)
                 .build()
         }
@@ -146,12 +156,13 @@ data class KSInstance(
 
     private fun generateJvmExternalDispose(cl: KSInstance): FunSpec {
         return FunSpec.builder("disposeNative")
-            .addParameter(ParameterSpec("instance", cl.typeInfo.jniType.jvmType))
+            .addParameter(ParameterSpec("instance", cl.typeInfo.jniType.jniType))
             .addModifiers(KModifier.EXTERNAL, KModifier.OVERRIDE)
             .build()
     }
 
 
+    context(_: JvmContext, _: ResolverContext)
     private fun generateJvmFunctions(
         functions: Iterable<KSJniCall>,
     ): List<FunSpec> {
@@ -161,10 +172,11 @@ data class KSInstance(
     }
 
 
+    context(_: JvmContext, _: ResolverContext)
     internal fun generateJvmInstance(instance: KSInstance, fileSpecs: MutableMap<ClassName, FileSpec.Builder>) {
         val funs = instance.funs
         funs.groupBy { it.parent }.forEach { (parent, functions) ->
-            val constructors = instance.let(::generateJvmActualConstructors)
+            val constructors = generateJvmActualConstructors(instance)
             val constructorFromPointer = FunSpec.constructorBuilder()
                 .addAnnotation(Types.Annotations.Optin.AtomicsOptIn)
                 .addParameter(ParameterSpec("nativeInstancePtr", Types.KLong))
@@ -200,8 +212,8 @@ data class KSInstance(
                 .addFunction(constructorFromPointer)
                 .addFunctions(constructors)
                 .addFunction(externalDispose)
-                .addFunctions(flowProps.map(KSFlowProp::generateGetValueFun))
-                .addProperties(flowProps.map(KSFlowProp::generateFlowProp))
+                .addFunctions(flowProps.map { it.generateGetValueFun() })
+                .addProperties(flowProps.map { it.generateFlowProp() })
                 .addTypes(flowProps.map(KSFlowProp::generateFlowCallbackJvm))
                 .addFunctions(externalConstructors.orEmpty())
                 .addFunctions(specs)

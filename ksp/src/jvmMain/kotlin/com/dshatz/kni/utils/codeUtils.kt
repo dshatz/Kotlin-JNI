@@ -18,6 +18,7 @@ private fun <T: TypedCodeMP> CodeBlock.Builder.define(name: String, template: St
     return ValDefinition(definition, ref)
 }
 
+context(_: JvmContext)
 fun CodeBlock.Builder.defineJvm(name: String, type: TypeInfo, template: String, vararg args: Any?): ValDefinition<TypedCodeMP.JVM> {
     return define(name, template, args = args) {
         jvmCode(type)
@@ -30,6 +31,7 @@ fun CodeBlock.Builder.defineCommon(name: String, type: TypeInfo, template: Strin
     }
 }
 
+context(_: NativeContext)
 fun CodeBlock.Builder.defineNative(name: String, type: TypeInfo, template: String, vararg args: Any?): ValDefinition<TypedCodeMP.Native> {
     return define(name, template, args = args) {
         nativeCode(type)

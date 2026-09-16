@@ -22,6 +22,7 @@ import kotlin.coroutines.resume
 import kotlin.math.pow
 
 fun TestSuiteScope.bridgeTests() {
+    BundledLibLoader.loadBundledLibrary( "e2e_adapters")
     BundledLibLoader.loadBundledLibrary("e2e")
     test("Strings") {
         Bridge.uppercase("hello") shouldBe "HELLO"

@@ -7,7 +7,9 @@ actual class SuspendClass actual constructor(private val suspendCallback: Suspen
     @JniCall
     actual suspend fun callToSuspendJvm(): Result<ByteArray> {
         println("callToSuspendJvm!")
-        return runCatching { suspendCallback.getBlock() }
+        return runCatching { suspendCallback.getBlock() }.onFailure {
+            throw it
+        }
     }
 
     @JniCall

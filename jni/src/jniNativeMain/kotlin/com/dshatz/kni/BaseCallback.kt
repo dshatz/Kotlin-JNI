@@ -69,7 +69,7 @@ open class BaseCallback(
 
     private val jvmClassGlobal: jobject = env.run {
         val localClass = FindClass(className) ?: error("Class not found: $className")
-        val globalClass = NewGlobalRef(localClass) ?: error("Failed to create GlobalRef")
+        val globalClass = NewGlobalRef(localClass)
         DeleteLocalRef(localClass)
         globalClass
     }
@@ -77,7 +77,7 @@ open class BaseCallback(
     protected val adapterClassGlobal: jobject = env.run {
         val name = jvmAdapterClassName
         val localClass = FindClass(name) ?: error("Class not found: $name")
-        val globalClass = NewGlobalRef(localClass) ?: error("Failed to create GlobalRef for adapter class")
+        val globalClass = NewGlobalRef(localClass)
         DeleteLocalRef(localClass)
         globalClass
     }
@@ -99,8 +99,8 @@ open class BaseCallback(
             val instanceParam = "L${className}"
             val returnType = signature.substringAfterLast(')')
             val adapterSignature = "($instanceParam;$params)$returnType"
-            env.GetStaticMethodID(adapterClassGlobal, name, adapterSignature)
-                ?: error("method $name $adapterSignature not found in $jvmAdapterClassName.")
+            val method = env.GetStaticMethodID(adapterClassGlobal, name, adapterSignature)
+            method ?: error("method $name $adapterSignature not found in $jvmAdapterClassName.")
         }
     }
 

@@ -1,5 +1,6 @@
 package com.dshatz.kni.model
 
+import com.dshatz.kni.Registry
 import com.dshatz.kni.TypeInfo
 import com.dshatz.kni.Types
 import com.dshatz.kni.jniCall.Def
@@ -7,12 +8,15 @@ import com.dshatz.kni.jniCall.constructNativeArgs
 import com.dshatz.kni.jniCall.toJniDescriptor
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.needsIsNullParam
+import com.dshatz.kni.utils.JvmContext
+import com.dshatz.kni.utils.NativeContext
+import com.dshatz.kni.utils.PlatformContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.TypedCodeMP
 import com.dshatz.kni.utils.defineCommon
 import com.dshatz.kni.utils.defineNative
 import com.dshatz.kni.utils.returnType
 import com.dshatz.kni.utils.withSuffix
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -33,12 +37,17 @@ sealed class KSCallbackFun: WithParent {
     abstract val jniReturn: TypeInfo
     abstract val jniParams: List<ParamInfo>
 
+    abstract val platform: Registry.Platform
+    abstract val jvmSignature: String
+
     data class Blocking(
         override val name: String,
         override val returnType: TypeInfo,
         override val parameters: List<ParamInfo>,
         override val callbackType: TypeInfo.Callback,
-        override val parent: FunctionParent
+        override val parent: FunctionParent,
+        override val platform: Registry.Platform,
+        override val jvmSignature: String
     ): KSCallbackFun() {
         override val jniReturn: TypeInfo = returnType
         override val jniParams: List<ParamInfo> = parameters
@@ -50,16 +59,19 @@ sealed class KSCallbackFun: WithParent {
         override val parameters: List<ParamInfo>,
         override val callbackType: TypeInfo.Callback,
         override val parent: FunctionParent,
-        override val modifiers: List<KModifier> = listOf(KModifier.SUSPEND)
+        override val modifiers: List<KModifier> = listOf(KModifier.SUSPEND),
+        override val platform: Registry.Platform,
+        val jvmReturnType: TypeInfo,
+        val jvmParameters: List<ParamInfo>
     ): KSCallbackFun() {
-
         val onValueFun: String = "onSuccess"
         val onFailureFun: String = "onFailure"
 
         val suspendAdapterClass = callbackType.commonKotlinType.withSuffix("_${name}_SuspendAdapter")
         val baseSuspendAdapterClass = callbackType.commonKotlinType.withSuffix("_${name}_BaseSuspendAdapter")
 
-        val suspendAdapter = TypeInfo.NativeInstance(suspendAdapterClass, baseSuspendAdapterClass)
+        val suspendAdapter get() = context(PlatformContext(platform)) { TypeInfo.nativeInstance(suspendAdapterClass, baseSuspendAdapterClass) }
+        private val suspendAdapterJvm get() = context(PlatformContext(Registry.Platform.JVM)) { TypeInfo.nativeInstance(suspendAdapterClass, baseSuspendAdapterClass) }
         val suspendCallbackImpl = if (returnType == TypeInfo.Unit) Types.SuspendCallbackImpl0 else Types.SuspendCallbackImpl.parameterizedBy(returnType.kotlinType)
 
         fun generateSuspendAdapter(): FileSpec {
@@ -75,18 +87,11 @@ sealed class KSCallbackFun: WithParent {
 
         override val jniReturn: TypeInfo = TypeInfo.Unit
         override val jniParams: List<ParamInfo> = parameters + ParamInfo("suspendCallback", suspendAdapter)
+        private val jniJvmParams = jvmParameters + ParamInfo("suspendCallback", suspendAdapterJvm)
+        override val jvmSignature: String = getSignature(jniJvmParams, TypeInfo.Unit)
     }
 
-    fun getSignature(): String {
-        val parameterDescriptors = jniParams.joinToString("") { parameter ->
-            parameter.typeInfo.jniType.jvmType.toJniDescriptor()
-        }
-
-        val returnDescriptor = jniReturn.jniType.jvmType.toJniDescriptor()
-
-        return "($parameterDescriptors)$returnDescriptor"
-    }
-
+    context(_: NativeContext, _: ResolverContext)
     fun generateNative(): FunSpec {
         val call = Def.callHelper(jniReturn)
         val (callCode, jniResultRef) = CodeBlock.builder()
@@ -145,6 +150,7 @@ sealed class KSCallbackFun: WithParent {
             .build()
     }
 
+    context(_: JvmContext, _: ResolverContext)
     fun generateJvm(): FunSpec {
         val fName = name
         val paramsSpecs = jniParams.map { it.paramSpecJvm() }
@@ -192,11 +198,24 @@ sealed class KSCallbackFun: WithParent {
             builder
                 .addCode(code)
                 .addKdoc("return type is $returnType")
-                .returns(jniReturn.jniType.jvmType)
+                .returns(jniReturn.jniType.jniType)
         } else {
             builder.addStatement("%L", makeCall.code)
         }
 
         return builder.build()
     }
+}
+
+fun getSignature(
+    params: List<ParamInfo>,
+    returnType: TypeInfo
+): String {
+    val parameterDescriptors = params.joinToString("") { parameter ->
+        parameter.typeInfo.jniType.jniType.toJniDescriptor()
+    }
+
+    val returnDescriptor = returnType.jniType.jniType.toJniDescriptor()
+
+    return "($parameterDescriptors)$returnDescriptor"
 }

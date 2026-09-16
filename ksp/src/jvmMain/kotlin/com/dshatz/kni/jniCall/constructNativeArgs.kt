@@ -20,7 +20,7 @@ fun constructNativeArgs(
             addStatement("args[0].l = ref.%M()", Def.reinterpret)
             args.forEachIndexed { idx, arg ->
                 val type = arg.typeInfo
-                val argCode = CodeBlock.Companion.of("%N", arg.name).returnType(type.kotlinType).nonNullOrPlaceholder().copy(type = type.jniType.nativeType)
+                val argCode = CodeBlock.of("%N", arg.name).returnType(type.kotlinType).nonNullOrPlaceholder().copy(type = type.jniType.jniType)
                 val valueCode = type.packCode(argCode)
                 val reinterpreted = if (type.jniType.jniField == "l") {
                     valueCode.nullSafeCall(

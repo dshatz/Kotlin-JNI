@@ -4,7 +4,9 @@ import com.dshatz.kni.jniCall.visibilityKModifier
 import com.dshatz.kni.kspfix.FunctionParent
 import com.dshatz.kni.model.KSConstructor
 import com.dshatz.kni.model.ParamInfo
+import com.dshatz.kni.utils.PlatformContext
 import com.dshatz.kni.utils.ProcessorContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.capitalized
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.closestClassDeclaration
@@ -23,10 +25,14 @@ abstract class BaseProcessor {
     abstract val logger: KSPLogger
     abstract val registry: Registry
 
-    context(ctx: ProcessorContext)
-    protected fun List<KSValueParameter>.toTypeInfos(): List<ParamInfo> {
+    context(r: ResolverContext, p: PlatformContext)
+    protected fun List<KSValueParameter>.toTypeInfos(saveTypes: Boolean = true): List<ParamInfo> {
         return map {
-            ParamInfo(it.name!!.asString(), mapper.mapType(it.type))
+            val c = ProcessorContext(r.resolver, p.platform, r.moduleName).forDeclaration(it)
+            ParamInfo(
+                it.name!!.asString(),
+                context(c) { mapper.mapType(it.type, saveType = saveTypes) }
+            )
         }
     }
 
@@ -45,14 +51,14 @@ abstract class BaseProcessor {
     }
 
     @OptIn(KspExperimental::class)
-    context(ctx: ProcessorContext)
+    context(ctx: ResolverContext, p: PlatformContext)
     fun KSFunctionDeclaration.functionLocation(): FunctionParent {
         return closestClassDeclaration()?.innerFunLocation()
             ?: topLevelFunLocation()
             ?: error("Could not derive classname")
     }
 
-    context(ctx: ProcessorContext)
+    context(ctx: ResolverContext, p: PlatformContext)
     fun KSClassDeclaration.innerFunLocation(): FunctionParent {
         val type = when (classKind) {
             ClassKind.CLASS, ClassKind.INTERFACE -> {
