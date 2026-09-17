@@ -138,7 +138,7 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
-        val androidDeviceTest by getting
+        val androidDeviceTest = getByName("androidDeviceTest")
 
         val jsMain by gettingOptional {
             dependencies {
@@ -154,7 +154,7 @@ kotlin {
             implementation(libs.test.kotest)
         }
 
-        val jniCommonMain by getting {
+        val jniCommonMain = getByName("jniCommonMain") {
             dependencies {
                 implementation(project(":annotations"))
                 api(project(":jni"))
