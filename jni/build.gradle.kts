@@ -135,7 +135,7 @@ kotlin {
             implementation(project(":buffers"))
             implementation(libs.atomic)
         }
-        val jniCommonMain by getting {
+        val jniCommonMain = getByName("jniCommonMain") {
             dependencies {
                 api(libs.coroutines.core)
             }
