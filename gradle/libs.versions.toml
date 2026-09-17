@@ -26,13 +26,17 @@ junit4 = { module = "junit:junit", version = "4.13.2" }
 io = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version = "0.9.0" }
 atomic = { module = "org.jetbrains.kotlinx:atomicfu", version = "0.33.0" }
 skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
-skiko-linuxX64 = { module = "org.jetbrains.skiko:skiko-awt-runtime-linux-x64", version.ref = "skiko" }
+skiko-native = { module = "dev.brahmkshatriya.skiko:skiko", version = "0.151.5" }
+skiko-runtime-linuxX64 = { module = "org.jetbrains.skiko:skiko-awt-runtime-linux-x64", version.ref = "skiko" }
+skiko-runtime-linuxArm64 = { module = "org.jetbrains.skiko:skiko-awt-runtime-linux-arm64", version.ref = "skiko" }
+skiko-runtime-macosX64 = { module = "org.jetbrains.skiko:skiko-awt-runtime-macos-x64", version.ref = "skiko" }
+skiko-runtime-macosArm64 = { module = "org.jetbrains.skiko:skiko-awt-runtime-macos-arm64", version.ref = "skiko" }
+skiko-runtime-mingwX64 = { module = "org.jetbrains.skiko:skiko-awt-runtime-windows-x64", version.ref = "skiko" }
 
 [plugins]
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-osdetector = { id = "com.google.osdetector", version.ref = "osdetector" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 publish = { id = "com.vanniktech.maven.publish", version.ref = "publish" }
 dokka = { id = "org.jetbrains.dokka", version = "2.1.0" }
