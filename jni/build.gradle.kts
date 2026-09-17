@@ -200,3 +200,10 @@ tasks.withType<KotlinNativeTest>().configureEach {
     outputs.upToDateWhen { false }
     failOnNoDiscoveredTests = false
 }
+
+// Workaround for http://youtrack.jetbrains.com/issue/KT-73136
+tasks.matching {
+    it.name.matches("^(linux|mingw|androidNative).*MetadataElements$".toRegex())
+}.configureEach {
+    dependsOn("commonizeCInterop")
+}
