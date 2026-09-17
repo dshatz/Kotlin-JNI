@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.internal.backend.common.serialization.metadata.DynamicTypeDeserializer.id
+
 plugins {
     `java-gradle-plugin`
     alias(libs.plugins.jvm)
@@ -12,7 +14,7 @@ val libVersion = project.findProperty("version") as? String ?: "0.1.0-SNAPSHOT1"
 version = libVersion
 
 gradlePlugin {
-    val kotlinJni by plugins.creating {
+    val kotlinJni = plugins.create("kotlinJni") {
         id = "com.dshatz.kni"
         implementationClass = "com.dshatz.kni.Plugin"
     }

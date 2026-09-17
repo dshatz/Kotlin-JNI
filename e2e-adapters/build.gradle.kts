@@ -1,8 +1,10 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
 
 import com.dshatz.kni.bundlesNatives
+import com.dshatz.kni.gettingOptional
 import com.google.devtools.ksp.gradle.KspAATask
 import org.gradle.kotlin.dsl.withType
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -32,10 +34,15 @@ kotlin {
             group("androidNative") {
                 withAndroidNative()
             }
-            group("desktopNative") {
+            group("skikoNative") {
                 withLinux()
-                withMingw()
                 withMacos()
+            }
+            group("desktopNative") {
+                group("mingw") {
+                    withMingw()
+                }
+                group("skikoNative")
             }
             group("android") {
                 withAndroidTarget()
@@ -152,15 +159,28 @@ kotlin {
             implementation(project(":flows"))
             implementation(project(":adapters"))
         }
-        val desktopNativeMain = getByName("desktopNativeMain") {
+        val skikoNativeMain by gettingOptional {
             dependencies {
                 implementation(libs.skiko)
             }
         }
+        mingwMain.dependencies {
+            implementation(libs.skiko.native)
+        }
         jvmMain.configure {
             dependencies {
                 implementation(libs.skiko)
-                implementation(libs.skiko.linuxX64)
+                val currentOs = DefaultNativePlatform.getCurrentOperatingSystem()
+
+                if (currentOs.isWindows) {
+                    implementation(libs.skiko.runtime.mingwX64)
+                } else if (currentOs.isMacOsX) {
+                    implementation(libs.skiko.runtime.macosArm64)
+                    implementation(libs.skiko.runtime.macosX64)
+                } else if (currentOs.isLinux) {
+                    implementation(libs.skiko.runtime.linuxArm64)
+                    implementation(libs.skiko.runtime.linuxX64)
+                }
             }
         }
     }
