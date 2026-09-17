@@ -109,9 +109,9 @@ kotlin {
     }
 
     sourceSets {
-        val androidJvmMain by getting
-        val androidJvmTest by getting
-        val androidDeviceTest by getting
+        val androidJvmMain = getByName("androidJvmMain")
+        val androidJvmTest = getByName("androidJvmTest")
+        val androidDeviceTest = getByName("androidDeviceTest")
 
         val jsMain by gettingOptional {
             dependencies {
@@ -119,11 +119,9 @@ kotlin {
             }
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.test.core)
-                implementation(libs.test.kotest)
-            }
+        commonTest.dependencies {
+            implementation(libs.test.core)
+            implementation(libs.test.kotest)
         }
 
         androidDeviceTest.dependencies {
@@ -133,10 +131,10 @@ kotlin {
         }
         androidDeviceTest.dependsOn(androidJvmTest)
 
-        val androidMain by getting {
+        androidMain.configure {
             dependsOn(androidJvmMain)
         }
-        val jniNativeMain by getting {
+        val jniNativeMain = getByName("jniNativeMain") {
             dependencies {
                 implementation(project(":jni"))
             }

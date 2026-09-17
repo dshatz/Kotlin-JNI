@@ -1,9 +1,10 @@
-@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
 
 import com.dshatz.kni.bundlesNatives
 import com.google.devtools.ksp.gradle.KspAATask
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeTest
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
@@ -122,16 +123,16 @@ kotlin {
                 implementation(project(":adapters"))
             }
         }
-        val jniCommonMain by getting {
+        val jniCommonMain = getByName("jniCommonMain") {
             dependencies {
                 implementation(project(":jni"))
             }
         }
-        val androidDeviceTest by getting {
+        val androidDeviceTest = getByName("androidDeviceTest") {
             dependsOn(getByName("jniJvmTest"))
         }
 
-        val jniJvmMain by getting
+        val jniJvmMain = getByName("jniJvmMain")
 
         androidMain.configure {
             dependsOn(jniJvmMain)
@@ -151,7 +152,7 @@ kotlin {
             implementation(project(":flows"))
             implementation(project(":adapters"))
         }
-        val desktopNativeMain by getting {
+        val desktopNativeMain = getByName("desktopNativeMain") {
             dependencies {
                 implementation(libs.skiko)
             }
