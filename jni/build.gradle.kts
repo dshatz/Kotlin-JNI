@@ -8,7 +8,6 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.multiplatform)
-    alias(libs.plugins.osdetector)
     alias(libs.plugins.ksp)
     alias(libs.plugins.test)
     alias(libs.plugins.android.library)
