@@ -168,7 +168,7 @@ internal val windowsTargets = listOf(
 )
 
 private val webTargets = listOf(
-    "warmJs",
+    "wasmJs",
     "js",
     "wasmWasi"
 )
