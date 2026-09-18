@@ -56,14 +56,18 @@ kotlin {
         watchosDeviceArm64()
 
         js {
+            binaries.library()
             browser()
             nodejs()
         }
         wasmJs() {
+            binaries.library()
             browser()
             nodejs()
         }
-        wasmWasi()
+        wasmWasi {
+            nodejs()
+        }
     }
 }
 

@@ -71,6 +71,7 @@ kotlin {
         watchosDeviceArm64()
 
         js {
+            binaries.library()
             browser {
                 testTask {
                     useKarma {
@@ -81,6 +82,7 @@ kotlin {
             nodejs()
         }
         wasmJs {
+            binaries.library()
             browser {
                 testTask {
                     useKarma {
@@ -176,6 +178,12 @@ mavenPublishing {
                 url.set("https://github.com/DatL4g")
             }
         }
+    }
+}
+
+signing {
+    setRequired {
+        !gradle.taskGraph.allTasks.any { it is PublishToMavenLocal }
     }
 }
 
