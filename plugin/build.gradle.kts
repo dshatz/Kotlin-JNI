@@ -37,8 +37,8 @@ mavenPublishing {
     )
 
     pom {
-        name.set("Kotlin-JNI")
-        description.set("Painless JNI with Kotlin/Native using a KSP processor.")
+        name.set("Kotlin-JNI Gradle Plugin")
+        description.set("Plugin for easy Kotlin-JNI setup.")
         url.set("https://github.com/dshatz/Kotlin-JNI")
         inceptionYear.set("2026")
 
