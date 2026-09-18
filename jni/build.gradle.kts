@@ -156,8 +156,8 @@ mavenPublishing {
     )
 
     pom {
-        name.set("Kotlin-JNI")
-        description.set("High-performance common ByteBuffer for Kotlin/Native.")
+        name.set("Kotlin-JNI native tools")
+        description.set("JNI tools for Kotlin/Native.")
         url.set("https://github.com/dshatz/Kotlin-JNI")
         inceptionYear.set("2026")
 
