@@ -113,6 +113,7 @@ kotlin {
         watchosDeviceArm64()
 
         js {
+            binaries.library()
             browser {
                 testTask {
                     useKarma {
@@ -123,6 +124,7 @@ kotlin {
             nodejs()
         }
         wasmJs {
+            binaries.library()
             browser {
                 testTask {
                     useKarma {
