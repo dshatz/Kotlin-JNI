@@ -126,7 +126,12 @@ class TypeMapper(
                 kotlinType,
                 jniType = JNIType(chooseType(kotlinType, kotlinType, Types.JObjectArray).copy(nullable = nullable),"l")
             )
-        } else if (rawType in registry.serializers || nonNull in registry.serializers) {
+        } else if (
+            rawType in registry.serializers
+            || nonNull in registry.serializers
+            || IncludedSerializers.isCollection(rawType)
+            || IncludedSerializers.isMap(rawType)
+        ) {
             // custom serializer defined
             val serializer = context(ctx.decl) { included.serializer(nonNull) }
             TypeInfo.Serializable(

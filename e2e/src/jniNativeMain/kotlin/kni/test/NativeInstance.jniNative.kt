@@ -3,7 +3,7 @@ package kni.test
 import com.dshatz.kni.annotations.JniCall
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.flows.NativeBackedFlow
-import platform.posix.calloc
+import kotlin.random.Random
 
 actual class NativeInstance actual constructor(
     val input: Long,
@@ -36,6 +36,21 @@ actual class NativeInstance actual constructor(
         arr.fill(input.toByte())
         buffer.write(arr)
         callback.onFilled(buffer, arr.toHexString())
+    }
+
+    @JniCall
+    actual fun randomIntList(size: Int): List<Int> {
+        return generateSequence { Random.nextInt() }.toList()
+    }
+
+    @JniCall
+    actual fun randomStringIntMap(size: Int): Map<String, Int> {
+        val charPool = ('a'..'z')
+        return generateSequence {
+            val letters = generateSequence { charPool.random() }.take(Random.nextInt(5, 10))
+            letters.joinToString("")
+        }.take(size)
+            .associateWith { it.length }
     }
 
     actual override fun close() {
