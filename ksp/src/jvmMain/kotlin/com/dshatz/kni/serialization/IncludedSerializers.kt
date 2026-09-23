@@ -46,6 +46,7 @@ import com.squareup.kotlinpoet.U_LONG
 import com.squareup.kotlinpoet.U_LONG_ARRAY
 import com.squareup.kotlinpoet.U_SHORT
 import com.squareup.kotlinpoet.U_SHORT_ARRAY
+import kotlin.reflect.typeOf
 
 class IncludedSerializers(
     val registry: Registry,
@@ -60,11 +61,11 @@ class IncludedSerializers(
         return when (type) {
             is ParameterizedTypeName -> {
                 val rawType = type.rawType
-                if (collections.keys.any { rawType typeOf it }) {
+                if (isCollection(rawType)) {
                     // collection
                     val itemType = type.typeArguments.first()
                     Serializer.Collection(type, serializer(itemType), collections[rawType]!!, itemType)
-                } else if (rawType typeOf MAP) {
+                } else if (isMap(rawType)) {
                     Serializer.Map(
                         keySerializer = serializer(type.typeArguments[0]),
                         valueSerializer = serializer(type.typeArguments[1]),
@@ -232,7 +233,7 @@ class IncludedSerializers(
 
             override fun writeCodeInternal(buffer: CodeBlock, value: TypedCode): CodeBlock {
                 return value.callFunction(write, Types.KByteArray) {
-                    named("buffer", buffer)
+                    if (buffer.isNotEmpty()) named("buffer", buffer)
                     lambdaParam("writeItem", receiverType = Types.IoBuffer, argumentType = itemType) {
                         inner.writeCodeInternal(`this`.code, it)
                     }
@@ -266,7 +267,7 @@ class IncludedSerializers(
 
             override fun writeCodeInternal(buffer: CodeBlock, value: TypedCode): CodeBlock {
                 return value.callFunction(write, type) {
-                    named("buffer", buffer)
+                    if (buffer.isNotEmpty()) named("buffer", buffer)
                     lambdaParam("writeKey", argumentType = keyType, receiverType = Types.IoBuffer) {
                         keySerializer.writeCodeInternal(`this`.code, it)
                     }
@@ -305,6 +306,14 @@ class IncludedSerializers(
             FLOAT,
             DOUBLE
         )
+
+        fun isCollection(rawType: TypeName): Boolean {
+            return collections.any { rawType typeOf it.key }
+        }
+
+        fun isMap(rawType: TypeName): Boolean {
+            return rawType typeOf MAP
+        }
 
         val collections = mapOf(
             LIST to MemberName("kotlin.collections", "toList"),
