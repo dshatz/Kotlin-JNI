@@ -150,10 +150,13 @@ class NativeKommons : SymbolProcessorProvider {
             else platformsProcessed += platform
             env.logger.info("Platform: $platform")
 
+            // Every annotation the outputs depend on must be listed, otherwise incremental KSP runs
+            // skip unchanged files with that annotation and their outputs (e.g. adapter markers).
             val allSymbols = resolver.getSymbolsWithAnnotation(JniCall::class.java.name) +
                     resolver.getSymbolsWithAnnotation(JniCallback::class.java.name) +
                     resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name) +
-                    resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name)
+                    resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name) +
+                    resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
             val originatingFiles = allSymbols.mapNotNull { it.containingFile }.toList()
             return doProcess(resolver, originatingFiles, platform)
         }
