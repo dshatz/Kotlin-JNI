@@ -94,4 +94,19 @@ fun TestSuiteScope.bufferLifetimeTests() {
             BufferKeeper.nullableBuffer(heapBuffer)
         }
     }
+
+    test("constructor buffer parameter is invalidated after the constructor") {
+        BufferHolder(allocateBuffer(16), retain = false).use {
+            it.isBufferValid() shouldBe false
+        }
+    }
+
+    test("constructor buffer parameter can be retained") {
+        val buffer = allocateBuffer(16)
+        BufferHolder(buffer, retain = true).use {
+            it.isBufferValid() shouldBe true
+            it.writeFirst(8)
+        }
+        buffer.readToByteArray(0, 1)[0] shouldBe 8.toByte()
+    }
 }
