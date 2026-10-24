@@ -71,4 +71,25 @@ val BufferTest by testSuite() {
             buffer.write(Random.nextBytes(buffer.capacity.toInt()), 1)
         }
     }
+
+    test("read from negative offset with large enough destination") {
+        val buffer = allocateBuffer(100)
+        shouldThrow<IllegalArgumentException> {
+            buffer.read(ByteArray(10), -1, 10)
+        }
+    }
+
+    test("read negative length") {
+        val buffer = allocateBuffer(100)
+        shouldThrow<IllegalArgumentException> {
+            buffer.read(ByteArray(10), 0, -1)
+        }
+    }
+
+    test("write negative length") {
+        val buffer = allocateBuffer(100)
+        shouldThrow<IllegalArgumentException> {
+            buffer.write(ByteArray(10), 0, -1)
+        }
+    }
 }
