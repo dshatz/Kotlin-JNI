@@ -588,7 +588,7 @@ sealed class TypeInfo {
         }
 
         override fun packCodeJvm(unpackedCode: TypedCode): TypedCode {
-            return unpackedCode.nullSafeCall(CodeBlock.of("jvmBuffer").returnType(Types.KNioBuffer))
+            return unpackedCode.nullSafeCall(CodeBlock.of("%M()", Types.Method.ToDirectNioByteBuffer).returnType(Types.KNioBuffer))
         }
 
         override fun unpackCodeJvm(packedCode: TypedCode): TypedCode {

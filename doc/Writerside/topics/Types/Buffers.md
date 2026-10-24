@@ -70,6 +70,10 @@ actual fun keep(buffer: ByteBuffer) {
 
 > In a blocking function, call `retain()` on the thread the function was called on. In a `suspend` function, it can be called from any thread while the function is running.
 
+## Direct buffers only
+Native code can only access direct buffers. Passing a buffer that wraps a heap `java.nio.ByteBuffer` (e.g. `java.nio.ByteBuffer.allocate(n).toCommonByteBuffer()`) to native code throws `IllegalArgumentException`.
+Use `allocateBuffer` or `java.nio.ByteBuffer.allocateDirect` instead.
+
 ## Converting
 ### JVM
 ```kotlin 
