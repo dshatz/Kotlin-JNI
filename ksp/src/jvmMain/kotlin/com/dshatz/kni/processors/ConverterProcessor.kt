@@ -133,6 +133,7 @@ class ConverterProcessor(
                        val toJni = FunSpec.builder("toJni")
                            .receiver(type.commonKotlinType)
                            .returns(type.jniType.jniType)
+                           .addAnnotation(Types.Annotations.Optin.KniInternalOptIn)
                            .addCode("return %L", type.packCodeJvm(thiss.returnType(type.kotlinType)).code)
                            .addKdoc("$type")
                            .build()

@@ -71,3 +71,17 @@ interface BufferProvider : AutoCloseable {
     fun provide(): ByteBuffer
     suspend fun provideSuspend(): ByteBuffer
 }
+
+/**
+ * Receives a [ByteBuffer] in its constructor, retaining it if [retain] is true.
+ */
+expect class BufferHolder(buffer: ByteBuffer, retain: Boolean) : AutoCloseable {
+    @JniCall fun isBufferValid(): Boolean
+
+    /**
+     * Write [value] to the start of the buffer.
+     */
+    @JniCall fun writeFirst(value: Byte)
+
+    override fun close()
+}

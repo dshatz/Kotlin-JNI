@@ -115,6 +115,10 @@ kotlin {
             }
         }
 
+        commonMain.dependencies {
+            implementation(project(":annotations"))
+        }
+
         commonTest.dependencies {
             implementation(libs.test.core)
             implementation(libs.test.kotest)

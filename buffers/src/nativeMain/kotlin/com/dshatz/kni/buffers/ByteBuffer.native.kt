@@ -1,5 +1,6 @@
 package com.dshatz.kni.buffers
 
+import com.dshatz.kni.annotations.KniInternalApi
 import kotlinx.cinterop.*
 import platform.posix.memcpy
 
@@ -68,6 +69,7 @@ actual class ByteBuffer internal constructor(
     /**
      * Invalidate this buffer if it is still borrowed. Called by generated code when the borrowing call returns.
      */
+    @KniInternalApi
     fun endBorrow() {
         if (retainer != null) release()
     }

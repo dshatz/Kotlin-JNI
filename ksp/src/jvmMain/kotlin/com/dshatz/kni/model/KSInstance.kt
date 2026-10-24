@@ -72,17 +72,38 @@ data class KSInstance(
                 functionName = "initNative${constructor.id}"
             )
             val paramSpecs = constructor.params.map { it.paramSpecNative() }
+            // Buffers are only borrowed for the duration of the constructor, unless user code calls ByteBuffer.retain().
+            val borrowedBuffers = constructor.params.filter { it.typeInfo is TypeInfo.ByteBuffer }
             val paramConversion = constructor.params.map {
-                it.refNative.unpackCode()
-            }.joinToCode { it.code }
+                if (it in borrowedBuffers) CodeBlock.of("%N", it.name) else it.refNative.unpackCode().code
+            }.joinToCode()
 
-            val initNativeCode = CodeBlock.builder()
-                .addStatement("%T(%L)", returnTypeInfo.kotlinType, paramConversion)
-                .build()
+            val initNativeCode = CodeBlock.of("%T(%L)", returnTypeInfo.kotlinType, paramConversion)
                 .commonCode(returnTypeInfo)
 
             val returnCode = CodeBlock.builder()
-                .addStatement("return %L", initNativeCode.packToNative().code)
+                .apply {
+                    borrowedBuffers.forEach {
+                        addStatement(
+                            "val %N = %N%L%M(env)",
+                            it.name,
+                            it.name,
+                            if (it.typeInfo.kotlinType.isNullable) "?." else ".",
+                            Types.Method.ToKDirectByteBufferBorrowed
+                        )
+                    }
+                    if (borrowedBuffers.isEmpty()) {
+                        addStatement("return %L", initNativeCode.packToNative().code)
+                    } else {
+                        beginControlFlow(
+                            "return %M(%L)",
+                            Types.Method.WithBorrowedBuffers,
+                            borrowedBuffers.joinToCode(", ") { CodeBlock.of("%N", it.name) }
+                        )
+                        addStatement("%L", initNativeCode.packToNative().code)
+                        endControlFlow()
+                    }
+                }
                 .build()
 
             cnameFunBuilder(
