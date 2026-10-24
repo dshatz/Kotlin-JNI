@@ -35,20 +35,30 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
 }
 
 /**
- * Convert jobject representing a java.nio.ByteBuffer to a borrowed native [ByteBuffer] wrapper.
+ * Convert jobject representing a java.nio.ByteBuffer to a borrowed native [ByteBuffer] wrapper. The caller must call [ByteBuffer.endBorrow] when done.
  *
- * No global reference is created: the buffer is only valid while [this] local reference is, so the caller must call [ByteBuffer.endBorrow]
+ * If [pinned] is false, no global reference is created: the buffer is only valid while [this] local reference is, so the borrow must end
  * before the native function returns. [ByteBuffer.retain] creates a global reference, which is deleted on [ByteBuffer.release].
+ *
+ * If [pinned] is true, a global reference keeps the java.nio.ByteBuffer alive until the borrow ends, so the buffer can be used after the native function returns
+ * (e.g. in a suspend function). [ByteBuffer.retain] keeps that global reference until [ByteBuffer.release].
  *
  * @receiver a java.nio.ByteBuffer as received into a native function.
  */
 @OptIn(ExperimentalForeignApi::class, DelicateBufferAPI::class)
-fun jobject.toKDirectByteBufferBorrowed(env: CPointer<JNIEnvVar>): ByteBuffer {
+fun jobject.toKDirectByteBufferBorrowed(env: CPointer<JNIEnvVar>, pinned: Boolean = false): ByteBuffer {
     val getDirectBufferAddress = env.pointed.pointedCommon?.GetDirectBufferAddress ?: throw JniUnavailableError()
     val getDirectBufferCapacity = env.pointed.pointedCommon?.GetDirectBufferCapacity ?: throw JniUnavailableError()
 
     val rawAddress = getDirectBufferAddress.invoke(env, this) ?: error("GetDirectBufferAddress returned null")
     val size = getDirectBufferCapacity.invoke(env, this)
+
+    if (pinned) {
+        val globalRef = env.NewGlobalRef(this)
+        val javaVm = env.getJavaVM()
+        val finalizer: () -> Unit = { javaVm.deleteGlobalRefOnAnyThread(globalRef) }
+        return ByteBuffer.wrapBorrowed(rawAddress.reinterpret(), size, finalizer = finalizer, retainer = { finalizer })
+    }
 
     val localRef = this
     return ByteBuffer.wrapBorrowed(rawAddress.reinterpret(), size, retainer = {

@@ -60,6 +60,11 @@ sealed class KSJniCall: WithParent {
 
     abstract val jvmSignature: String
 
+    /**
+     * Whether ByteBuffer parameters are only borrowed for the duration of the call.
+     */
+    open val borrowsBuffers: Boolean = true
+
     data class Blocking(
         override val name: String,
         override val returnType: TypeInfo,
@@ -68,7 +73,8 @@ sealed class KSJniCall: WithParent {
         override val modifiers: Set<KModifier>,
         override val nativeInstance: TypeInfo.NativeInstance?,
         override val platform: Registry.Platform,
-        override val jvmSignature: String
+        override val jvmSignature: String,
+        override val borrowsBuffers: Boolean = true
     ): KSJniCall() {
         override val jniParams: List<ParamInfo> by lazy {
             parameters + listOfNotNull(nativeInstance?.let {
@@ -184,13 +190,17 @@ sealed class KSJniCall: WithParent {
             jniCName
         )
 
-        // Buffers are only borrowed for the duration of a blocking call, unless user code calls ByteBuffer.retain().
-        val borrowedBuffers = if (this is Blocking) parameters.filter { it.typeInfo is TypeInfo.ByteBuffer } else emptyList()
+        // Buffers are only borrowed for the duration of the call, unless user code calls ByteBuffer.retain().
+        // Suspend calls outlive the JNI call, so their buffers are pinned with a global ref until the coroutine completes.
+        val borrowedBuffers = if (borrowsBuffers) parameters.filter { it.typeInfo is TypeInfo.ByteBuffer } else emptyList()
         val paramCodes = jniParams.map {
             val paramCode = it.refNative
             if (it in borrowedBuffers) {
                 val borrowed = paramCode.typed.nullSafeCall(
-                    CodeBlock.of("%M(env)", Types.Method.ToKDirectByteBufferBorrowed).returnType(it.typeInfo.kotlinType)
+                    CodeBlock.of(
+                        if (this is Suspend) "%M(env, pinned = true)" else "%M(env)",
+                        Types.Method.ToKDirectByteBufferBorrowed
+                    ).returnType(it.typeInfo.kotlinType)
                 )
                 return@map it.name to TypedCodeMP.Common(borrowed.code, it.typeInfo, paramCode.nullable)
             }
@@ -216,8 +226,16 @@ sealed class KSJniCall: WithParent {
 
         val finalCode = if (this is Suspend) {
             val callback = CodeBlock.of("callback").commonCode(callbackType)
+            val executeSuspend = if (borrowedBuffers.isEmpty()) {
+                CodeBlock.of("%L.%M", callback.code, Types.Method.ExecuteSuspend)
+            } else {
+                val endBorrows = borrowedBuffers.joinToCode("; ") {
+                    CodeBlock.of("%N%L%N()", it.name, if (it.typeInfo.kotlinType.isNullable) "?." else ".", "endBorrow")
+                }
+                CodeBlock.of("%L.%M(onComplete = { %L })", callback.code, Types.Method.ExecuteSuspend, endBorrows)
+            }
             CodeBlock.builder()
-                .beginControlFlow("%L.%M", callback.code, Types.Method.ExecuteSuspend)
+                .beginControlFlow("%L", executeSuspend)
                 .addStatement("%L", callUserCode)
                 .endControlFlow()
                 .build()

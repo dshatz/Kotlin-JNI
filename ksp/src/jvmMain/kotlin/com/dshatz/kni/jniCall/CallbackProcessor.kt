@@ -200,7 +200,9 @@ class CallbackProcessor(
                             jvmSignature = getSignature(
                                 listOf(ParamInfo("value", f.jvmReturnType)),
                                 TypeInfo.Unit
-                            )
+                            ),
+                            // The value is the result of the suspend callback, owned by the native caller from now on.
+                            borrowsBuffers = false
                         ),
                         KSJniCall.Blocking(
                             f.onFailureFun,

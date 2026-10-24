@@ -55,15 +55,20 @@ Call from `commonMain`:
 {src="fillBuffer/call.kt"}
 
 ## Buffer lifetime on native
-A `ByteBuffer` received as a parameter of a blocking `@JniCall` function is only borrowed: it is invalidated when the function returns, and using it afterwards throws `BufferReleasedException`.
+A `ByteBuffer` received as a parameter of a `@JniCall` function is only borrowed: it is invalidated when the function returns, and using it afterwards throws `BufferReleasedException`.
 
-To keep the buffer, call `retain()` during the call, on the calling thread. You then own it and must call `release()` when done:
+This applies to `suspend` functions too: the buffer stays valid until the suspend function completes, even though that is after the underlying JNI call has returned.
+The JVM buffer is kept alive for that whole time, even if the caller no longer references it.
+
+To keep the buffer, call `retain()` during the call. You then own it and must call `release()` when done:
 ```kotlin
 @JniCall
 actual fun keep(buffer: ByteBuffer) {
     stored = buffer.retain()
 }
 ```
+
+> In a blocking function, call `retain()` on the thread the function was called on. In a `suspend` function, it can be called from any thread while the function is running.
 
 ## Converting
 ### JVM
