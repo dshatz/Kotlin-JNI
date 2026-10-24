@@ -27,6 +27,15 @@ fun TestSuiteScope.bridgeTests() {
     test("Strings") {
         Bridge.uppercase("hello") shouldBe "HELLO"
     }
+    test("Strings with emojis") {
+        val value = "smile 😀, thumbs 👍🏽, family 👨‍👩‍👧, flag 🇱🇻"
+        Bridge.withTypeAlias(value) shouldBe value
+        Bridge.uppercase(value) shouldBe value.uppercase()
+    }
+    test("Strings with non-latin and NUL characters") {
+        val value = "héllo ✓ 日本語 𝄞 a\u0000b"
+        Bridge.withTypeAlias(value) shouldBe value
+    }
     test("ByteArray") {
         Bridge.byteArray(4).size shouldBe 4
     }
