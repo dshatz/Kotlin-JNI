@@ -2,6 +2,8 @@ package kni.test
 
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.allocateBuffer
+import com.dshatz.kni.buffers.toCommonByteBuffer
+import io.kotest.assertions.throwables.shouldThrow
 import com.dshatz.kni.load.BundledLibLoader
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import io.kotest.matchers.shouldBe
@@ -84,5 +86,12 @@ fun TestSuiteScope.bufferLifetimeTests() {
 
     test("buffer returned from suspend callback is usable on native") {
         BufferKeeper.readFromSuspendProvider(TestBufferProvider(6)) shouldBe 6.toByte()
+    }
+
+    test("non-direct buffer parameter is rejected") {
+        val heapBuffer = java.nio.ByteBuffer.allocate(16).toCommonByteBuffer()
+        shouldThrow<IllegalArgumentException> {
+            BufferKeeper.nullableBuffer(heapBuffer)
+        }
     }
 }
