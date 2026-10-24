@@ -140,7 +140,7 @@ internal object Types {
             private val ExperimentalAtomicApi = ClassName("kotlin.concurrent.atomics", "ExperimentalAtomicApi")
 
             val NativeOptIn = AnnotationSpec.builder(OptIn)
-                .addMember("%T::class, %T::class", ExperimentalForeignApi, ExperimentalNativeApi)
+                .addMember("%T::class, %T::class, %T::class", ExperimentalForeignApi, ExperimentalNativeApi, KniInternalApi::class)
                 .build()
 
             val KniInternalOptIn = AnnotationSpec.builder(OptIn)

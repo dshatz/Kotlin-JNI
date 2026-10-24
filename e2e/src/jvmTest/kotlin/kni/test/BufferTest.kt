@@ -35,6 +35,16 @@ val BufferTest by testSuite {
         (directMemoryUsed() - before) shouldBeLessThan LEAK_THRESHOLD
     }
 
+    test("constructor buffer parameters do not leak") {
+        gc()
+        val before = directMemoryUsed()
+        repeat(200) {
+            BufferHolder(allocateBuffer(1024 * 1024), retain = false).close()
+        }
+        gc()
+        (directMemoryUsed() - before) shouldBeLessThan LEAK_THRESHOLD
+    }
+
     test("suspend buffer parameters do not leak") {
         gc()
         val before = directMemoryUsed()

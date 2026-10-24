@@ -39,11 +39,6 @@ actual class NativeInstance actual constructor(
     }
 
     @JniCall
-    actual fun randomIntList(size: Int): List<Int> {
-        return generateSequence { Random.nextInt() }.toList()
-    }
-
-    @JniCall
     actual fun randomStringIntMap(size: Int): Map<String, Int> {
         val charPool = ('a'..'z')
         return generateSequence {
