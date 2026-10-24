@@ -1,6 +1,7 @@
 package kni.test
 
 import com.dshatz.kni.annotations.JniCall
+import com.dshatz.kni.annotations.JniCallback
 import com.dshatz.kni.buffers.ByteBuffer
 
 /**
@@ -13,7 +14,12 @@ expect object BufferKeeper {
     @JniCall fun storeBorrowed(buffer: ByteBuffer)
 
     /**
-     * @return true if the buffer stored by [storeBorrowed] was invalidated when that call returned.
+     * Store [buffer] without retaining it, from a suspend function.
+     */
+    @JniCall suspend fun storeBorrowedSuspend(buffer: ByteBuffer)
+
+    /**
+     * @return true if the buffer stored by [storeBorrowed] or [storeBorrowedSuspend] has been invalidated.
      */
     @JniCall fun isStoredInvalidated(): Boolean
 
@@ -23,7 +29,12 @@ expect object BufferKeeper {
     @JniCall fun storeRetained(buffer: ByteBuffer)
 
     /**
-     * Write [value] to the start of the buffer stored by [storeRetained].
+     * Retain and store [buffer], from a suspend function.
+     */
+    @JniCall suspend fun storeRetainedSuspend(buffer: ByteBuffer)
+
+    /**
+     * Write [value] to the start of the buffer stored by [storeRetained] or [storeRetainedSuspend].
      */
     @JniCall fun writeToRetained(value: Byte)
 
@@ -33,4 +44,30 @@ expect object BufferKeeper {
     @JniCall fun releaseRetained()
 
     @JniCall fun nullableBuffer(buffer: ByteBuffer?): Long
+
+    @JniCall suspend fun nullableBufferSuspend(buffer: ByteBuffer?): Long
+
+    /**
+     * Fill [buffer] with [value] after waiting [delayMillis], which is after the JNI call has returned.
+     */
+    @JniCall suspend fun fillAfterDelay(buffer: ByteBuffer, value: Byte, delayMillis: Long)
+
+    /**
+     * @return the first byte of the buffer returned by [BufferProvider.provide].
+     */
+    @JniCall fun readFromProvider(provider: BufferProvider): Byte
+
+    /**
+     * @return the first byte of the buffer returned by [BufferProvider.provideSuspend].
+     */
+    @JniCall suspend fun readFromSuspendProvider(provider: BufferProvider): Byte
+}
+
+/**
+ * Returns buffers from JVM to native.
+ */
+@JniCallback
+interface BufferProvider : AutoCloseable {
+    fun provide(): ByteBuffer
+    suspend fun provideSuspend(): ByteBuffer
 }
