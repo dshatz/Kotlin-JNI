@@ -12,6 +12,7 @@ abstract class IByteBuffer internal constructor() {
     fun write(src: ByteArray, dstOffset: Int = 0, length: Int = src.size) {
         if (isReleased) throw BufferReleasedException()
         if (dstOffset < 0) throw IllegalArgumentException("Offset cannot be negative, got: $dstOffset")
+        if (length < 0) throw IllegalArgumentException("Length cannot be negative, got: $length")
         if (dstOffset + length > capacity) throw IllegalArgumentException("Buffer overflow: offset ($dstOffset) + length ($length) > capacity ($capacity)")
         if (length > src.size) throw IllegalArgumentException("Source underflow: attempted reading $length, src size: ${src.size}")
         writeInternal(src, dstOffset, length)
@@ -27,6 +28,8 @@ abstract class IByteBuffer internal constructor() {
      */
     fun read(dst: ByteArray, offset: Int, length: Int) {
         if (isReleased) throw BufferReleasedException()
+        if (offset < 0) throw IllegalArgumentException("Offset cannot be negative, got: $offset")
+        if (length < 0) throw IllegalArgumentException("Length cannot be negative, got: $length")
         if (offset + length > capacity) throw IllegalArgumentException("Buffer underflow: offset ($offset) + length ($length) > capacity $capacity")
         if (length > dst.size) throw IllegalArgumentException("Destination overflow: attempted to read ${length}, dst capacity: ${dst.size}")
         readInternal(dst, offset, length)
