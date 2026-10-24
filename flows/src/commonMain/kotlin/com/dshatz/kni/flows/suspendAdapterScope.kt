@@ -7,7 +7,12 @@ import kotlinx.coroutines.launch
 
 val suspendAdapterScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-fun <T> SuspendCallback<T>.executeSuspend(block: suspend () -> T) {
+/**
+ * Run [block] in [suspendAdapterScope] and report the result to this callback.
+ *
+ * [onComplete] runs once the coroutine has completed, after the result has been reported. It also runs if the coroutine is cancelled before starting.
+ */
+fun <T> SuspendCallback<T>.executeSuspend(onComplete: () -> Unit = {}, block: suspend () -> T) {
     suspendAdapterScope.launch {
         try {
             val result = block()
@@ -21,11 +26,18 @@ fun <T> SuspendCallback<T>.executeSuspend(block: suspend () -> T) {
         } finally {
             close()
         }
+    }.invokeOnCompletion {
+        onComplete()
     }
 }
 
 
-fun SuspendCallback0.executeSuspend(block: suspend () -> Unit) {
+/**
+ * Run [block] in [suspendAdapterScope] and report completion to this callback.
+ *
+ * [onComplete] runs once the coroutine has completed, after the result has been reported. It also runs if the coroutine is cancelled before starting.
+ */
+fun SuspendCallback0.executeSuspend(onComplete: () -> Unit = {}, block: suspend () -> Unit) {
     suspendAdapterScope.launch {
         try {
             block()
@@ -41,5 +53,6 @@ fun SuspendCallback0.executeSuspend(block: suspend () -> Unit) {
         }
     }.invokeOnCompletion {
         it?.printStackTrace()
+        onComplete()
     }
 }
