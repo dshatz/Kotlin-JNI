@@ -119,14 +119,20 @@ actual class ByteBuffer internal constructor(
         /**
          * Create a borrowed [ByteBuffer] by wrapping the given [address], valid until [endBorrow] is called.
          *
+         * [finalizer] is invoked when the borrow ends without [retain] having been called.
          * [retainer] is invoked by [retain]: it must take ownership of the memory and return the finalizer that gives it up.
          */
         @DelicateBufferAPI
-        fun wrapBorrowed(address: CPointer<ByteVar>, size: Long, retainer: () -> () -> Unit): ByteBuffer {
+        fun wrapBorrowed(
+            address: CPointer<ByteVar>,
+            size: Long,
+            finalizer: () -> Unit = {},
+            retainer: () -> () -> Unit
+        ): ByteBuffer {
             return ByteBuffer(
                 capacity = size,
                 _address = address,
-                finalizer = {}
+                finalizer = finalizer
             ).also {
                 it.retainer = retainer
             }
