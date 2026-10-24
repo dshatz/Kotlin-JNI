@@ -54,6 +54,17 @@ Call from `commonMain`:
 ```
 {src="fillBuffer/call.kt"}
 
+## Buffer lifetime on native
+A `ByteBuffer` received as a parameter of a blocking `@JniCall` function is only borrowed: it is invalidated when the function returns, and using it afterwards throws `BufferReleasedException`.
+
+To keep the buffer, call `retain()` during the call, on the calling thread. You then own it and must call `release()` when done:
+```kotlin
+@JniCall
+actual fun keep(buffer: ByteBuffer) {
+    stored = buffer.retain()
+}
+```
+
 ## Converting
 ### JVM
 ```kotlin 
