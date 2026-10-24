@@ -1,6 +1,7 @@
 package com.dshatz.kni.utils
 
 import com.dshatz.kni.JNIEnvVar
+import com.dshatz.kni.annotations.KniInternalApi
 import com.dshatz.kni.JavaVMVar
 import com.dshatz.kni.binding.*
 import com.dshatz.kni.buffers.ByteBuffer
@@ -45,6 +46,7 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
  *
  * @receiver a java.nio.ByteBuffer as received into a native function.
  */
+@KniInternalApi
 @OptIn(ExperimentalForeignApi::class, DelicateBufferAPI::class)
 fun jobject.toKDirectByteBufferBorrowed(env: CPointer<JNIEnvVar>, pinned: Boolean = false): ByteBuffer {
     val getDirectBufferAddress = env.pointed.pointedCommon?.GetDirectBufferAddress ?: throw JniUnavailableError()
@@ -72,6 +74,7 @@ fun jobject.toKDirectByteBufferBorrowed(env: CPointer<JNIEnvVar>, pinned: Boolea
 /**
  * Run [block], then end the borrow of [buffer] (see [toKDirectByteBufferBorrowed]).
  */
+@KniInternalApi
 inline fun <R> withBorrowedBuffers(buffer: ByteBuffer?, block: () -> R): R {
     try {
         return block()
@@ -83,6 +86,7 @@ inline fun <R> withBorrowedBuffers(buffer: ByteBuffer?, block: () -> R): R {
 /**
  * Run [block], then end the borrow of all [buffers] (see [toKDirectByteBufferBorrowed]).
  */
+@KniInternalApi
 inline fun <R> withBorrowedBuffers(vararg buffers: ByteBuffer?, block: () -> R): R {
     try {
         return block()

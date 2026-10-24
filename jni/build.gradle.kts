@@ -131,6 +131,7 @@ kotlin {
             implementation(libs.test.kotest)
         }
         nativeMain.dependencies {
+            implementation(project(":annotations"))
             implementation(project(":buffers"))
             implementation(libs.atomic)
         }

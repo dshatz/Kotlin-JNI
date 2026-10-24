@@ -88,3 +88,19 @@ actual object BufferKeeper {
         }
     }
 }
+
+actual class BufferHolder actual constructor(buffer: ByteBuffer, private val retain: Boolean) : AutoCloseable {
+    private val buffer = if (retain) buffer.retain() else buffer
+
+    @JniCall
+    actual fun isBufferValid(): Boolean = !buffer.isReleased
+
+    @JniCall
+    actual fun writeFirst(value: Byte) {
+        buffer.write(byteArrayOf(value))
+    }
+
+    actual override fun close() {
+        if (retain) buffer.release()
+    }
+}

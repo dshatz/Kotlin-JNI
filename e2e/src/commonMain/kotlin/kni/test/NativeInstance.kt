@@ -21,8 +21,6 @@ expect class NativeInstance(
 
     @JniCall
     fun fillBuffer(buffer: ByteBuffer, callback: BufferFillCallback)
-    @JniCall
-    fun randomIntList(size: Int): List<Int>
 
     @JniCall
     fun randomStringIntMap(size: Int): Map<String, Int>
