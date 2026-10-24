@@ -1,6 +1,7 @@
 package com.dshatz.kni.utils
 
 import com.dshatz.kni.JNIEnvVar
+import com.dshatz.kni.JavaVMVar
 import com.dshatz.kni.binding.*
 import com.dshatz.kni.buffers.ByteBuffer
 import com.dshatz.kni.buffers.DelicateBufferAPI
@@ -27,9 +28,62 @@ fun jobject.toKDirectByteBuffer(env: CPointer<JNIEnvVar>): ByteBuffer {
     val size = getDirectBufferCapacity.invoke(env, globalRef)
 
     val address = rawAddress.reinterpret<ByteVar>()
+    val javaVm = env.getJavaVM()
     return ByteBuffer.wrapAddress(address, size, owner = globalRef, finalizer = {
-        it.let(env::DeleteGlobalRef)
+        javaVm.deleteGlobalRefOnAnyThread(it)
     })
+}
+
+/**
+ * Convert jobject representing a java.nio.ByteBuffer to a borrowed native [ByteBuffer] wrapper.
+ *
+ * No global reference is created: the buffer is only valid while [this] local reference is, so the caller must call [ByteBuffer.endBorrow]
+ * before the native function returns. [ByteBuffer.retain] creates a global reference, which is deleted on [ByteBuffer.release].
+ *
+ * @receiver a java.nio.ByteBuffer as received into a native function.
+ */
+@OptIn(ExperimentalForeignApi::class, DelicateBufferAPI::class)
+fun jobject.toKDirectByteBufferBorrowed(env: CPointer<JNIEnvVar>): ByteBuffer {
+    val getDirectBufferAddress = env.pointed.pointedCommon?.GetDirectBufferAddress ?: throw JniUnavailableError()
+    val getDirectBufferCapacity = env.pointed.pointedCommon?.GetDirectBufferCapacity ?: throw JniUnavailableError()
+
+    val rawAddress = getDirectBufferAddress.invoke(env, this) ?: error("GetDirectBufferAddress returned null")
+    val size = getDirectBufferCapacity.invoke(env, this)
+
+    val localRef = this
+    return ByteBuffer.wrapBorrowed(rawAddress.reinterpret(), size, retainer = {
+        val globalRef = env.NewGlobalRef(localRef)
+        val javaVm = env.getJavaVM()
+        val finalizer: () -> Unit = { javaVm.deleteGlobalRefOnAnyThread(globalRef) }
+        finalizer
+    })
+}
+
+/**
+ * Run [block], then end the borrow of [buffer] (see [toKDirectByteBufferBorrowed]).
+ */
+inline fun <R> withBorrowedBuffers(buffer: ByteBuffer?, block: () -> R): R {
+    try {
+        return block()
+    } finally {
+        buffer?.endBorrow()
+    }
+}
+
+/**
+ * Run [block], then end the borrow of all [buffers] (see [toKDirectByteBufferBorrowed]).
+ */
+inline fun <R> withBorrowedBuffers(vararg buffers: ByteBuffer?, block: () -> R): R {
+    try {
+        return block()
+    } finally {
+        buffers.forEach { it?.endBorrow() }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun CPointer<JavaVMVar>.deleteGlobalRefOnAnyThread(globalRef: jobject) {
+    WithAttachedThread { env -> env.DeleteGlobalRef(globalRef) }
 }
 
 class JvmCallException(className: String, message: String): Exception(

@@ -110,6 +110,8 @@ internal object Types {
         val ToKShortArray = MemberName("com.dshatz.kni.utils", "toKShortArray")
         val ToKString = MemberName("com.dshatz.kni.utils", "toKString")
         val ToKDirectByteBuffer = MemberName("com.dshatz.kni.utils", "toKDirectByteBuffer")
+        val ToKDirectByteBufferBorrowed = MemberName("com.dshatz.kni.utils", "toKDirectByteBufferBorrowed")
+        val WithBorrowedBuffers = MemberName("com.dshatz.kni.utils", "withBorrowedBuffers")
         val ToKByteBuffer = MemberName("com.dshatz.kni.buffers", "toKByteBuffer")
         val ToKoObjectArray = MemberName("com.dshatz.kni.utils", "toKObjectArray")
         val GetAndAttach = MemberName("com.dshatz.kni.utils", "GetAndAttach")
