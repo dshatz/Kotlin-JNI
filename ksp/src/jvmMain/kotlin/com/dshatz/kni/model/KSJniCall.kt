@@ -184,8 +184,16 @@ sealed class KSJniCall: WithParent {
             jniCName
         )
 
+        // Buffers are only borrowed for the duration of a blocking call, unless user code calls ByteBuffer.retain().
+        val borrowedBuffers = if (this is Blocking) parameters.filter { it.typeInfo is TypeInfo.ByteBuffer } else emptyList()
         val paramCodes = jniParams.map {
             val paramCode = it.refNative
+            if (it in borrowedBuffers) {
+                val borrowed = paramCode.typed.nullSafeCall(
+                    CodeBlock.of("%M(env)", Types.Method.ToKDirectByteBufferBorrowed).returnType(it.typeInfo.kotlinType)
+                )
+                return@map it.name to TypedCodeMP.Common(borrowed.code, it.typeInfo, paramCode.nullable)
+            }
             val nullified = if (it.typeInfo.needsIsNullParam()) {
                 CodeBlock.of("(if (%N.%M()) null else %L)", "_${it.name}IsNull", Types.Method.ToKBoolean, paramCode.code)
                     .nativeCode(it.typeInfo, nullable = true)
@@ -218,7 +226,19 @@ sealed class KSJniCall: WithParent {
                 returnType.packMember()
             )
             /*val packResult = returnType.packCode(callUserCode.returnType(returnType.kotlinType))*/
-            CodeBlock.of("return %L", packResult.code)
+            if (borrowedBuffers.isEmpty()) {
+                CodeBlock.of("return %L", packResult.code)
+            } else {
+                CodeBlock.builder()
+                    .beginControlFlow(
+                        "return %M(%L)",
+                        Types.Method.WithBorrowedBuffers,
+                        borrowedBuffers.joinToCode(", ") { CodeBlock.of("%N", it.name) }
+                    )
+                    .addStatement("%L", packResult.code)
+                    .endControlFlow()
+                    .build()
+            }
         }
 
         val f = builder
