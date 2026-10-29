@@ -11,4 +11,5 @@ plugins {
 dependencies {
     dokka(project(":jni"))
     dokka(project(":buffers"))
+    dokka(project(":flows"))
 }

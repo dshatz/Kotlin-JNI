@@ -70,6 +70,7 @@ jobs:
         run: |
           mkdir -p staging/api/jni
           mkdir -p staging/api/buffers
+          mkdir -p staging/api/flows
           mkdir -p temp_extract
           touch staging/.nojekyll
           
@@ -88,6 +89,7 @@ jobs:
           
           cp -r jni/build/dokka/html/* staging/api/jni/
           cp -r buffers/build/dokka/html/* staging/api/buffers/
+          cp -r flows/build/dokka/html/* staging/api/flows/
           
           echo "Final Staging Structure:"
           ls -F staging

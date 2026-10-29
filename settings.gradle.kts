@@ -5,13 +5,13 @@ if (!settings.extra.has("onlyDocs")) {
 //    include(":demo")
     include(":e2e")
     include(":e2e-adapters")
-    include(":ksp")
     include(":adapters")
     include(":serialization")
     include(":plugintest")
 }
 
 include(":annotations")
+include(":ksp")
 include(":jni")
 include(":buffers")
 include(":flows")
