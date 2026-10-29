@@ -2,7 +2,6 @@ rootProject.name = "Kotlin-JNI"
 
 includeBuild("plugin")
 if (!settings.extra.has("onlyDocs")) {
-    include(":annotations")
 //    include(":demo")
     include(":e2e")
     include(":e2e-adapters")
@@ -11,6 +10,8 @@ if (!settings.extra.has("onlyDocs")) {
     include(":serialization")
     include(":plugintest")
 }
+
+include(":annotations")
 include(":jni")
 include(":buffers")
 include(":flows")
