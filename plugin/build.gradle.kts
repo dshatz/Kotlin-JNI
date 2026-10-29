@@ -20,6 +20,10 @@ gradlePlugin {
     }
 }
 
+kotlin {
+  jvmToolchain(21)
+}
+
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
     implementation("com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin:8.13.2")
