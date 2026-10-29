@@ -1,7 +1,7 @@
 name: Test
 
 on:
-  pull_request_target:
+  pull_request:
     branches:
       - master
       - dev
@@ -26,8 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
@@ -49,27 +47,6 @@ jobs:
           name: test-report-ubuntu-latest
           path: ./**/build/test-results/**/*.xml
           retention-days: 5
-      - name: Upload Android Test APK (e2e)
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: e2e-androidTest.apk
-          path: ./e2e/build/outputs/apk/androidTest/e2e-androidTest.apk
-          archive: false
-      - name: Upload Android Test APK (plugintest)
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: plugintest-androidTest.apk
-          path: ./plugintest/build/outputs/apk/androidTest/plugintest-androidTest.apk
-          archive: false
-      - name: Upload Android Test APK (buffers)
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: buffers-androidTest.apk
-          path: ./buffers/build/outputs/apk/androidTest/buffers-androidTest.apk
-          archive: false
 
   test-windows:
     permissions:
@@ -78,8 +55,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
@@ -104,8 +79,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
@@ -131,8 +104,8 @@ jobs:
           name: crashdump-macos
           path: ./**/hs_err_*.log
 
-  test-android:
-    needs: ["test-linux"]
+  test-android-emulator:
+    # Runs on an x86_64 emulator, needs no secrets, so it also works for fork PRs.
     strategy:
       matrix:
         module: ["e2e", "plugintest", "buffers"]
@@ -141,55 +114,44 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v8
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup
+        uses: ./.github/actions/build-setup
         with:
-          name: ${{matrix.module}}-androidTest.apk
-      - name: Set up google cloud
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          service_account_key: ${{ secrets.GCLOUD_AUTH }}
-
-      - name: Auth google cloud
-        uses: 'google-github-actions/auth@v3'
-        with:
-          project_id: 'kotlin-jni'
-          credentials_json: ${{ secrets.GCLOUD_AUTH }}
-
-      - name: Set current project
-        run: gcloud config set project ${{ secrets.FIREBASE_PROJECT_ID }}
-
-      - name: Run Instrumentation Tests in Firebase Test Lab
-        continue-on-error: true
-        env:
-          APP_DEBUG_LOCATION: ${{matrix.module}}-androidTest.apk
-          ANDROID_TEST_LOCATION: ${{matrix.module}}-androidTest.apk
-          DEVICE_MODEL: SmallPhone.arm,version=35
-        run: >
-          gcloud firebase test android run
-          --type instrumentation
-          --app $APP_DEBUG_LOCATION
-          --test $ANDROID_TEST_LOCATION
-          --device model=$DEVICE_MODEL
-          --results-bucket=jni-firebase-test
-          --results-dir="run-${{ github.run_id }}-${{matrix.module}}"
-          --no-record-video
-      - name: Download Results
+          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+      - name: Enable KVM
         run: |
-          mkdir -p firebase-results/${{matrix.module}}
-          # Replace 'your-bucket-name' with your actual bucket (e.g. test-lab-xxxx)
-          gcloud storage cp -r "gs://jni-firebase-test/run-${{ github.run_id }}-${{matrix.module}}/**/test_result_*.xml" ./firebase-results/${{matrix.module}}/
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v7
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run Instrumentation Tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          name: test-report-ubuntu-android-${{matrix.module}}
-          path: firebase-results/${{matrix.module}}/
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: >
+            ./gradlew :${{matrix.module}}:connectedAndroidDeviceTest
+            -PkniNativeBuildType=debug
+            -PkniAllowedTargets=androidNativeX64
+        env:
+          GRADLE_OPTS: >-
+            -Dorg.gradle.jvmargs="-Xmx6g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"
+            -Dkotlin.daemon.jvm.options="-Xmx2048m"
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-report-emulator-android-${{matrix.module}}
+          path: ./${{matrix.module}}/build/outputs/androidTest-results/**/*.xml
+          retention-days: 5
 
   publish-results:
     needs:
       - test-linux
-      - test-android
+      - test-android-emulator
       - test-macos
       - test-windows
     runs-on: ubuntu-latest
@@ -216,5 +178,5 @@ jobs:
               "test-report-ubuntu-latest/**/*.xml": "Linux",
               "test-report-windows-latest/**/*.xml": "Windows",
               "test-report-macos-latest/**/*.xml": "macOS",
-              "test-report-ubuntu-android-*/**/*.xml": "Android"
+              "test-report-emulator-android-*/**/*.xml": "Android (emulator)"
             }
