@@ -1,0 +1,42 @@
+name: Report fork PR results
+
+# Fork PRs get a read-only token in "Test", so they cannot create check runs there.
+# This workflow runs in the base repo after "Test" completes and publishes the check run.
+# It never checks out or executes fork code, it only reads the uploaded XML test reports.
+
+on:
+  workflow_run:
+    workflows: [ "Test" ]
+    types:
+      - completed
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name != github.repository
+    permissions:
+      contents: read
+      checks: write
+      actions: read
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: test-report-*
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Multiplatform Test Report
+        uses: dshatz/testballoon-github-reporter@master
+        with:
+          sha: ${{ github.event.workflow_run.head_sha }}
+          reports: "test-report-*/**/*.xml"
+          platform-hints: |
+            {
+              "test-report-ubuntu-latest/**/*.xml": "Linux",
+              "test-report-windows-latest/**/*.xml": "Windows",
+              "test-report-macos-latest/**/*.xml": "macOS",
+              "test-report-emulator-android-*/**/*.xml": "Android (emulator)"
+            }
