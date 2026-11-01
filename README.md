@@ -5,7 +5,8 @@
 ![Linux](https://img.shields.io/badge/Linux-Supported-green?logo=linux)
 ![MacOS](https://img.shields.io/badge/MacOS-Supported-green?logo=apple)
 ![Windows](https://img.shields.io/badge/Windows-Supported-green)
-![Language](https://img.shields.io/github/languages/top/DatL4g/Native-Kommons)
+![GitHub top language](https://img.shields.io/github/languages/top/dshatz/Kotlin-JNI)
+![GitHub branch check runs](https://img.shields.io/github/check-runs/dshatz/Kotlin-JNI/master?nameFilter=Test%20Results)
 [![licence](https://img.shields.io/badge/license-Apache%202%20-blue)](https://github.com/DatL4g/Native-Kommons/blob/master/LICENSE)
 [![github stars](https://img.shields.io/github/stars/dshatz/Kotlin-JNI?style=social&label=Kotlin-KNI)](https://github.com/dshatz/Kotlin-JNI)
 
@@ -42,6 +43,8 @@ Automatic wiring of Kotlin source sets, bundling Kotlin/Native artifacts and loa
 You can use standard Kotlin types for making calls between JVM and Native.
  - [Call your Kotlin/Native code from JVM using `@JniCall`](https://dshatz.github.io/Kotlin-JNI/callingnative.html)
  - [Callback from Kotlin/Native to JVM using `@JniCallback`](https://dshatz.github.io/Kotlin-JNI/callingjvm.html)
+
+Suspend functions are supported too!
 
 ### 5. Wide type support
 Pass Kotlin primitives, Strings, ByteArrays, as well as [ByteBuffers](https://dshatz.github.io/Kotlin-JNI/buffers.html) and custom types using [serializers](https://dshatz.github.io/Kotlin-JNI/customdata.html).
