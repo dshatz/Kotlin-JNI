@@ -55,3 +55,6 @@ Please read the [full documentation](https://dshatz.github.io/Kotlin-JNI).
 
 ## Contributions
 Feel free to create Pull Requests and Issues. I will do my best to address them.
+
+## This library is used by
+ - [PDFMP](https://github.com/dshatz/pdfmp) - Kotlin Multiplatform PDF Library.
