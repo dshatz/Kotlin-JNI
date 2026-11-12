@@ -107,4 +107,24 @@ val BufferTest by testSuite() {
             buffer.wipe()
         }
     }
+
+    test("encodeToByteBuffer") {
+        val strings = listOf("", "password", "ąčęėįšųūž", "日本語", "emoji \uD83D\uDE00 end")
+        for (string in strings) {
+            val buffer = string.encodeToByteBuffer()
+            val expected = string.encodeToByteArray()
+            buffer.capacity shouldBe expected.size.toLong()
+            buffer.readToByteArray(0, expected.size).toHexString() shouldBe expected.toHexString()
+        }
+    }
+
+    test("encodeToByteBuffer null terminated") {
+        val buffer = "abc".encodeToByteBuffer(nullTerminated = true)
+        buffer.readToByteArray(0, 4).toHexString() shouldBe "61626300"
+    }
+
+    test("encodeToByteBuffer unpaired surrogate") {
+        val buffer = "a\uD800b".encodeToByteBuffer()
+        buffer.readToByteArray(0, buffer.capacity.toInt()).toHexString() shouldBe "61efbfbd62"
+    }
 }

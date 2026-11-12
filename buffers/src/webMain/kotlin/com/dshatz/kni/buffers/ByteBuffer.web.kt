@@ -47,3 +47,7 @@ actual class ByteBuffer(
         byteArray.fill(0)
     }
 }
+
+internal actual fun ByteBuffer.setByte(index: Long, value: Byte) {
+    byteArray[index.toInt()] = value
+}
