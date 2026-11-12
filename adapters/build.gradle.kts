@@ -51,8 +51,6 @@ kotlin {
     optionalTargets {
         androidNativeX64()
         androidNativeArm64()
-        androidNativeX86()
-        androidNativeArm32()
 
         val desktopTargets = listOfNotNull(
             linuxX64(),
@@ -65,16 +63,6 @@ kotlin {
         iosX64()
         iosArm64()
         iosSimulatorArm64()
-
-        tvosX64()
-        tvosArm64()
-        tvosSimulatorArm64()
-
-        watchosX64()
-        watchosArm32()
-        watchosArm64()
-        watchosSimulatorArm64()
-        watchosDeviceArm64()
 
         js {
             binaries.library()

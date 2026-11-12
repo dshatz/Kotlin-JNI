@@ -86,7 +86,7 @@ jobs:
       - name: Build and Test
         run: |
           ./gradlew allTests -PkniNativeBuildType=debug \
-            -PkniAllowedTargets=macosArm64,iosSimulatorArm64,tvosSimulatorArm64,watchosSimulatorArm64
+            -PkniAllowedTargets=macosArm64,iosSimulatorArm64
         env:
           GRADLE_OPTS: >-
             -Dorg.gradle.jvmargs="-Xmx5g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m"

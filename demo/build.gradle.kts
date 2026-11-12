@@ -22,8 +22,6 @@ kotlin {
     optionalTargets {
         androidNativeX64()
         androidNativeArm64()
-        androidNativeX86()
-        androidNativeArm32()
 
         val desktopTargets = listOfNotNull(
             linuxX64(),
