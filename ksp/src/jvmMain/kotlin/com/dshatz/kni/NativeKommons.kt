@@ -140,7 +140,22 @@ class NativeKommons : SymbolProcessorProvider {
                 }
             }
 
+            generateSourcesMarker(moduleName, platform).write()
+
             return emptyList()
+        }
+
+        /**
+         * An empty file (no declarations) that every pass writes, with all annotated source files as its dependencies.
+         *
+         * KSP only reprocesses an unchanged file if it is a dependency of an aggregating output. Without any output
+         * (e.g. a common pass with nothing to generate), an incremental run would only see the changed files and fail
+         * to resolve types declared in unchanged ones, such as a @JniSerializable class.
+         */
+        private fun generateSourcesMarker(moduleName: String, platform: Platform): FileSpec {
+            return FileSpec.builder("kni.$moduleName.generated", "KniSources${platform.name.lowercase().replaceFirstChar { it.uppercase() }}")
+                .addFileComment("Tracks the annotated sources of this module for incremental processing. Contains no declarations.")
+                .build()
         }
 
         override fun process(resolver: Resolver): List<KSAnnotated> {
@@ -157,7 +172,7 @@ class NativeKommons : SymbolProcessorProvider {
                     resolver.getSymbolsWithAnnotation(JniSerializable::class.java.name) +
                     resolver.getSymbolsWithAnnotation(JniSerializerFor::class.java.name) +
                     resolver.getSymbolsWithAnnotation(JniAdapter::class.java.name)
-            val originatingFiles = allSymbols.mapNotNull { it.containingFile }.toList()
+            val originatingFiles = allSymbols.mapNotNull { it.containingFile }.distinct().toList()
             return doProcess(resolver, originatingFiles, platform)
         }
 
