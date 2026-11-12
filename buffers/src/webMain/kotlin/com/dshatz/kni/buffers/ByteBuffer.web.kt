@@ -17,6 +17,8 @@ actual class ByteBuffer(
      * @see [IByteBuffer.release]
      */
     actual override fun release() {
+        if (_released) return
+        if (wipeOnRelease) wipeInternal()
         _released = true
         storage = null
     }
@@ -39,5 +41,9 @@ actual class ByteBuffer(
             startIndex = offset,
             endIndex = offset + length
         )
+    }
+
+    actual override fun wipeInternal() {
+        byteArray.fill(0)
     }
 }

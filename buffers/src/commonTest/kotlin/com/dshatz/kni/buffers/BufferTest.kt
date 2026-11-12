@@ -92,4 +92,19 @@ val BufferTest by testSuite() {
             buffer.write(ByteArray(10), 0, -1)
         }
     }
+
+    test("wipe") {
+        val buffer = allocateBuffer(100)
+        buffer.write(Random.nextBytes(100))
+        buffer.wipe()
+        buffer.readToByteArray(0, 100).all { it == 0.toByte() } shouldBe true
+    }
+
+    test("wipe after release") {
+        val buffer = allocateBuffer(100, wipeOnRelease = true)
+        buffer.release()
+        shouldThrow<BufferReleasedException> {
+            buffer.wipe()
+        }
+    }
 }

@@ -18,6 +18,18 @@ actual data class ByteBuffer(val jvmBuffer: ByteBuffer) : IByteBuffer() {
         view.get(dst, 0, length)
     }
 
+    actual override fun wipeInternal() {
+        if (jvmBuffer.hasArray()) {
+            val start = jvmBuffer.arrayOffset()
+            java.util.Arrays.fill(jvmBuffer.array(), start, start + jvmBuffer.capacity(), 0)
+        } else {
+            val view = jvmBuffer.duplicate()
+            view.clear()
+            while (view.remaining() >= Long.SIZE_BYTES) view.putLong(0L)
+            while (view.hasRemaining()) view.put(0)
+        }
+    }
+
     /**
      * Mark this buffer as released.
      *
@@ -29,6 +41,8 @@ actual data class ByteBuffer(val jvmBuffer: ByteBuffer) : IByteBuffer() {
      * @see IByteBuffer.release
      */
     actual override fun release() {
+        if (_released) return
+        if (wipeOnRelease) wipeInternal()
         _released = true
         // no-op, to release a jvm buffer the ByteBuffer needs to be garbage collected on jvm.
     }
