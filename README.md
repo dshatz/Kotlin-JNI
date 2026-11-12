@@ -49,6 +49,19 @@ Suspend functions are supported too!
 ### 5. Wide type support
 Pass Kotlin primitives, Strings, ByteArrays, as well as [ByteBuffers](https://dshatz.github.io/Kotlin-JNI/buffers.html) and custom types using [serializers](https://dshatz.github.io/Kotlin-JNI/customdata.html).
 
+#### What passing data costs
+
+Copies made when a value crosses between JVM and native, as a `@JniCall` parameter (JVM → native) or return value (native → JVM):
+
+| Type | JVM → native | Native → JVM | Wiped |
+|---|---|---|---|
+| `String` | 2 copies: UTF-16 chars into a `CharArray` (`GetStringRegion`), then a Kotlin/Native `String`. | 2 copies: a temporary native UTF-16 string, then the JVM `String` (`NewString`). | No. Strings are immutable on both sides. |
+| `ByteArray` | 2 copies: `GetByteArrayElements` (a copy on HotSpot; ART may return the array itself), then a Kotlin/Native `ByteArray`. | 1 copy: a new JVM array (`SetByteArrayRegion`). | No. |
+| `ByteBuffer`, direct (`allocateBuffer`, `java.nio.ByteBuffer.allocateDirect`) | No copy: `address` on native points to the same memory. Borrowed: valid until the call returns, unless you call `retain()`. | No copy: the JVM gets a direct buffer over the native memory (`NewDirectByteBuffer`), which must stay allocated while the JVM uses it. | Only by you: `wipe()`, or `allocateBuffer(size, wipeOnRelease = true)` to wipe on `release()`. |
+| `ByteBuffer`, heap (`java.nio.ByteBuffer.wrap`, `allocate`) | Not supported: throws `IllegalArgumentException`. Use a direct buffer. | n/a | n/a |
+
+For sensitive data such as passwords, use a direct `ByteBuffer` and wipe it. `"secret".encodeToByteBuffer(nullTerminated = true, wipeOnRelease = true)` encodes UTF-8 straight into a new buffer, without an intermediate `ByteArray`; the source `String` itself still stays in memory until it is garbage-collected.
+
 ## 🛠️ Setup & Usage
 
 Please read the [full documentation](https://dshatz.github.io/Kotlin-JNI).
