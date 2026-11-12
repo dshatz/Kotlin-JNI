@@ -78,6 +78,7 @@ actual class ByteBuffer internal constructor(
 
     @OptIn(UnsafeNumber::class)
     actual override fun writeInternal(src: ByteArray, dstOffset: Int, length: Int) {
+        if (length == 0) return // addressOf(0) fails on an empty array
         src.usePinned { pinned ->
             memcpy(address + dstOffset, pinned.addressOf(0), length.convert())
         }
@@ -85,6 +86,7 @@ actual class ByteBuffer internal constructor(
 
     @OptIn(UnsafeNumber::class)
     actual override fun readInternal(dst: ByteArray, offset: Int, length: Int) {
+        if (length == 0) return // addressOf(0) fails on an empty array
         dst.usePinned { pinned ->
             memcpy(pinned.addressOf(0), address + offset, length.convert())
         }
