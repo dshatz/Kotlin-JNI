@@ -541,6 +541,12 @@ actual class CommonJNINativeInterface(
             platform.SetByteArrayRegion = value ?.reinterpret()
         }
 
+    actual var GetByteArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbyteArray?, jsize, jsize, CPointer<jbyteVar>?) -> Unit>>?
+        get() = platform.GetByteArrayRegion ?.reinterpret()
+        set(value) {
+            platform.GetByteArrayRegion = value ?.reinterpret()
+        }
+
     actual var GetStaticShortField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jshort>>?
         get() = platform.GetStaticShortField ?.reinterpret()
         set(value) {
