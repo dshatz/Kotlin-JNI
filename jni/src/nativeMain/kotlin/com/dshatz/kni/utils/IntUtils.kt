@@ -53,6 +53,7 @@ fun CPointer<JNIEnvVar>.newIntArray(size: jsize): jintArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jintArray.fill(env: CPointer<JNIEnvVar>, value: IntArray): jintArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetIntArrayRegion ?: throw JniUnavailableError()
     value.usePinned { pinnedArray ->
         val pointer = pinnedArray.addressOf(0)

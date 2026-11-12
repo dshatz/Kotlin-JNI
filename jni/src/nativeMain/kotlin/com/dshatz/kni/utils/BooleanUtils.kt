@@ -67,6 +67,7 @@ fun CPointer<JNIEnvVar>.newBooleanArray(size: jsize): jbooleanArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jbooleanArray.fill(env: CPointer<JNIEnvVar>, value: BooleanArray): jbooleanArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetBooleanArrayRegion ?: throw JniUnavailableError()
     val byteArray = UByteArray(value.size) {
         value[it].toJBoolean()

@@ -106,6 +106,16 @@ fun TestSuiteScope.bridgeTests() {
 
         CommonCallable.intArray(value).contentEquals(intArrayOf(-4, 0, 2, 84)) shouldBe true
     }
+    test("empty primitive arrays") {
+        CommonCallable.byteArray(ByteArray(0)).size shouldBe 0
+        CommonCallable.shortArray(ShortArray(0)).size shouldBe 0
+        CommonCallable.intArray(IntArray(0)).size shouldBe 0
+        CommonCallable.longArray(LongArray(0)).size shouldBe 0
+        CommonCallable.floatArray(FloatArray(0)).size shouldBe 0
+        CommonCallable.doubleArray(DoubleArray(0)).size shouldBe 0
+        CommonCallable.charArray(CharArray(0)).size shouldBe 0
+        CommonCallable.booleanArray(BooleanArray(0)).size shouldBe 0
+    }
     test("top-level") {
         topLevelFun().capacity shouldBe 1024
     }

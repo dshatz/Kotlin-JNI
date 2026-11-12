@@ -54,6 +54,7 @@ fun CPointer<JNIEnvVar>.newByteArray(size: jsize): jbyteArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jbyteArray.fill(env: CPointer<JNIEnvVar>, value: ByteArray): jbyteArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetByteArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
