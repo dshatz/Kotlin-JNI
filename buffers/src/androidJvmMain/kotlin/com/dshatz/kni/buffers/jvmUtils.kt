@@ -20,3 +20,7 @@ fun ByteBuffer.toDirectNioByteBuffer(): java.nio.ByteBuffer {
     require(jvmBuffer.isDirect) { "Only direct buffers can be passed to native code. Use allocateBuffer or java.nio.ByteBuffer.allocateDirect." }
     return jvmBuffer
 }
+
+internal actual fun ByteBuffer.setByte(index: Long, value: Byte) {
+    jvmBuffer.put(index.toInt(), value)
+}

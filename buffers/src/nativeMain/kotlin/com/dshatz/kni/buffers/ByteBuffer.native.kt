@@ -164,6 +164,11 @@ actual class ByteBuffer internal constructor(
     }
 }
 
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun ByteBuffer.setByte(index: Long, value: Byte) {
+    address[index] = value
+}
+
 /**
  * Called through a volatile reference, so the compiler cannot see that it is memset and drop it as a dead store
  * (e.g. when the memory is freed right after). Same approach as OpenSSL's `OPENSSL_cleanse`.
