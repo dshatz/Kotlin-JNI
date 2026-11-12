@@ -38,7 +38,9 @@ sealed class FunctionParent {
 
     data class Object(
         override val className: ClassName,
-        override val modifier: KModifier? = null
+        override val modifier: KModifier? = null,
+        val superClass: TypeName? = null,
+        val superInterfaces: List<TypeName> = emptyList(),
     ): FunctionParent(), WithVisibility {
         override val classNameKt: ClassName = className
         override fun member(simpleName: String): MemberName {

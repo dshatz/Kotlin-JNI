@@ -72,6 +72,7 @@ internal object Types {
     val FlowCallback = ClassName("com.dshatz.kni.flows", "FlowCallback")
 
     val NativeInstanceJvm = ClassName("com.dshatz.kni", "NativeInstanceJvm")
+    val NativeInstanceJvmImpl = ClassName("com.dshatz.kni", "NativeInstanceJvmImpl")
     val SuspendCallback = ClassName("com.dshatz.kni.flows", "SuspendCallback")
     val SuspendCallback0 = ClassName("com.dshatz.kni.flows", "SuspendCallback0")
     val SuspendCallbackImpl = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl")
@@ -82,6 +83,8 @@ internal object Types {
 
 
     object Method {
+        val WithValidInstance = MemberName("com.dshatz.kni", "withValidInstance")
+        val WithValidInstanceSuspend = MemberName("com.dshatz.kni", "withValidInstanceSuspend")
 
         val ToJBoolean = MemberName("com.dshatz.kni.utils", "toJBoolean")
         val ToJBooleanArray = MemberName("com.dshatz.kni.utils", "toJBooleanArray")

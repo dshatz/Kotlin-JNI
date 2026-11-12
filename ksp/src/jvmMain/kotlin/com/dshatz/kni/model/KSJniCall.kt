@@ -333,9 +333,9 @@ sealed class KSJniCall: WithParent {
                 }
 
                 if (instance != null) {
-                    val method = if (f is Suspend) "withValidInstanceSuspend" else "withValidInstance"
+                    val method = if (f is Suspend) Types.Method.WithValidInstanceSuspend else Types.Method.WithValidInstance
                     val withValidInstanceBlock = CodeBlock.builder()
-                        .beginControlFlow("return %L", method)
+                        .beginControlFlow("return %M", method)
                         .add(returnValue.code)
                         .endControlFlow()
                         .build()

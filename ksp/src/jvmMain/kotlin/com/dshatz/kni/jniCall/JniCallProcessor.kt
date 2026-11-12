@@ -188,12 +188,16 @@ class JniCallProcessor(
                     }
                     .toList()
 
+                parentDeclaration.checkSuperClassConstructor()
+                val (superClass, superInterfaces) = parentDeclaration.splitSuperTypes()
+
                 KSInstance(
                     className = parent.className,
                     constructors = constructors,
                     funs = funs.map { it.createJniCall(parent) },
                     flowProps = flowProps,
-                    superInterfaces = parentDeclaration.superTypes.map { it.toTypeName() }.toSet(),
+                    superClass = superClass?.toTypeName(),
+                    superInterfaces = superInterfaces.map { it.toTypeName() }.toSet(),
                     modifiers = setOfNotNull(parentDeclaration.modifiers.actualModifier),
                     platform = p.platform
                 )
@@ -272,6 +276,9 @@ class JniCallProcessor(
         val jniCalls = funs.groupBy {
             it.functionLocation()
         }.filter { it.key !is FunctionParent.Class }.flatMap { (parent, funs) ->
+            if (parent is FunctionParent.Object) {
+                (funs.first().parentDeclaration as KSClassDeclaration).checkSuperClassConstructor()
+            }
             funs.map { f ->
                 f.createJniCall(parent)
             }
@@ -358,6 +365,8 @@ class JniCallProcessor(
                 is FunctionParent.Object -> {
                     val obj = TypeSpec.objectBuilder(parent.className)
                         .addModifiers(KModifier.ACTUAL, (parent as FunctionParent.WithVisibility).modifier ?: KModifier.PUBLIC)
+                        .apply { parent.superClass?.let(::superclass) }
+                        .addSuperinterfaces(parent.superInterfaces)
                         .addFunctions(funSpecs)
                         .build()
                     fileSpec.addType(obj)

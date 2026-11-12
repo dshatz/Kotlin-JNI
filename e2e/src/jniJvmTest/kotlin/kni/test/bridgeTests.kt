@@ -126,6 +126,20 @@ fun TestSuiteScope.bridgeTests() {
         val obj = NativeInstance1(100)
         obj.getInput() shouldBe 100
     }
+    test("native instance extending abstract class") {
+        val obj = ChildOfAbstract(42)
+        val base: AbstractBase = obj
+        obj.getValue() shouldBe 42
+        base.describe() shouldBe "native(42)"
+        base.greeting() shouldBe "Hello from native(42)"
+        obj.close()
+        shouldThrow<IllegalStateException> { obj.getValue() }
+    }
+    test("native object extending abstract class") {
+        val base: AbstractBase = ObjectOfAbstract
+        base.describe() shouldBe "native object"
+        base.greeting() shouldBe "Hello from native object"
+    }
 
     test("native instance with callback") {
         val obj = NativeInstance(99, NoopCloseListener())
