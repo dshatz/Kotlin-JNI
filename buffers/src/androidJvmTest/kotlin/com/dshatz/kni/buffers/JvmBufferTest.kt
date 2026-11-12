@@ -27,4 +27,25 @@ val JvmBufferTest by testSuite {
 
         read.toHexString() shouldBe bytes.toHexString()
     }
+
+    test("wipe on release") {
+        val buffer = allocateBuffer(64, wipeOnRelease = true)
+        buffer.write(Random.nextBytes(64))
+        val jvmBuffer = buffer.jvmBuffer
+        buffer.release()
+        (0 until 64).all { jvmBuffer.get(it) == 0.toByte() } shouldBe true
+    }
+
+    test("no wipe on release by default") {
+        val buffer = allocateBuffer(1)
+        buffer.write(byteArrayOf(7))
+        buffer.release()
+        buffer.jvmBuffer.get(0) shouldBe 7
+    }
+
+    test("wipe heap buffer") {
+        val array = Random.nextBytes(16)
+        java.nio.ByteBuffer.wrap(array).toCommonByteBuffer().wipe()
+        array.all { it == 0.toByte() } shouldBe true
+    }
 }

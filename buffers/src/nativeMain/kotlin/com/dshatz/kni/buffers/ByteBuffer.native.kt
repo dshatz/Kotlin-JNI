@@ -3,6 +3,7 @@ package com.dshatz.kni.buffers
 import com.dshatz.kni.annotations.KniInternalApi
 import kotlinx.cinterop.*
 import platform.posix.memcpy
+import platform.posix.memset
 
 /**
  * Wrapper around a direct byte buffer address. Use [allocateBuffer], [wrapAddress] or [wrapArray] to get an instance.
@@ -27,6 +28,7 @@ actual class ByteBuffer internal constructor(
      */
     actual override fun release() {
         if (_released) return
+        if (wipeOnRelease) wipeInternal()
         _released = true
         _address = null
         retainer = null
@@ -75,6 +77,10 @@ actual class ByteBuffer internal constructor(
     }
     actual override val isReleased: Boolean
         get() = _released
+
+    actual override fun wipeInternal() {
+        secureZero(address, capacity)
+    }
 
     @OptIn(UnsafeNumber::class)
     actual override fun writeInternal(src: ByteArray, dstOffset: Int, length: Int) {
@@ -156,6 +162,21 @@ actual class ByteBuffer internal constructor(
             return buffer
         }
     }
+}
+
+/**
+ * Called through a volatile reference, so the compiler cannot see that it is memset and drop it as a dead store
+ * (e.g. when the memory is freed right after). Same approach as OpenSSL's `OPENSSL_cleanse`.
+ */
+@OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
+@kotlin.concurrent.Volatile
+private var zeroMemory: (CPointer<ByteVar>, Long) -> Unit = { address, size ->
+    memset(address, 0, size.convert())
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun secureZero(address: CPointer<ByteVar>, size: Long) {
+    zeroMemory(address, size)
 }
 
 @RequiresOptIn("This is delicate Buffer API. Please read the kdoc.")

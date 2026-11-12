@@ -47,6 +47,23 @@ abstract class IByteBuffer internal constructor() {
     abstract val isReleased: Boolean
 
     /**
+     * Overwrite the whole buffer with zeros, e.g. after it held a password.
+     *
+     * @throws BufferReleasedException if buffer had been released using [release].
+     */
+    fun wipe() {
+        if (isReleased) throw BufferReleasedException()
+        wipeInternal()
+    }
+
+    protected abstract fun wipeInternal()
+
+    /**
+     * If true, [release] calls [wipe] first. See [allocateBuffer].
+     */
+    internal var wipeOnRelease: Boolean = false
+
+    /**
      * Read [length] bytes from offset [offset] of this buffer to a new [ByteArray].
      */
     fun readToByteArray(offset: Int, length: Int): ByteArray {
