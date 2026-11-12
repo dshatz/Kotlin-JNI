@@ -71,6 +71,7 @@ fun CPointer<JNIEnvVar>.newCharArray(size: jsize): jcharArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jcharArray.fill(env: CPointer<JNIEnvVar>, value: CharArray): jcharArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetCharArrayRegion ?: throw JniUnavailableError()
     val charArray = UShortArray(value.size) {
         value[it].toJChar()

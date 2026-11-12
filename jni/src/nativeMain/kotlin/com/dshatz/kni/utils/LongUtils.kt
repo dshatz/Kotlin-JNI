@@ -53,6 +53,7 @@ fun CPointer<JNIEnvVar>.newLongArray(size: jsize): jlongArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jlongArray.fill(env: CPointer<JNIEnvVar>, value: LongArray): jlongArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetLongArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)

@@ -53,6 +53,7 @@ fun CPointer<JNIEnvVar>.newDoubleArray(size: jsize): jdoubleArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jdoubleArray.fill(env: CPointer<JNIEnvVar>, value: DoubleArray): jdoubleArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetDoubleArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)

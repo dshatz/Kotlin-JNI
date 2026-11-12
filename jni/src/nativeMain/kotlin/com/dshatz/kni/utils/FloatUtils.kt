@@ -53,6 +53,7 @@ fun CPointer<JNIEnvVar>.newFloatArray(size: jsize): jfloatArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jfloatArray.fill(env: CPointer<JNIEnvVar>, value: FloatArray): jfloatArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetFloatArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)

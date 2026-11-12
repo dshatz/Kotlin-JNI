@@ -53,6 +53,7 @@ fun CPointer<JNIEnvVar>.newShortArray(size: jsize): jshortArray {
 
 @OptIn(ExperimentalForeignApi::class)
 fun jshortArray.fill(env: CPointer<JNIEnvVar>, value: ShortArray): jshortArray {
+    if (value.isEmpty()) return this // addressOf(0) fails on an empty array
     val method = env.pointed.pointedCommon?.SetShortArrayRegion ?: throw JniUnavailableError()
     value.usePinned {
         val pointer = it.addressOf(0)
