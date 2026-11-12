@@ -16,6 +16,7 @@ import kotlinx.cinterop.get
 import kotlinx.cinterop.invoke
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.pointed
+import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
@@ -34,15 +35,13 @@ fun jlongArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jlon
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
 fun jlongArray.toKLongArray(env: CPointer<JNIEnvVar>): LongArray {
     val length = this.getLength(env)
-    val elements = this.getLongElements(env)
-
-    val result = memScoped {
-        LongArray(length) {
-            elements[it]
-        }
+    val result = LongArray(length)
+    if (length == 0) return result // addressOf(0) fails on an empty array
+    val getRegion = env.pointed.pointedCommon?.GetLongArrayRegion ?: throw JniUnavailableError()
+    // Copy straight into the Kotlin array: one copy, and the JVM array is never pinned or copied back.
+    result.usePinned {
+        getRegion.invoke(env, this, 0, length, it.addressOf(0).reinterpret())
     }
-
-    this.releaseElements(env, elements)
     return result
 }
 

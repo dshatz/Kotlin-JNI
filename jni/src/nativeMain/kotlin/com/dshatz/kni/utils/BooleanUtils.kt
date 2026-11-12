@@ -1,5 +1,6 @@
 package com.dshatz.kni.utils
 
+import com.dshatz.kni.JNI_ABORT
 import com.dshatz.kni.JNIEnvVar
 import com.dshatz.kni.RequiresRelease
 import com.dshatz.kni.binding.jboolean
@@ -54,7 +55,7 @@ fun jbooleanArray.toKBooleanArray(env: CPointer<JNIEnvVar>, isCopy: CPointer<jbo
         }
     }
 
-    this.releaseElements(env, elements)
+    this.releaseElements(env, elements, JNI_ABORT) // read-only: don't copy back
     return result
 }
 

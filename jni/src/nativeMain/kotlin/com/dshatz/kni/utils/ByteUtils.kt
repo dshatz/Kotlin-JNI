@@ -17,6 +17,7 @@ import kotlinx.cinterop.get
 import kotlinx.cinterop.invoke
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.pointed
+import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
 
 @OptIn(ExperimentalForeignApi::class)
@@ -35,13 +36,13 @@ fun jbyteArray.releaseElements(env: CPointer<JNIEnvVar>, elements: CPointer<jbyt
 @OptIn(ExperimentalForeignApi::class, RequiresRelease::class)
 fun jbyteArray.toKByteArray(env: CPointer<JNIEnvVar>): ByteArray {
     val length = this.getLength(env)
-    val elements = this.getByteElements(env) ?: error("getByteElements is null")
-
-    val result = ByteArray(length) {
-        elements[it]
+    val result = ByteArray(length)
+    if (length == 0) return result // addressOf(0) fails on an empty array
+    val getRegion = env.pointed.pointedCommon?.GetByteArrayRegion ?: throw JniUnavailableError()
+    // Copy straight into the Kotlin array: one copy, and the JVM array is never pinned or copied back.
+    result.usePinned {
+        getRegion.invoke(env, this, 0, length, it.addressOf(0).reinterpret())
     }
-
-    this.releaseElements(env, elements)
     return result
 }
 

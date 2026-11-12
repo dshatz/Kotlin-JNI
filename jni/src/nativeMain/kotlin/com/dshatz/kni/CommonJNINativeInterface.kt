@@ -130,6 +130,7 @@ expect class CommonJNINativeInterface {
     var CallStaticByteMethod: COpaquePointer?
     var CallFloatMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jobject?, jmethodID?, CPointer<jvalue>?) -> jfloat>>?
     var SetByteArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbyteArray?, jsize, jsize, CPointer<jbyteVar>?) -> Unit>>?
+    var GetByteArrayRegion: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbyteArray?, jsize, jsize, CPointer<jbyteVar>?) -> Unit>>?
     var GetStaticShortField: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jfieldID?) -> jshort>>?
     var CallStaticShortMethodA: CPointer<CFunction<(CPointer<JNIEnvVar>?, jclass?, jmethodID?, CPointer<jvalue>?) -> jshort>>?
     var ReleaseBooleanArrayElements: CPointer<CFunction<(CPointer<JNIEnvVar>?, jbooleanArray?, CPointer<jbooleanVar>?, jint) -> Unit>>?
