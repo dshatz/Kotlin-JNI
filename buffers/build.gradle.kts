@@ -141,6 +141,8 @@ kotlin {
     }
 }
 
+emptyJavadocJars()
+
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
     signAllPublications()
