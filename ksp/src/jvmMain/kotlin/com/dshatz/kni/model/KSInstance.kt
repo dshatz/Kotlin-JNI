@@ -36,6 +36,7 @@ data class KSInstance(
     val funs: List<KSJniCall>,
     val flowProps: List<KSFlowProp>,
     val superInterfaces: Set<TypeName> = emptySet(),
+    val superClass: TypeName? = null, // user-declared superclass, must have a no-arg constructor.
     val modifiers: Set<KModifier> = emptySet(),
     val baseClass: ClassName? = null, // in case it is not expect/actual, this is the class available in all targets.
     private val platform: Registry.Platform
@@ -155,6 +156,7 @@ data class KSInstance(
             }.joinToCode()
             FunSpec.constructorBuilder()
                 .addParameters(params)
+                .callThisConstructor(newNativeInstanceImpl)
                 .addAnnotation(Types.Annotations.Optin.AtomicsOptIn)
                 .addModifiers(KModifier.ACTUAL, cl.constructors.first().modifier)
                 .addCode(CodeBlock.builder().addStatement("nativeInstance.store(initNative%L(%L))", constructor.id, convertParamsCode).build())
@@ -175,10 +177,14 @@ data class KSInstance(
         }
     }
 
+    private val newNativeInstanceImpl: CodeBlock
+        get() = CodeBlock.of("%T(Companion::disposeNative)", Types.NativeInstanceJvmImpl)
+
     private fun generateJvmExternalDispose(cl: KSInstance): FunSpec {
         return FunSpec.builder("disposeNative")
             .addParameter(ParameterSpec("instance", cl.typeInfo.jniType.jniType))
-            .addModifiers(KModifier.EXTERNAL, KModifier.OVERRIDE)
+            .addAnnotation(JvmStatic::class)
+            .addModifiers(KModifier.EXTERNAL, KModifier.PRIVATE)
             .build()
     }
 
@@ -201,7 +207,7 @@ data class KSInstance(
             val constructorFromPointer = FunSpec.constructorBuilder()
                 .addAnnotation(Types.Annotations.Optin.AtomicsOptIn)
                 .addParameter(ParameterSpec("nativeInstancePtr", Types.KLong))
-                .callSuperConstructor()
+                .callThisConstructor(newNativeInstanceImpl)
                 .addCode(CodeBlock.of("nativeInstance.store(nativeInstancePtr)"))
                 .build()
             val externalConstructors = instance.let(::generateJvmExternalConstructors)
@@ -224,15 +230,25 @@ data class KSInstance(
             val fileSpec = fileSpecs.getOrPut(instance.className) { FileSpec.builder(instance.className) }
 
             val type = TypeSpec.classBuilder(instance.className)
+                .apply {
+                    instance.superClass?.let(::superclass)
+                }
                 .addSuperinterfaces(instance.superInterfaces)
-                .superclass(Types.NativeInstanceJvm)
+                // Delegation requires a primary constructor; all other constructors delegate to this one.
+                .primaryConstructor(
+                    FunSpec.constructorBuilder()
+                        .addModifiers(KModifier.PRIVATE)
+                        .addParameter(NATIVE_INSTANCE_IMPL_PARAM, Types.NativeInstanceJvmImpl)
+                        .build()
+                )
+                .addSuperinterface(Types.NativeInstanceJvm, CodeBlock.of("%N", NATIVE_INSTANCE_IMPL_PARAM))
                 .apply {
                     instance.baseClass?.let(::addSuperinterface)
                 }
                 .addModifiers(instance.modifiers)
                 .addFunction(constructorFromPointer)
                 .addFunctions(constructors)
-                .addFunction(externalDispose)
+                .addType(TypeSpec.companionObjectBuilder().addFunction(externalDispose).build())
                 .addFunctions(flowProps.map { it.generateGetValueFun() })
                 .addProperties(flowProps.map { it.generateFlowProp() })
                 .addTypes(flowProps.map(KSFlowProp::generateFlowCallbackJvm))
@@ -254,5 +270,9 @@ data class KSInstance(
             .receiver(typeInfo.commonKotlinType)
             .addCode("return (this as %T).asLong()", Types.NativeInstanceJvm)
             .build()
+    }
+
+    private companion object {
+        const val NATIVE_INSTANCE_IMPL_PARAM = "nativeInstanceImpl"
     }
 }

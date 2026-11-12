@@ -138,6 +138,7 @@ kotlin {
         val jniCommonMain = getByName("jniCommonMain") {
             dependencies {
                 api(libs.coroutines.core)
+                api(project(":annotations"))
             }
         }
     }

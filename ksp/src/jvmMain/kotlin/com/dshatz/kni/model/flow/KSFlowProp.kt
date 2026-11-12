@@ -97,7 +97,7 @@ data class KSFlowProp(
         return FunSpec.builder(initFunction)
             .returns(innerType.jniType.jniType)
             .addParameter(
-                ParameterSpec.builder("instance", Types.KLong).defaultValue("nativeInstancePtr")
+                ParameterSpec.builder("instance", Types.KLong).defaultValue("asLong()")
                     .build()
             )
             .addParameter(

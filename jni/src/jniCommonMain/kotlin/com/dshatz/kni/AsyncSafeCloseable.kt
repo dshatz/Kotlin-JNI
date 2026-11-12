@@ -1,28 +1,39 @@
 package com.dshatz.kni
 
+import com.dshatz.kni.annotations.KniInternalApi
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+interface Acquiring: AutoCloseable {
+    /**
+     * @return false if already closed, in which case nothing was acquired.
+     */
+    @KniInternalApi
+    fun tryAcquire(): Boolean
+    @KniInternalApi
+    fun release()
+}
+
 @OptIn(ExperimentalAtomicApi::class)
-abstract class AsyncSafeCloseable : AutoCloseable {
+abstract class AsyncSafeCloseable : Acquiring {
 
     private val state = AtomicInt(0)
 
-    @PublishedApi
-    internal fun acquire() {
+    @KniInternalApi
+    override fun tryAcquire(): Boolean {
         while (true) {
             val current = state.load()
             if ((current and CLOSED_BIT) != 0) {
-                error("${this::class.simpleName} is closed.")
+                return false
             }
             if (state.compareAndSet(current, current + 1)) {
-                return
+                return true
             }
         }
     }
 
-    @PublishedApi
-    internal fun release() {
+    @KniInternalApi
+    override fun release() {
         while (true) {
             val current = state.load()
             val next = current - 1

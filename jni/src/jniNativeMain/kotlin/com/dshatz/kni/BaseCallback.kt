@@ -1,5 +1,6 @@
 package com.dshatz.kni
 
+import com.dshatz.kni.annotations.KniInternalApi
 import com.dshatz.kni.binding.JNI_EDETACHED
 import com.dshatz.kni.binding.JNI_OK
 import com.dshatz.kni.binding.JNI_VERSION_1_6
@@ -16,9 +17,6 @@ import com.dshatz.kni.utils.GetMethodID
 import com.dshatz.kni.utils.GetStaticMethodID
 import com.dshatz.kni.utils.NewGlobalRef
 import com.dshatz.kni.utils.getJavaVM
-import kotlinx.atomicfu.locks.ReentrantLock
-import kotlinx.atomicfu.locks.SynchronizedObject
-import kotlinx.atomicfu.locks.withLock
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -32,7 +30,6 @@ import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.value
-import kotlin.concurrent.Volatile
 
 @OptIn(ExperimentalForeignApi::class)
 open class BaseCallback(
@@ -84,8 +81,11 @@ open class BaseCallback(
 
     val ref: jobject = env.NewGlobalRef(instance)
 
+    @OptIn(KniInternalApi::class)
     protected inline fun <T> runIfOpen(block: () -> T): T {
-        acquire()
+        if (!tryAcquire()) {
+            error("${this::class.simpleName} is closed.")
+        }
         try {
             return block()
         } finally {

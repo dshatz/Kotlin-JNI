@@ -15,7 +15,9 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
+import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -76,9 +78,37 @@ abstract class BaseProcessor {
                     superTypes = superTypes.map { it.resolve().toTypeName() }.toList()
                 )
             }
-            ClassKind.OBJECT -> FunctionParent.Object(this.toClassName())
+            ClassKind.OBJECT -> {
+                val (superClass, superInterfaces) = splitSuperTypes()
+                FunctionParent.Object(
+                    className = this.toClassName(),
+                    superClass = superClass?.toTypeName(),
+                    superInterfaces = superInterfaces.map { it.toTypeName() }
+                )
+            }
             else -> error("Unsupported ClassKind: ${classKind}")
         }
         return type
+    }
+
+    /**
+     * Splits declared supertypes into the superclass (if any, excluding Any) and interfaces.
+     */
+    protected fun KSClassDeclaration.splitSuperTypes(): Pair<KSTypeReference?, List<KSTypeReference>> {
+        val (superClasses, superInterfaces) = superTypes
+            .filter { it.toTypeName() != ANY }
+            .partition { (it.resolve().declaration as? KSClassDeclaration)?.classKind == ClassKind.CLASS }
+        return superClasses.singleOrNull() to superInterfaces
+    }
+
+    /**
+     * Generated actuals call the superclass constructor without arguments, since expect declarations can't pass any.
+     */
+    protected fun KSClassDeclaration.checkSuperClassConstructor() {
+        val superDecl = splitSuperTypes().first?.resolve()?.declaration as? KSClassDeclaration ?: return
+        val hasNoArgConstructor = superDecl.getConstructors().any { c -> c.parameters.all { p -> p.hasDefault } }
+        if (!hasNoArgConstructor) {
+            logger.error("Superclass ${superDecl.toClassName()} of ${toClassName()} must have a no-arg constructor to be used with @JniCall.", this)
+        }
     }
 }
