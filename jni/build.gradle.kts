@@ -31,12 +31,6 @@ kotlin {
     jvmToolchain(21)
 
     optionalTargets {
-        androidNativeX86 {
-            binaries {
-                sharedLib()
-                staticLib()
-            }
-        }
         androidNativeX64 {
             binaries {
                 sharedLib {
@@ -53,12 +47,6 @@ kotlin {
                         "-v"
                     )
                 }
-            }
-        }
-        androidNativeArm32 {
-            binaries {
-                sharedLib()
-                staticLib()
             }
         }
         androidNativeArm64 {
