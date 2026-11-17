@@ -1,4 +1,4 @@
-package com.dshatz.kni.flows
+package com.dshatz.kni.coroutines
 
 interface SuspendCallback0: AutoCloseable {
     fun onSuccess()

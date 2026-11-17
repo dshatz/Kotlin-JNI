@@ -1,4 +1,4 @@
-package com.dshatz.kni.flows
+package com.dshatz.kni.coroutines
 
 /**
  * Base callback type for wrapping suspend function calls across JNI boundary.
