@@ -17,6 +17,10 @@ on:
       - 'doc/**'
       - '**.md'
       - '**.txt'
+  # Scheduled runs use master, so master always has a fresh Gradle cache for PRs to restore.
+  schedule:
+    - cron: '0 3 * * 1,4'
+  workflow_dispatch:
 
 jobs:
   test-linux:
@@ -29,7 +33,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
-          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+          configuration_cache_key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
 
       - name: Build and Test
         run: |
@@ -58,7 +62,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
-          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+          configuration_cache_key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
       - name: Build and Test
         run: ./gradlew allTests -PkniNativeBuildType=debug -PkniAllowedTargets=mingwX64
         env:
@@ -82,7 +86,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
-          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+          configuration_cache_key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
       - name: Build and Test
         run: |
           ./gradlew allTests -PkniNativeBuildType=debug \
@@ -119,7 +123,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/build-setup
         with:
-          configuration_cache_key: secrets.GRADLE_CONFIGURATION_CACHE_KEY
+          configuration_cache_key: ${{ secrets.GRADLE_CONFIGURATION_CACHE_KEY }}
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
