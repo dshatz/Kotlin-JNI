@@ -15,5 +15,7 @@ runs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v6
       with:
-        cache-read-only: false
+        # Only master and dev save caches; PRs and other branches restore from them.
+        # Keeps total cache size under GitHub's 10 GB limit so the master entry isn't evicted.
+        cache-read-only: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/dev' }}
         cache-encryption-key: ${{ inputs.configuration_cache_key }}
