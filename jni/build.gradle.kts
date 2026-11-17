@@ -92,6 +92,7 @@ kotlin {
         namespace = "$libGroup.$libName"
         compileSdk = Configuration.compileSdk
         minSdk = Configuration.minSdk
+        aarMetadata.minCompileSdk = Configuration.minCompileSdk
     }
 
     applyDefaultHierarchyTemplate {

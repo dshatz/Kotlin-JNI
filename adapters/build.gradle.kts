@@ -36,6 +36,7 @@ kotlin {
     android {
         compileSdk = Configuration.compileSdk
         minSdk = Configuration.minSdk
+        aarMetadata.minCompileSdk = Configuration.minCompileSdk
 
         namespace = "$libGroup.$libName"
 
