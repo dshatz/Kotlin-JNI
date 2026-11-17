@@ -73,10 +73,10 @@ internal object Types {
 
     val NativeInstanceJvm = ClassName("com.dshatz.kni", "NativeInstanceJvm")
     val NativeInstanceJvmImpl = ClassName("com.dshatz.kni", "NativeInstanceJvmImpl")
-    val SuspendCallback = ClassName("com.dshatz.kni.flows", "SuspendCallback")
-    val SuspendCallback0 = ClassName("com.dshatz.kni.flows", "SuspendCallback0")
-    val SuspendCallbackImpl = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl")
-    val SuspendCallbackImpl0 = ClassName("com.dshatz.kni.flows", "SuspendCallbackImpl0")
+    val SuspendCallback = ClassName("com.dshatz.kni.coroutines", "SuspendCallback")
+    val SuspendCallback0 = ClassName("com.dshatz.kni.coroutines", "SuspendCallback0")
+    val SuspendCallbackImpl = ClassName("com.dshatz.kni.coroutines", "SuspendCallbackImpl")
+    val SuspendCallbackImpl0 = ClassName("com.dshatz.kni.coroutines", "SuspendCallbackImpl0")
 
     val JvmJniAdapter = ClassName("com.dshatz.kni.wrapper", "JvmJniAdapter")
     val NativeJniAdapter = ClassName("com.dshatz.kni.wrapper", "NativeJniAdapter")
@@ -130,7 +130,7 @@ internal object Types {
         val Deserialize = MemberName("com.dshatz.kni.serialization", "deserialize")
         val SuspendCancellableCoroutine = MemberName("kotlinx.coroutines", "suspendCancellableCoroutine")
         val Resume = MemberName("kotlin.coroutines", "resume")
-        val ExecuteSuspend = MemberName("com.dshatz.kni.flows", "executeSuspend")
+        val ExecuteSuspend = MemberName("com.dshatz.kni.coroutines", "executeSuspend")
     }
 
     object Annotations {

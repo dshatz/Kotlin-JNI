@@ -1,4 +1,4 @@
-package com.dshatz.kni.flows
+package com.dshatz.kni.coroutines
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
