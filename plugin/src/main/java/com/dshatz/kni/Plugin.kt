@@ -20,12 +20,14 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames
 import org.jetbrains.kotlin.gradle.internal.builtins.StandardNames.FqNames.target
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.SharedLibrary
 import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.konan.target.Family
 import javax.inject.Inject
 import kotlin.jvm.java
 
@@ -105,7 +107,9 @@ internal fun autoWire(target: Project, config: AutoWireExtension) {
         if (groupName == null || dependOn == null) return@all
         kotlin.addJniSourceSets(it, groupName, dependOn, config)
         if (config.kspDependency.get().toString().isNotEmpty()) {
-            if (it.name != "wasmJs" && it.name != "js") {
+            val isIos = it is KotlinNativeTarget && it.konanTarget.family == Family.IOS
+            val isWeb = it.platformType == KotlinPlatformType.wasm || it.platformType == KotlinPlatformType.js
+            if (!isIos && !isWeb) {
                 target.dependencies.add("ksp${it.name.capitalized()}", config.kspDependency)
             }
         }

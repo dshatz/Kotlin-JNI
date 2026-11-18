@@ -1,7 +1,6 @@
 package kni.test
 
 import com.dshatz.kni.annotations.JniAdapter
-import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorInfo
 import org.jetbrains.skia.ColorType

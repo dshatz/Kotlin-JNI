@@ -6,17 +6,15 @@ import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.toCPointer
-import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.Data
-import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.Pixmap
 import org.jetbrains.skia.impl.Managed
 import org.jetbrains.skia.impl.NativePointer
 
-@com.dshatz.kni.annotations.JniAdapter(adapter = kni.test.BitmapAdapter::class)
+@com.dshatz.kni.annotations.JniAdapter(adapter = BitmapAdapter::class)
 actual data class CommonBitmap(
     val pixmap: Pixmap
 ) {

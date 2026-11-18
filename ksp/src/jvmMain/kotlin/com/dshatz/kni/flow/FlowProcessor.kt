@@ -6,6 +6,7 @@ import com.dshatz.kni.TypeMapper
 import com.dshatz.kni.model.KSCallback
 import com.dshatz.kni.model.flow.KSFlowProp
 import com.dshatz.kni.utils.PlatformContext
+import com.dshatz.kni.utils.ResolverContext
 import com.dshatz.kni.utils.withSuffix
 import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.FileSpec
@@ -37,9 +38,16 @@ class FlowProcessor(
         registry.callbacks.putAll(callbacks)
     }
 
-    fun generateCommon(): List<FileSpec> {
+    /**
+     * [skipExisting]: skip callbacks the common pass already generated (platform passes also see instances declared
+     * in jniCommonMain, which the common pass can not see).
+     */
+    context(ctx: ResolverContext)
+    fun generateCommon(skipExisting: Boolean = false): List<FileSpec> {
         return registry.nativeInstances.mapNotNull { (_, parentInstance) ->
-            val props = parentInstance.flowProps
+            val props = parentInstance.flowProps.filterNot {
+                skipExisting && ctx.resolver.getClassDeclarationByName(ctx.resolver.getKSNameFromString(it.baseCallbackClass.canonicalName)) != null
+            }
             val fileClass = parentInstance.className.withSuffix("_FlowCallbacks")
             if (props.isNotEmpty()) {
                 FileSpec.builder(fileClass)

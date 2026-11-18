@@ -43,6 +43,9 @@ kotlin {
             group("androidNative") {
                 withAndroidNative()
             }
+            group("ios") {
+                withIos()
+            }
             group("skikoNative") {
                 withLinux()
                 withMacos()
@@ -82,6 +85,11 @@ kotlin {
             mingwX64()
         )
 
+    }
+
+    optionalTargets {
+        iosX64()
+        iosArm64()
     }
 
     val androidNativeTargets = optionalTargets.run {
