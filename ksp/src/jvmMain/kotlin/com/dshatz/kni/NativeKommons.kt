@@ -112,12 +112,16 @@ class NativeKommons : SymbolProcessorProvider {
 
                 when (platform) {
                     Platform.COMMON -> {
-                        callbackProcessor.generateBaseSuspendAdapters().write()
                         flowProcessor.generateCommon().write()
                         generateAdapterMarkers()?.write()
                     }
                     else -> {
                         serializableProcessor.collectGenericSerializers()
+                        // These extend jni's SuspendCallback, so they must not be in common code (iOS compiles it).
+                        callbackProcessor.generateBaseSuspendAdapters().write()
+                        // Adapters declared in jniCommonMain are invisible to the common pass.
+                        generateAdapterMarkers(skipExisting = true)?.write()
+                        flowProcessor.generateCommon(skipExisting = true).write()
 
                         serializableProcessor.generateSerializers(serializables).write()
                         serializableProcessor.generateGenericSerializers()?.write()
@@ -185,14 +189,16 @@ class NativeKommons : SymbolProcessorProvider {
             registry.jniAdapters.addAll(wrappers)
         }
 
-        context(_: ResolverContext)
-        fun generateAdapterMarkers(): List<FileSpec>? {
+        context(ctx: ResolverContext)
+        fun generateAdapterMarkers(skipExisting: Boolean = false): List<FileSpec>? {
             if (registry.jniAdapters.isEmpty()) return null
-            val markers = registry.jniAdapters.map {
+            val markers = registry.jniAdapters.mapNotNull {
                 val className = ClassName(
                     "kni.generated.adapters",
                     "Marker${it.safeQualifiedName().replace('.', '_')}"
                 )
+                // Adapters in commonMain already got a marker from the common pass.
+                if (skipExisting && ctx.resolver.getClassDeclarationByName(ctx.resolver.getKSNameFromString(className.canonicalName)) != null) return@mapNotNull null
                 val file = FileSpec.builder(
                     className
                 )

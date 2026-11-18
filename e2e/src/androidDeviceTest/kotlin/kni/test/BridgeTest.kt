@@ -2,7 +2,6 @@ package kni.test
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.ColorSpace
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
 import kni.CommonExternalBitmap

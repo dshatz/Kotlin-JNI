@@ -38,6 +38,9 @@ kotlin {
                 withLinux()
                 withMacos()
             }
+            group("ios") {
+                withIos()
+            }
             group("desktopNative") {
                 group("mingw") {
                     withMingw()
@@ -89,6 +92,8 @@ kotlin {
             binaries.executable()
             browser()
         }
+        iosX64()
+        iosArm64()
     }
 
 
