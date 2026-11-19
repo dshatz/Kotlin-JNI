@@ -58,3 +58,4 @@ Feel free to create Pull Requests and Issues. I will do my best to address them.
 
 ## This library is used by
  - [PDFMP](https://github.com/dshatz/pdfmp) - Kotlin Multiplatform PDF Library.
+ - [Passphrase meter](https://github.com/dshatz/passphrase-meter) - KMP pin-code and password strength meter.
